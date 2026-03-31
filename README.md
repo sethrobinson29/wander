@@ -30,8 +30,12 @@ API reference available at `http://localhost:{port}/scalar/v1`.
 ## Running Tests
 
 ```bash
-dotnet test
+# Unit tests only
+dotnet test --filter "Category!=Integration"
+
+# Integration tests (requires Docker + live Scryfall connection, slow)
+dotnet test --filter "Category=Integration"
 ```
 
-> Docker must be running — the test suite includes a database connectivity test.
+> Docker must be running for any test that hits the database.
 

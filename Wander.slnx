@@ -1,0 +1,9 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/Wander.Api/Wander.Api.csproj" />
+    <Project Path="src/Wander.Client/Wander.Client.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/Wander.Tests/Wander.Tests.csproj" />
+  </Folder>
+</Solution>

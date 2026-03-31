@@ -35,6 +35,3 @@ dotnet test
 
 > Docker must be running — the test suite includes a database connectivity test.
 
-## Docs
-
-See [`docs/plan.md`](docs/plan.md) for the full project plan and [`docs/implementation.md`](docs/implementation.md) for phase-by-phase implementation steps.

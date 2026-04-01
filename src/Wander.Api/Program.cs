@@ -83,6 +83,7 @@ builder.Services.AddQuartz(q =>
 });
 
 builder.Services.AddQuartzHostedService(q => q.WaitForJobsToComplete = true);
+builder.Services.AddScoped<DeckValidationService>();
 
 var app = builder.Build();
 

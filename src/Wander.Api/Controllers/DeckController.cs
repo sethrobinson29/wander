@@ -1,0 +1,328 @@
+using System.Security.Claims;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
+using System.Security.Claims;
+using Wander.Api.Domain;
+using Wander.Api.Infrastructure.Data;
+using Wander.Api.Models.Decks;
+using Wander.Api.Services;
+
+namespace Wander.Api.Controllers;
+
+[ApiController]
+[Route("decks")]
+public class DeckController(WanderDbContext db, DeckValidationService validator) : ControllerBase
+{
+    private string UserId => User.FindFirstValue(ClaimTypes.NameIdentifier)!;
+
+    // ── Queries (public or owner-filtered) ──────────────────────────────────
+
+    [HttpGet("public")]
+    public async Task<ActionResult<List<DeckSummaryResponse>>> ListPublic(
+        [FromQuery] Format? format,
+        CancellationToken ct)
+    {
+        IQueryable<Deck> query = db.Decks
+            .Where(d => d.Visibility == Visibility.Public)
+            .Include(d => d.Owner)
+            .Include(d => d.Cards);
+
+        if (format.HasValue)
+            query = query.Where(d => d.Format == format.Value);
+
+        var decks = await query.OrderByDescending(d => d.UpdatedAt).ToListAsync(ct);
+        return Ok(decks.Select(ToSummary));
+    }
+
+    [HttpGet("mine")]
+    [Authorize]
+    public async Task<ActionResult<List<DeckSummaryResponse>>> ListMine(CancellationToken ct)
+    {
+        var decks = await db.Decks
+            .Where(d => d.OwnerId == UserId)
+            .Include(d => d.Owner)
+            .Include(d => d.Cards)
+            .OrderByDescending(d => d.UpdatedAt)
+            .ToListAsync(ct);
+
+        return Ok(decks.Select(ToSummary));
+    }
+
+    [HttpGet("{id:guid}")]
+    public async Task<ActionResult<DeckDetailResponse>> Get(Guid id, CancellationToken ct)
+    {
+        var deck = await db.Decks
+            .Include(d => d.Owner)
+            .Include(d => d.Cards).ThenInclude(dc => dc.Card)
+            .FirstOrDefaultAsync(d => d.Id == id, ct);
+
+        if (deck is null) return NotFound();
+
+        // Private decks visible only to their owner
+        if (deck.Visibility == Visibility.Private)
+        {
+            var requesterId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (requesterId != deck.OwnerId) return NotFound();
+        }
+
+        return Ok(ToDetail(deck));
+    }
+
+    // ── Mutations ────────────────────────────────────────────────────────────
+
+    [HttpPost]
+    [Authorize]
+    public async Task<ActionResult<DeckDetailResponse>> Create(
+        CreateDeckRequest request,
+        CancellationToken ct)
+    {
+        var deck = new Deck
+        {
+            Id = Guid.NewGuid(),
+            Name = request.Name,
+            Description = request.Description,
+            Format = request.Format,
+            Visibility = request.Visibility,
+            OwnerId = UserId,
+            CreatedAt = DateTimeOffset.UtcNow,
+            UpdatedAt = DateTimeOffset.UtcNow,
+        };
+
+        db.Decks.Add(deck);
+        await db.SaveChangesAsync(ct);
+
+        return CreatedAtAction(nameof(Get), new { id = deck.Id }, ToDetail(deck));
+    }
+
+    [HttpPut("{id:guid}")]
+    [Authorize]
+    public async Task<ActionResult<DeckDetailResponse>> Update(
+        Guid id,
+        UpdateDeckRequest request,
+        CancellationToken ct)
+    {
+        var deck = await db.Decks
+            .Include(d => d.Owner)
+            .Include(d => d.Cards).ThenInclude(dc => dc.Card)
+            .FirstOrDefaultAsync(d => d.Id == id, ct);
+
+        if (deck is null) return NotFound();
+        if (deck.OwnerId != UserId) return Forbid();
+
+        deck.Name = request.Name;
+        deck.Description = request.Description;
+        deck.Primer = request.Primer;
+        deck.Format = request.Format;
+        deck.Visibility = request.Visibility;
+        deck.UpdatedAt = DateTimeOffset.UtcNow;
+
+        var errors = validator.Validate(deck, deck.Cards);
+        if (errors.Count > 0) return BadRequest(new { errors });
+
+        await db.SaveChangesAsync(ct);
+        return Ok(ToDetail(deck));
+    }
+
+    [HttpDelete("{id:guid}")]
+    [Authorize]
+    public async Task<IActionResult> Delete(Guid id, CancellationToken ct)
+    {
+        var deck = await db.Decks.FirstOrDefaultAsync(d => d.Id == id, ct);
+
+        if (deck is null) return NotFound();
+        if (deck.OwnerId != UserId) return Forbid();
+
+        db.Decks.Remove(deck);
+        await db.SaveChangesAsync(ct);
+        return NoContent();
+    }
+
+    // ── Card management ──────────────────────────────────────────────────────
+
+    [HttpPut("{id:guid}/cards")]
+    [Authorize]
+    public async Task<ActionResult<DeckDetailResponse>> SetCards(
+        Guid id,
+        List<DeckCardRequest> request,
+        CancellationToken ct)
+    {
+        var deck = await db.Decks
+            .Include(d => d.Owner)
+            .Include(d => d.Cards).ThenInclude(dc => dc.Card)
+            .FirstOrDefaultAsync(d => d.Id == id, ct);
+
+        if (deck is null) return NotFound();
+        if (deck.OwnerId != UserId) return Forbid();
+
+        // Resolve all card IDs upfront to avoid N+1
+        var cardIds = request.Select(r => r.CardId).ToList();
+        var cards = await db.Cards
+            .Where(c => cardIds.Contains(c.Id))
+            .ToDictionaryAsync(c => c.Id, ct);
+
+        var missing = cardIds.Except(cards.Keys).ToList();
+        if (missing.Count > 0)
+            return BadRequest(new { errors = missing.Select(id => $"Card {id} not found.") });
+
+        // Replace all cards (simplest correct approach for a PUT)
+        db.DeckCards.RemoveRange(deck.Cards);
+
+        var newCards = request.Select(r => new DeckCard
+        {
+            Id = Guid.NewGuid(),
+            DeckId = deck.Id,
+            CardId = r.CardId,
+            Card = cards[r.CardId],
+            Quantity = r.Quantity,
+            IsCommander = r.IsCommander,
+            IsSideboard = r.IsSideboard,
+        }).ToList();
+
+        db.DeckCards.AddRange(newCards);
+        deck.Cards = newCards;
+        deck.UpdatedAt = DateTimeOffset.UtcNow;
+
+        var errors = validator.Validate(deck, deck.Cards);
+        if (errors.Count > 0) return BadRequest(new { errors });
+
+        await db.SaveChangesAsync(ct);
+        return Ok(ToDetail(deck));
+    }
+
+    // ── Bulk import ──────────────────────────────────────────────────────────
+
+    [HttpPost("{id:guid}/import")]
+    [Authorize]
+    public async Task<ActionResult<DeckDetailResponse>> BulkImport(
+        Guid id,
+        [FromBody] BulkImportRequest request,
+        CancellationToken ct)
+    {
+        var deck = await db.Decks
+            .Include(d => d.Owner)
+            .Include(d => d.Cards).ThenInclude(dc => dc.Card)
+            .FirstOrDefaultAsync(d => d.Id == id, ct);
+
+        if (deck is null) return NotFound();
+        if (deck.OwnerId != UserId) return Forbid();
+
+        var parsed = ParseDecklist(request.Decklist);
+        var notFound = new List<string>();
+
+        var cardNames = parsed.Select(p => p.Name).Distinct().ToList();
+        var cards = await db.Cards
+            .Where(c => cardNames.Contains(c.Name))
+            .ToDictionaryAsync(c => c.Name, StringComparer.OrdinalIgnoreCase, ct);
+
+        db.DeckCards.RemoveRange(deck.Cards);
+
+        var newCards = new List<DeckCard>();
+        foreach (var (name, qty, isCommander, isSideboard) in parsed)
+        {
+            if (!cards.TryGetValue(name, out var card))
+            {
+                notFound.Add(name);
+                continue;
+            }
+
+            newCards.Add(new DeckCard
+            {
+                Id = Guid.NewGuid(),
+                DeckId = deck.Id,
+                CardId = card.Id,
+                Card = card,
+                Quantity = qty,
+                IsCommander = isCommander,
+                IsSideboard = isSideboard,
+            });
+        }
+
+        if (notFound.Count > 0)
+            return BadRequest(new { errors = notFound.Select(n => $"Card not found: {n}") });
+
+        db.DeckCards.AddRange(newCards);
+        deck.Cards = newCards;
+        deck.UpdatedAt = DateTimeOffset.UtcNow;
+
+        var errors = validator.Validate(deck, deck.Cards);
+        if (errors.Count > 0) return BadRequest(new { errors });
+
+        await db.SaveChangesAsync(ct);
+        return Ok(ToDetail(deck));
+    }
+
+    // ── Helpers ──────────────────────────────────────────────────────────────
+
+    // Parses lines in the format:
+    //   4 Lightning Bolt
+    //   4 Lightning Bolt (LEA) 162
+    //   1 Atraxa, Praetors' Voice *CMDR*
+    //   SB: 2 Tormod's Crypt
+    private static List<(string Name, int Qty, bool IsCommander, bool IsSideboard)> ParseDecklist(string text)
+    {
+        var results = new List<(string, int, bool, bool)>();
+
+        foreach (var raw in text.Split('\n', StringSplitOptions.RemoveEmptyEntries))
+        {
+            var line = raw.Trim();
+            if (string.IsNullOrEmpty(line) || line.StartsWith("//")) continue;
+
+            var isSideboard = line.StartsWith("SB:", StringComparison.OrdinalIgnoreCase);
+            if (isSideboard) line = line[3..].Trim();
+
+            var isCommander = line.Contains("*CMDR*", StringComparison.OrdinalIgnoreCase);
+            line = line.Replace("*CMDR*", "", StringComparison.OrdinalIgnoreCase).Trim();
+
+            // Match leading quantity
+            var spaceIndex = line.IndexOf(' ');
+            if (spaceIndex < 1) continue;
+
+            if (!int.TryParse(line[..spaceIndex], out var qty)) continue;
+            var rest = line[(spaceIndex + 1)..].Trim();
+
+            // Strip set code and collector number: "Lightning Bolt (LEA) 162" → "Lightning Bolt"
+            var setIndex = rest.IndexOf(" (", StringComparison.Ordinal);
+            var name = setIndex > 0 ? rest[..setIndex].Trim() : rest;
+
+            results.Add((name, qty, isCommander, isSideboard));
+        }
+
+        return results;
+    }
+
+    private static DeckSummaryResponse ToSummary(Deck d) => new(
+        d.Id,
+        d.Name,
+        d.Description,
+        d.Format,
+        d.Visibility,
+        d.Owner.UserName!,
+        d.Cards.Sum(c => c.Quantity),
+        d.CreatedAt,
+        d.UpdatedAt);
+
+    private static DeckDetailResponse ToDetail(Deck d) => new(
+        d.Id,
+        d.Name,
+        d.Description,
+        d.Primer,
+        d.Format,
+        d.Visibility,
+        d.Owner?.UserName ?? "",
+        d.Cards.Select(dc => new DeckCardResponse(
+            dc.Id,
+            dc.CardId,
+            dc.Card?.Name ?? "",
+            dc.Card?.ManaCost,
+            dc.Card?.Cmc ?? 0,
+            dc.Card?.TypeLine ?? "",
+            dc.Card?.ColorIdentity ?? [],
+            dc.Card?.ImageUriNormal,
+            dc.Card?.ImageUriSmall,
+            dc.Quantity,
+            dc.IsCommander,
+            dc.IsSideboard)).ToList(),
+        d.CreatedAt,
+        d.UpdatedAt);
+}

@@ -11,6 +11,8 @@ public class WanderDbContext : IdentityDbContext<ApplicationUser>
 
     public DbSet<Card> Cards => Set<Card>();
     public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
+    public DbSet<Deck> Decks => Set<Deck>();
+    public DbSet<DeckCard> DeckCards => Set<DeckCard>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -46,6 +48,28 @@ public class WanderDbContext : IdentityDbContext<ApplicationUser>
                   .WithMany()
                   .HasForeignKey(t => t.UserId)
                   .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<Deck>(entity =>
+        {
+            entity.HasKey(d => d.Id);
+            entity.HasOne(d => d.Owner)
+                  .WithMany(u => u.Decks)
+                  .HasForeignKey(d => d.OwnerId)
+                  .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<DeckCard>(entity =>
+        {
+            entity.HasKey(dc => dc.Id);
+            entity.HasOne(dc => dc.Deck)
+                  .WithMany(d => d.Cards)
+                  .HasForeignKey(dc => dc.DeckId)
+                  .OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(dc => dc.Card)
+                  .WithMany()
+                  .HasForeignKey(dc => dc.CardId)
+                  .OnDelete(DeleteBehavior.Restrict);
         });
     }
 }

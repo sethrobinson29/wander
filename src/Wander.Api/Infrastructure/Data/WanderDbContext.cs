@@ -1,13 +1,16 @@
+using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
+using NpgsqlTypes;
 using Wander.Api.Domain;
 
 namespace Wander.Api.Infrastructure.Data;
 
-public class WanderDbContext : DbContext
+public class WanderDbContext : IdentityDbContext<ApplicationUser>
 {
     public WanderDbContext(DbContextOptions<WanderDbContext> options) : base(options) { }
 
     public DbSet<Card> Cards => Set<Card>();
+    public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -33,6 +36,16 @@ public class WanderDbContext : DbContext
 
             entity.HasIndex(c => c.NameSearchVector)
                   .HasMethod("GIN");
+        });
+
+        modelBuilder.Entity<RefreshToken>(entity =>
+        {
+            entity.HasKey(t => t.Id);
+            entity.HasIndex(t => t.Token).IsUnique();
+            entity.HasOne(t => t.User)
+                  .WithMany()
+                  .HasForeignKey(t => t.UserId)
+                  .OnDelete(DeleteBehavior.Cascade);
         });
     }
 }

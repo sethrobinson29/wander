@@ -1,0 +1,71 @@
+@{
+    RenderFragment rowContent =
+        @<div class="d-flex align-center py-1" style="border-bottom: 1px solid #2a1d40;">
+            @if (ShowQuantityControl)
+            {
+                <MudIconButton Icon="@Icons.Material.Filled.Remove" Size="Size.Small"
+                               OnClick="() => OnDecrement.InvokeAsync(Card)" />
+                <MudText Style="min-width:20px; text-align:center;">@Card.Quantity</MudText>
+                <MudIconButton Icon="@Icons.Material.Filled.Add" Size="Size.Small"
+                               OnClick="() => OnIncrement.InvokeAsync(Card)" />
+            }
+            else
+            {
+                <MudText Style="min-width:28px; color:#9e94c8;">@Card.Quantity×</MudText>
+            }
+
+            <div class="card-preview-anchor flex-grow-1 ml-2">
+                <MudText Style="cursor:default;">
+                    @if (Card.IsCommander)
+                    {
+                        <MudIcon Icon="@Icons.Material.Filled.Star" Size="Size.Small"
+                                 Style="color:#c9a84c; vertical-align:middle;" />
+                    }
+                    @Card.CardName
+                </MudText>
+                @if (Card.ImageUriNormal != null)
+                {
+                    <img class="card-preview-image" src="@Card.ImageUriNormal" alt="@Card.CardName" />
+                }
+            </div>
+
+            <MudText Typo="Typo.caption" Style="color:#9e94c8; margin-right:8px;">@Card.TypeLine</MudText>
+            <ManaCost Cost="@Card.ManaCost" />
+
+            @if (ShowRemove)
+            {
+                <MudIconButton Icon="@Icons.Material.Filled.Close" Size="Size.Small"
+                               Color="Color.Error" OnClick="() => OnRemove.InvokeAsync(Card)" />
+            }
+        </div>;
+}
+
+@if (Context != CardContext.None)
+{
+    <CardContextMenu Context="@Context" Card="@Card"
+                     OnSetCommander="OnSetCommander"
+                     OnMoveToSideboard="OnMoveToSideboard"
+                     OnMoveToMain="OnMoveToMain"
+                     OnRemove="OnRemove"
+                     OnOpenScryfall="OnOpenScryfall">
+        @rowContent
+    </CardContextMenu>
+}
+else
+{
+    @rowContent
+}
+
+@code {
+    [Parameter] public DeckCardDetail Card { get; set; } = null!;
+    [Parameter] public bool ShowQuantityControl { get; set; }
+    [Parameter] public bool ShowRemove { get; set; }
+    [Parameter] public CardContext Context { get; set; } = CardContext.None;
+    [Parameter] public EventCallback<DeckCardDetail> OnIncrement { get; set; }
+    [Parameter] public EventCallback<DeckCardDetail> OnDecrement { get; set; }
+    [Parameter] public EventCallback<DeckCardDetail> OnRemove { get; set; }
+    [Parameter] public EventCallback<DeckCardDetail> OnSetCommander { get; set; }
+    [Parameter] public EventCallback<DeckCardDetail> OnMoveToSideboard { get; set; }
+    [Parameter] public EventCallback<DeckCardDetail> OnMoveToMain { get; set; }
+    [Parameter] public EventCallback OnOpenScryfall { get; set; }
+}

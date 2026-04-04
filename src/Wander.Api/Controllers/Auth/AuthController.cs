@@ -16,20 +16,20 @@ public class AuthController(
     TokenService tokenService) : ControllerBase
 {
     [HttpPost("register")]
-    public async Task<IActionResult> Register(RegisterRequest request)
+    public async Task<ActionResult<AuthResponse>> Register(RegisterRequest request)
     {
         var user = new ApplicationUser
         {
-            UserName = request.Email,
+            UserName = request.Username,
             Email = request.Email,
             CreatedAt = DateTimeOffset.UtcNow,
         };
 
         var result = await userManager.CreateAsync(user, request.Password);
         if (!result.Succeeded)
-            return BadRequest(result.Errors.Select(e => e.Description));
+            return BadRequest(new { errors = result.Errors.Select(e => e.Description) });
 
-        return Ok(new { message = "Registration successful." });
+        return Ok(await IssueTokensAsync(user));
     }
 
     [HttpPost("login")]

@@ -1,0 +1,90 @@
+<MudMenu PositionAtCursor="true" Dense="true" PopoverClass="wander-context-menu">
+    <ActivatorContent Context="menuCtx">
+        <div @oncontextmenu="e => menuCtx.OpenAsync(e)"
+             @oncontextmenu:preventDefault="true"
+             @oncontextmenu:stopPropagation="true"
+             class="card-row-activator">
+            @ChildContent
+        </div>
+    </ActivatorContent>
+    <ChildContent>
+        @switch (Context)
+        {
+            case CardContext.BuilderMain:
+                @if (!Card!.IsCommander &&
+                     Card.TypeLine.Contains("Legendary", StringComparison.OrdinalIgnoreCase))
+                {
+                    <MudMenuItem Icon="@Icons.Material.Filled.Star"
+                                 OnClick="() => OnSetCommander.InvokeAsync(Card)">
+                        Set as Commander
+                    </MudMenuItem>
+                }
+                @if (Card!.IsSideboard)
+                {
+                    <MudMenuItem Icon="@Icons.Material.Filled.SwapHoriz"
+                                 OnClick="() => OnMoveToMain.InvokeAsync(Card)">
+                        Move to Main Deck
+                    </MudMenuItem>
+                }
+                else
+                {
+                    <MudMenuItem Icon="@Icons.Material.Filled.SwapHoriz"
+                                 OnClick="() => OnMoveToSideboard.InvokeAsync(Card)">
+                        Move to Sideboard
+                    </MudMenuItem>
+                }
+                <MudMenuItem Icon="@Icons.Material.Filled.Close" IconColor="Color.Error"
+                             OnClick="() => OnRemove.InvokeAsync(Card)">
+                    Remove from Deck
+                </MudMenuItem>
+                break;
+
+            case CardContext.BuilderCommander:
+                <MudMenuItem Icon="@Icons.Material.Filled.Close" IconColor="Color.Error"
+                             OnClick="() => OnRemove.InvokeAsync(Card)">
+                    Remove from Deck
+                </MudMenuItem>
+                break;
+
+            case CardContext.BuilderSearch:
+                <MudMenuItem Icon="@Icons.Material.Filled.Add"
+                             OnClick="() => OnAddToDeck.InvokeAsync()">
+                    Add to Deck
+                </MudMenuItem>
+                <MudMenuItem Icon="@Icons.Material.Filled.SwapHoriz"
+                             OnClick="() => OnAddToSideboard.InvokeAsync()">
+                    Add to Sideboard
+                </MudMenuItem>
+                @if (SearchCard!.TypeLine.Contains("Legendary", StringComparison.OrdinalIgnoreCase))
+                {
+                    <MudMenuItem Icon="@Icons.Material.Filled.Star"
+                                 OnClick="() => OnAddAsCommander.InvokeAsync()">
+                        Add as Commander
+                    </MudMenuItem>
+                }
+                break;
+
+            case CardContext.Viewer:
+                <MudMenuItem Icon="@Icons.Material.Filled.OpenInNew"
+                             OnClick="() => OnOpenScryfall.InvokeAsync()">
+                    Open on Scryfall
+                </MudMenuItem>
+                break;
+        }
+    </ChildContent>
+</MudMenu>
+
+@code {
+    [Parameter] public CardContext Context { get; set; }
+    [Parameter] public DeckCardDetail? Card { get; set; }
+    [Parameter] public CardSearchResult? SearchCard { get; set; }
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+    [Parameter] public EventCallback<DeckCardDetail> OnSetCommander { get; set; }
+    [Parameter] public EventCallback<DeckCardDetail> OnMoveToSideboard { get; set; }
+    [Parameter] public EventCallback<DeckCardDetail> OnMoveToMain { get; set; }
+    [Parameter] public EventCallback<DeckCardDetail> OnRemove { get; set; }
+    [Parameter] public EventCallback OnAddToDeck { get; set; }
+    [Parameter] public EventCallback OnAddToSideboard { get; set; }
+    [Parameter] public EventCallback OnAddAsCommander { get; set; }
+    [Parameter] public EventCallback OnOpenScryfall { get; set; }
+}

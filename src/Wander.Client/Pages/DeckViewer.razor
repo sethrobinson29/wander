@@ -1,0 +1,154 @@
+@page "/decks/{Id:guid}"
+@inject WanderApiClient Api
+@inject NavigationManager Nav
+@inject IJSRuntime JS
+@using Markdig
+@using Microsoft.JSInterop
+@using MudBlazor.Charts
+
+@if (_deck == null)
+{
+    <MudProgressLinear Color="Color.Primary" Indeterminate="true" />
+    return;
+}
+
+<div class="d-flex justify-space-between align-center mb-4">
+    <div>
+        <MudText Typo="Typo.h3" Style="font-family:'Cinzel',serif; color:#c9a84c;">@_deck.Name</MudText>
+        <div class="d-flex align-center gap-2 mt-1">
+            <FormatBadge Format="@_deck.Format" />
+            <MudText Typo="Typo.caption" Style="color:#9e94c8;">by @_deck.OwnerUsername</MudText>
+            <MudText Typo="Typo.caption" Style="color:#9e94c8;">· @TotalCards cards</MudText>
+        </div>
+    </div>
+    <AuthorizeView>
+        <Authorized>
+            @if (_deck.OwnerUsername == context.User.Identity?.Name)
+            {
+                <MudButton Variant="Variant.Outlined" Color="Color.Primary"
+                           OnClick='() => Nav.NavigateTo($"/decks/{Id}/edit")'>
+                    Edit Deck
+                </MudButton>
+            }
+        </Authorized>
+    </AuthorizeView>
+</div>
+
+<MudGrid>
+    <!-- Card list -->
+    <MudItem xs="12" md="7">
+        @if (_deck.Format == Format.Commander)
+        {
+            var commanders = _deck.Cards.Where(c => c.IsCommander).ToList();
+            @if (commanders.Count > 0)
+            {
+                <MudCard Style="background:#1e1030; border:1px solid #c9a84c44; margin-bottom:16px;">
+                    <MudCardContent>
+                        <MudText Typo="Typo.h6" Class="mb-2"
+                                 Style="font-family:'Cinzel',serif; color:#c9a84c;">
+                            Command Zone
+                        </MudText>
+                        @foreach (var card in commanders)
+                        {
+                            <CardRow Card="@card" Context="CardContext.Viewer"
+                                     OnOpenScryfall="() => OpenScryfall(card)" />
+                        }
+                    </MudCardContent>
+                </MudCard>
+            }
+        }
+
+        @foreach (var group in GroupedCards)
+        {
+            <MudCard Style="background:#241a35; border:1px solid #3d2d5e; margin-bottom:12px;">
+                <MudCardContent>
+                    <div class="d-flex align-center mb-2">
+                        <MudText Typo="Typo.h6" Style="font-family:'Cinzel',serif;">@group.Key</MudText>
+                        <MudText Typo="Typo.caption" Class="ml-2" Style="color:#9e94c8;">
+                            (@group.Sum(c => c.Quantity))
+                        </MudText>
+                    </div>
+                    @foreach (var card in group.OrderBy(c => c.Cmc).ThenBy(c => c.CardName))
+                    {
+                        <CardRow Card="@card" Context="CardContext.Viewer"
+                                 OnOpenScryfall="() => OpenScryfall(card)" />
+                    }
+                </MudCardContent>
+            </MudCard>
+        }
+    </MudItem>
+
+    <!-- Stats + primer -->
+    <MudItem xs="12" md="5">
+        <!-- Mana curve -->
+        <MudCard Style="background:#241a35; border:1px solid #3d2d5e; margin-bottom:16px;">
+            <MudCardContent>
+                <MudText Typo="Typo.h6" Class="mb-3" Style="font-family:'Cinzel',serif;">Mana Curve</MudText>
+                <MudChart ChartType="ChartType.Bar"
+                          ChartSeries="@ManaCurveSeries"
+                          ChartLabels="@ManaCurveLabels"
+                          Height="160"
+                          ChartOptions="@(new BarChartOptions { YAxisTicks = 1 })" />
+            </MudCardContent>
+        </MudCard>
+
+        <!-- Primer -->
+        @if (!string.IsNullOrWhiteSpace(_deck.Primer))
+        {
+            <MudCard Style="background:#241a35; border:1px solid #3d2d5e;">
+                <MudCardContent>
+                    <MudText Typo="Typo.h6" Class="mb-3" Style="font-family:'Cinzel',serif;">Primer</MudText>
+                    <div class="primer-content" style="color:#e8e0ff; line-height:1.7;">
+                        @((MarkupString)Markdown.ToHtml(_deck.Primer,
+                            new MarkdownPipelineBuilder().UseAdvancedExtensions().Build()))
+                    </div>
+                </MudCardContent>
+            </MudCard>
+        }
+    </MudItem>
+</MudGrid>
+
+@code {
+    [Parameter] public Guid Id { get; set; }
+
+    DeckDetail? _deck;
+
+    int TotalCards => _deck?.Cards.Where(c => !c.IsCommander).Sum(c => c.Quantity) ?? 0;
+
+    IEnumerable<IGrouping<string, DeckCardDetail>> GroupedCards =>
+        (_deck?.Cards ?? [])
+            .Where(c => !c.IsCommander && !c.IsSideboard)
+            .GroupBy(c => GetTypeGroup(c.TypeLine))
+            .OrderBy(g => TypeGroupOrder(g.Key));
+
+    List<ChartSeries<double>> ManaCurveSeries => [new ChartSeries<double>
+    {
+        Name = "Cards",
+        Data = Enumerable.Range(0, 8)
+            .Select(cmc => (double)(_deck?.Cards
+                .Where(c => !c.IsCommander && !c.IsSideboard &&
+                    (cmc == 7 ? c.Cmc >= 7 : (int)c.Cmc == cmc))
+                .Sum(c => c.Quantity) ?? 0))
+            .ToArray()
+    }];
+
+    string[] ManaCurveLabels = ["0", "1", "2", "3", "4", "5", "6", "7+"];
+
+    protected override async Task OnInitializedAsync() =>
+        _deck = await Api.GetDeckAsync(Id);
+
+    async Task OpenScryfall(DeckCardDetail card) =>
+        await JS.InvokeVoidAsync("open",
+            $"https://scryfall.com/search?q=!\"{Uri.EscapeDataString(card.CardName)}\"", "_blank");
+
+    static string GetTypeGroup(string typeLine) =>
+        new[] { "Creature", "Instant", "Sorcery", "Enchantment", "Artifact", "Planeswalker", "Battle", "Land" }
+            .FirstOrDefault(t => typeLine.Contains(t, StringComparison.OrdinalIgnoreCase)) ?? "Other";
+
+    static int TypeGroupOrder(string group) =>
+        group switch
+        {
+            "Creature"    => 0, "Instant" => 1, "Sorcery" => 2, "Enchantment" => 3,
+            "Artifact"    => 4, "Planeswalker" => 5, "Battle" => 6, "Land" => 7, _ => 8,
+        };
+}

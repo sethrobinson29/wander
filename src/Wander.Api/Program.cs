@@ -16,6 +16,18 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddOpenApi();
 builder.Services.AddControllers();
 
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("BlazorClient", policy =>
+    {
+        policy.WithOrigins(
+                builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>()
+                ?? ["http://localhost:5173", "https://localhost:7098"])
+            .AllowAnyHeader()
+            .AllowAnyMethod();
+    });
+});
+
 var dataSourceBuilder = new NpgsqlDataSourceBuilder(builder.Configuration.GetConnectionString("Default"));
 dataSourceBuilder.EnableDynamicJson();
 var dataSource = dataSourceBuilder.Build();
@@ -23,8 +35,9 @@ var dataSource = dataSourceBuilder.Build();
 builder.Services.AddDbContext<WanderDbContext>(options =>
     options.UseNpgsql(dataSource));
 
-// Identity
-builder.Services.AddIdentity<ApplicationUser, IdentityRole>(options =>
+// Identity — use AddIdentityCore so cookie auth is not registered as the default
+// scheme (which would redirect 401s before CORS headers are written)
+builder.Services.AddIdentityCore<ApplicationUser>(options =>
 {
     options.Password.RequireDigit = false;
     options.Password.RequireUppercase = false;
@@ -32,6 +45,7 @@ builder.Services.AddIdentity<ApplicationUser, IdentityRole>(options =>
     options.Password.RequiredLength = 8;
     options.User.RequireUniqueEmail = true;
 })
+.AddRoles<IdentityRole>()
 .AddEntityFrameworkStores<WanderDbContext>()
 .AddDefaultTokenProviders();
 
@@ -86,6 +100,9 @@ builder.Services.AddQuartzHostedService(q => q.WaitForJobsToComplete = true);
 builder.Services.AddScoped<DeckValidationService>();
 
 var app = builder.Build();
+
+app.UseRouting();
+app.UseCors("BlazorClient");
 
 if (app.Environment.IsDevelopment())
 {

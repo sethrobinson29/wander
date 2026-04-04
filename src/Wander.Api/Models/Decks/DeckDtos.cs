@@ -41,6 +41,7 @@ public record DeckDetailResponse(
     Visibility Visibility,
     string OwnerUsername,
     List<DeckCardResponse> Cards,
+    List<string> DeckErrors,
     DateTimeOffset CreatedAt,
     DateTimeOffset UpdatedAt);
 
@@ -56,6 +57,7 @@ public record DeckCardResponse(
     string? ImageUriSmall,
     int Quantity,
     bool IsCommander,
-    bool IsSideboard);
+    bool IsSideboard,
+    List<string> Errors);
 
 public record BulkImportRequest(string Decklist);

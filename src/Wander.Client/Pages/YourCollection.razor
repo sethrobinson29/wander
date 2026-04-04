@@ -1,0 +1,97 @@
+@page "/decks"
+@attribute [Authorize]
+@inject WanderApiClient Api
+@inject NavigationManager Nav
+@inject IDialogService Dialogs
+
+<MudText Typo="Typo.h4" Class="page-title">Your Collection</MudText>
+
+<MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Add"
+           OnClick="CreateDeck" Class="mb-4">
+    New Deck
+</MudButton>
+
+@if (_loading)
+{
+    <MudProgressLinear Color="Color.Primary" Indeterminate="true" />
+}
+else if (_decks.Count == 0)
+{
+    <MudText Typo="Typo.body1" Style="color:#9e94c8;">
+        Your grimoire is empty. Create your first deck.
+    </MudText>
+}
+else
+{
+    <MudGrid>
+        @foreach (var deck in _decks)
+        {
+            <MudItem xs="12" sm="6" md="4">
+                <MudCard Style="background:#241a35; border:1px solid #3d2d5e; cursor:pointer;"
+                         @onclick='() => Nav.NavigateTo($"/decks/{deck.Id}")'>
+                    <MudCardContent>
+                        <MudText Typo="Typo.h6" Style="font-family:'Cinzel',serif;">@deck.Name</MudText>
+                        <div class="d-flex align-center gap-2 mt-1">
+                            <FormatBadge Format="@deck.Format" />
+                            <MudText Typo="Typo.caption" Style="color:#9e94c8;">@deck.CardCount cards</MudText>
+                        </div>
+                        @if (deck.Description != null)
+                        {
+                            <MudText Typo="Typo.body2" Class="mt-2" Style="color:#9e94c8;">
+                                @deck.Description
+                            </MudText>
+                        }
+                    </MudCardContent>
+                    <div @onclick:stopPropagation="true">
+                        <MudCardActions>
+                            <MudButton Size="Size.Small"
+                                       OnClick='() => Nav.NavigateTo($"/decks/{deck.Id}/edit")'>
+                                Edit
+                            </MudButton>
+                            <MudButton Size="Size.Small" Color="Color.Error"
+                                       OnClick="() => DeleteDeck(deck)">
+                                Delete
+                            </MudButton>
+                        </MudCardActions>
+                    </div>
+                </MudCard>
+            </MudItem>
+        }
+    </MudGrid>
+}
+
+@code {
+    List<DeckSummary> _decks = [];
+    bool _loading = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _decks = await Api.GetMyDecksAsync();
+        _loading = false;
+    }
+
+    async Task CreateDeck()
+    {
+        var dialog = await Dialogs.ShowAsync<Dialogs.CreateDeckDialog>("New Deck");
+        var result = await dialog.Result;
+        if (result is not null && !result.Canceled && result.Data is DeckSummary created)
+            Nav.NavigateTo($"/decks/{created.Id}/edit");
+    }
+
+    async Task DeleteDeck(DeckSummary deck)
+    {
+        var parameters = new DialogParameters<MudMessageBox>
+        {
+            { x => x.Message, $"Delete \"{deck.Name}\"? This cannot be undone." },
+            { x => x.YesText, "Delete" },
+            { x => x.CancelText, "Cancel" }
+        };
+        var dialog = await Dialogs.ShowAsync<MudMessageBox>("Delete Deck", parameters);
+        var result = await dialog.Result;
+        if (result is not null && !result.Canceled)
+        {
+            await Api.DeleteDeckAsync(deck.Id);
+            _decks.Remove(deck);
+        }
+    }
+}

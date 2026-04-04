@@ -1,0 +1,15 @@
+<MudChip T="string" Size="Size.Small" Style="@GetStyle()">@Format.ToString()</MudChip>
+
+@code {
+    [Parameter] public Format Format { get; set; }
+
+    string GetStyle() => Format switch
+    {
+        Format.Commander => "background:#3a1a5e; color:#c9a84c; font-family:'Cinzel',serif;",
+        Format.Standard  => "background:#1a3a5e; color:#88bbff;",
+        Format.Modern    => "background:#1a4a2e; color:#88ddaa;",
+        Format.Vintage   => "background:#4a1a1a; color:#ffaaaa;",
+        Format.Legacy    => "background:#3a2a1a; color:#ffcc88;",
+        _                => "background:#2a2a3a; color:#ccccff;",
+    };
+}

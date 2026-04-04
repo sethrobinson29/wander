@@ -1,0 +1,301 @@
+@page "/decks/{Id:guid}/edit"
+@attribute [Authorize]
+@inject WanderApiClient Api
+@inject ISnackbar Snackbar
+@inject IDialogService Dialogs
+@inject NavigationManager Nav
+
+<div class="d-flex justify-space-between align-center mb-4">
+    <div>
+        <MudText Typo="Typo.h4" Style="font-family:'Cinzel',serif; color:#c9a84c;">
+            @(_deck?.Name ?? "Loading...")
+        </MudText>
+        @if (_deck != null)
+        {
+            <div class="d-flex align-center gap-2">
+                <FormatBadge Format="@_deck.Format" />
+                <MudText Typo="Typo.caption" Style="color:#9e94c8;">@TotalCards cards</MudText>
+            </div>
+        }
+    </div>
+    <div class="d-flex gap-2">
+        <MudButton Variant="Variant.Outlined" OnClick="OpenBulkImport">Bulk Import</MudButton>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="SaveCards"
+                   Disabled="_saving">
+            @(_saving ? "Saving..." : "Save Deck")
+        </MudButton>
+    </div>
+</div>
+
+@if (_deck == null)
+{
+    <MudProgressLinear Color="Color.Primary" Indeterminate="true" />
+    return;
+}
+
+@if (_validationErrors.Count > 0)
+{
+    <MudAlert Severity="Severity.Warning" Class="mb-4">
+        @foreach (var e in _validationErrors) { <div>@e</div> }
+    </MudAlert>
+}
+
+<MudGrid>
+    <!-- Card search panel -->
+    <MudItem xs="12" md="4">
+        <MudCard Style="background:#241a35; border:1px solid #3d2d5e; position:sticky; top:16px;">
+            <MudCardContent>
+                <MudText Typo="Typo.h6" Class="mb-3" Style="font-family:'Cinzel',serif;">Add Cards</MudText>
+                <MudTextField T="string" Value="_searchQuery" ValueChanged="OnSearchInput"
+                              Label="Search cards..."
+                              Variant="Variant.Outlined" FullWidth="true"
+                              Adornment="Adornment.End" AdornmentIcon="@Icons.Material.Filled.Search"
+                              DebounceInterval="300" />
+
+                @if (_searchResults.Count > 0)
+                {
+                    <MudList T="CardSearchResult" Class="mt-2"
+                             Style="background:#1c1228; border:1px solid #3d2d5e; border-radius:4px; max-height:400px; overflow-y:auto;">
+                        @foreach (var card in _searchResults)
+                        {
+                            <MudListItem T="CardSearchResult" OnClick="() => AddCard(card)"
+                                         Style="border-bottom:1px solid #2a1d40; cursor:pointer;">
+                                <!-- Right-click context menu on search results (BuilderSearch context).
+                                     Search results are CardSearchResult not DeckCardDetail, so we use
+                                     an inline MudMenu here rather than CardContextMenu. -->
+                                <MudMenu PositionAtCursor="true" Dense="true"
+                                         PopoverClass="wander-context-menu">
+                                    <ActivatorContent Context="menuCtx">
+                                        <div @oncontextmenu="e => menuCtx.OpenAsync(e)"
+                                             @oncontextmenu:preventDefault="true"
+                                             @oncontextmenu:stopPropagation="true"
+                                             class="card-row-activator">
+                                            <div class="d-flex justify-space-between align-center">
+                                                <MudText Typo="Typo.body2">@card.Name</MudText>
+                                                <ManaCost Cost="@card.ManaCost" />
+                                            </div>
+                                            <MudText Typo="Typo.caption" Style="color:#9e94c8;">@card.TypeLine</MudText>
+                                        </div>
+                                    </ActivatorContent>
+                                    <ChildContent>
+                                        <MudMenuItem Icon="@Icons.Material.Filled.Add"
+                                                     OnClick="() => AddCard(card)">
+                                            Add to Deck
+                                        </MudMenuItem>
+                                        <MudMenuItem Icon="@Icons.Material.Filled.SwapHoriz"
+                                                     OnClick="() => AddToSideboard(card)">
+                                            Add to Sideboard
+                                        </MudMenuItem>
+                                        @if (card.TypeLine.Contains("Legendary", StringComparison.OrdinalIgnoreCase))
+                                        {
+                                            <MudMenuItem Icon="@Icons.Material.Filled.Star"
+                                                         OnClick="() => AddAsCommander(card)">
+                                                Add as Commander
+                                            </MudMenuItem>
+                                        }
+                                    </ChildContent>
+                                </MudMenu>
+                            </MudListItem>
+                        }
+                    </MudList>
+                }
+            </MudCardContent>
+        </MudCard>
+    </MudItem>
+
+    <!-- Deck list -->
+    <MudItem xs="12" md="8">
+        <!-- Commander zone (EDH only) -->
+        @if (_deck.Format == Format.Commander)
+        {
+            var commanders = _localCards.Where(c => c.IsCommander).ToList();
+            <MudCard Style="background:#1e1030; border:1px solid #c9a84c44; margin-bottom:16px;">
+                <MudCardContent>
+                    <MudText Typo="Typo.h6" Class="mb-2"
+                             Style="font-family:'Cinzel',serif; color:#c9a84c;">
+                        Command Zone
+                    </MudText>
+                    @if (commanders.Count == 0)
+                    {
+                        <MudText Typo="Typo.body2" Style="color:#9e94c8; font-style:italic;">
+                            Search for a legendary creature and right-click to set as commander.
+                        </MudText>
+                    }
+                    @foreach (var card in commanders)
+                    {
+                        <CardRow Card="@card" ShowRemove="true"
+                                 Context="CardContext.BuilderCommander"
+                                 OnRemove="RemoveCard"
+                                 OnMoveToMain="DemoteCommander" />
+                    }
+                </MudCardContent>
+            </MudCard>
+        }
+
+        <!-- Main deck by type group -->
+        @foreach (var group in GroupedCards)
+        {
+            <MudCard Style="background:#241a35; border:1px solid #3d2d5e; margin-bottom:12px;">
+                <MudCardContent>
+                    <div class="d-flex align-center mb-2">
+                        <MudText Typo="Typo.h6" Style="font-family:'Cinzel',serif;">@group.Key</MudText>
+                        <MudText Typo="Typo.caption" Class="ml-2" Style="color:#9e94c8;">
+                            (@group.Sum(c => c.Quantity))
+                        </MudText>
+                    </div>
+                    @foreach (var card in group.OrderBy(c => c.Cmc).ThenBy(c => c.CardName))
+                    {
+                        <CardRow Card="@card" ShowQuantityControl="true" ShowRemove="true"
+                                 Context="CardContext.BuilderMain"
+                                 OnIncrement="IncrementCard" OnDecrement="DecrementCard"
+                                 OnRemove="RemoveCard" OnSetCommander="SetAsCommander"
+                                 OnMoveToSideboard="MoveToSideboard" OnMoveToMain="MoveToMain" />
+                    }
+                </MudCardContent>
+            </MudCard>
+        }
+    </MudItem>
+</MudGrid>
+
+@code {
+    [Parameter] public Guid Id { get; set; }
+
+    DeckDetail? _deck;
+    List<DeckCardDetail> _localCards = [];
+    List<CardSearchResult> _searchResults = [];
+    List<string> _validationErrors = [];
+    string _searchQuery = "";
+    bool _saving;
+
+    int TotalCards => _localCards.Where(c => !c.IsCommander).Sum(c => c.Quantity);
+
+    IEnumerable<IGrouping<string, DeckCardDetail>> GroupedCards =>
+        _localCards
+            .Where(c => !c.IsCommander && !c.IsSideboard)
+            .GroupBy(c => GetTypeGroup(c.TypeLine))
+            .OrderBy(g => TypeGroupOrder(g.Key));
+
+    protected override async Task OnInitializedAsync()
+    {
+        _deck = await Api.GetDeckAsync(Id);
+        if (_deck != null)
+            _localCards = _deck.Cards.ToList();
+    }
+
+    async Task OnSearchInput(string q)
+    {
+        _searchQuery = q;
+        if (q.Length < 2) { _searchResults = []; return; }
+        _searchResults = await Api.SearchCardsAsync(q);
+    }
+
+    void AddCard(CardSearchResult card)
+    {
+        var existing = _localCards.FirstOrDefault(c => c.CardId == card.Id && !c.IsCommander);
+        if (existing != null)
+            _localCards = _localCards.Select(c => c == existing
+                ? c with { Quantity = c.Quantity + 1 } : c).ToList();
+        else
+            _localCards.Add(new DeckCardDetail(Guid.NewGuid(), card.Id, card.Name, card.ManaCost,
+                card.Cmc, card.TypeLine, card.ColorIdentity, card.ImageUriNormal, card.ImageUriSmall,
+                1, false, false, []));
+    }
+
+    void AddToSideboard(CardSearchResult card)
+    {
+        var existing = _localCards.FirstOrDefault(c => c.CardId == card.Id && c.IsSideboard);
+        if (existing != null)
+            _localCards = _localCards.Select(c => c == existing
+                ? c with { Quantity = c.Quantity + 1 } : c).ToList();
+        else
+            _localCards.Add(new DeckCardDetail(Guid.NewGuid(), card.Id, card.Name, card.ManaCost,
+                card.Cmc, card.TypeLine, card.ColorIdentity, card.ImageUriNormal, card.ImageUriSmall,
+                1, false, true, []));
+    }
+
+    void AddAsCommander(CardSearchResult card)
+    {
+        if (_localCards.Any(c => c.CardId == card.Id && c.IsCommander)) return;
+        _localCards.Add(new DeckCardDetail(Guid.NewGuid(), card.Id, card.Name, card.ManaCost,
+            card.Cmc, card.TypeLine, card.ColorIdentity, card.ImageUriNormal, card.ImageUriSmall,
+            1, true, false, []));
+    }
+
+    void SetAsCommander(DeckCardDetail card)
+    {
+        if (_localCards.Any(c => c.CardId == card.CardId && c.IsCommander)) return;
+        _localCards.Add(card with { Id = Guid.NewGuid(), IsCommander = true, Quantity = 1 });
+    }
+
+    void MoveToSideboard(DeckCardDetail card) =>
+        _localCards = _localCards.Select(c => c == card ? c with { IsSideboard = true } : c).ToList();
+
+    void MoveToMain(DeckCardDetail card) =>
+        _localCards = _localCards.Select(c => c == card ? c with { IsSideboard = false } : c).ToList();
+
+    void DemoteCommander(DeckCardDetail card) =>
+        _localCards = _localCards.Select(c => c == card ? c with { IsCommander = false } : c).ToList();
+
+    void IncrementCard(DeckCardDetail card) =>
+        _localCards = _localCards.Select(c => c == card ? c with { Quantity = c.Quantity + 1 } : c).ToList();
+
+    void DecrementCard(DeckCardDetail card)
+    {
+        if (card.Quantity <= 1) RemoveCard(card);
+        else _localCards = _localCards.Select(c => c == card ? c with { Quantity = c.Quantity - 1 } : c).ToList();
+    }
+
+    void RemoveCard(DeckCardDetail card) => _localCards.Remove(card);
+
+    async Task SaveCards()
+    {
+        _saving = true;
+        var requests = _localCards.Select(c =>
+            new DeckCardRequest(c.CardId, c.Quantity, c.IsCommander, c.IsSideboard)).ToList();
+        var response = await Api.SetCardsAsync(Id, requests);
+        if (!response.IsSuccessStatusCode)
+        {
+            var body = await response.Content.ReadFromJsonAsync<Dictionary<string, List<string>>>();
+            _validationErrors = body?.GetValueOrDefault("errors") ?? ["Save failed."];
+        }
+        else
+        {
+            _validationErrors = [];
+            Snackbar.Add("Deck saved.", Severity.Success);
+        }
+        _saving = false;
+    }
+
+    async Task OpenBulkImport()
+    {
+        var dialog = await Dialogs.ShowAsync<Dialogs.BulkImportDialog>("Bulk Import",
+            new DialogParameters<Dialogs.BulkImportDialog> { { d => d.DeckId, Id } });
+        var result = await dialog.Result;
+        if (result is not null && !result.Canceled && result.Data is DeckDetail updated)
+        {
+            _localCards = updated.Cards.ToList();
+            _validationErrors = [];
+        }
+    }
+
+    static string GetTypeGroup(string typeLine) =>
+        new[] { "Commander", "Creature", "Instant", "Sorcery", "Enchantment",
+                "Artifact", "Planeswalker", "Battle", "Land" }
+            .FirstOrDefault(t => typeLine.Contains(t, StringComparison.OrdinalIgnoreCase))
+        ?? "Other";
+
+    static int TypeGroupOrder(string group) =>
+        group switch
+        {
+            "Commander"   => 0,
+            "Creature"    => 1,
+            "Instant"     => 2,
+            "Sorcery"     => 3,
+            "Enchantment" => 4,
+            "Artifact"    => 5,
+            "Planeswalker"=> 6,
+            "Battle"      => 7,
+            "Land"        => 8,
+            _             => 9,
+        };
+}

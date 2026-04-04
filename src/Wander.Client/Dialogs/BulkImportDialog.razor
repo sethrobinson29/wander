@@ -1,0 +1,57 @@
+@inject WanderApiClient Api
+@inject ISnackbar Snackbar
+
+<MudDialog Style="min-width:500px;">
+    <TitleContent>
+        <MudText Typo="Typo.h6" Style="font-family:'Cinzel',serif;">Bulk Import</MudText>
+    </TitleContent>
+    <DialogContent>
+        <MudText Typo="Typo.body2" Class="mb-3" Style="color:#9e94c8;">
+            Paste your decklist. Supports MTGO/Arena format:<br/>
+            <code style="color:#c9a84c;">4 Lightning Bolt</code><br/>
+            <code style="color:#c9a84c;">1 Atraxa, Praetors' Voice *CMDR*</code><br/>
+            <code style="color:#c9a84c;">SB: 2 Tormod's Crypt</code>
+        </MudText>
+        <MudTextField @bind-Value="_text" Variant="Variant.Outlined" Lines="14"
+                      FullWidth="true" Placeholder="Paste decklist here..." />
+        @if (_errors.Count > 0)
+        {
+            <MudAlert Severity="Severity.Error" Class="mt-3">
+                @foreach (var e in _errors) { <div>@e</div> }
+            </MudAlert>
+        }
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">Cancel</MudButton>
+        <MudButton Color="Color.Primary" Variant="Variant.Filled" OnClick="Import" Disabled="_loading">
+            @(_loading ? "Importing..." : "Import")
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] IMudDialogInstance MudDialog { get; set; } = null!;
+    [Parameter] public Guid DeckId { get; set; }
+
+    string _text = "";
+    List<string> _errors = [];
+    bool _loading;
+
+    void Cancel() => MudDialog.Cancel();
+
+    async Task Import()
+    {
+        if (string.IsNullOrWhiteSpace(_text)) return;
+        _loading = true; _errors = [];
+        var response = await Api.BulkImportAsync(DeckId, _text);
+        if (!response.IsSuccessStatusCode)
+        {
+            var body = await response.Content.ReadFromJsonAsync<Dictionary<string, List<string>>>();
+            _errors = body?.GetValueOrDefault("errors") ?? ["Import failed."];
+            _loading = false;
+            return;
+        }
+        var updated = await response.Content.ReadFromJsonAsync<DeckDetail>();
+        MudDialog.Close(DialogResult.Ok(updated));
+    }
+}

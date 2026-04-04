@@ -20,27 +20,18 @@ public class DeckValidationService
         [Format.Timeless]  = "timeless",
     };
 
-    // Cards with a named copy limit higher than 1 but less than unlimited
     private static readonly Dictionary<string, int> NamedCopyLimits = new(StringComparer.OrdinalIgnoreCase)
     {
         ["Seven Dwarves"] = 7,
         ["The Nazgûl"]    = 9,
     };
 
-    public List<string> Validate(Deck deck, List<DeckCard> cards)
+    // Deck-level structural errors that don't belong to any single card
+    // (commander count, partner keyword requirement).
+    public List<string> GetStructuralErrors(List<DeckCard> cards, Format format)
     {
-        var errors = new List<string>();
+        if (format != Format.Commander) return [];
 
-        if (deck.Format == Format.Commander)
-            errors.AddRange(ValidateCommander(cards));
-
-        errors.AddRange(ValidateLegality(deck.Format, cards));
-
-        return errors;
-    }
-
-    private static List<string> ValidateCommander(List<DeckCard> cards)
-    {
         var errors = new List<string>();
         var commanders = cards.Where(c => c.IsCommander).ToList();
 
@@ -63,70 +54,70 @@ public class DeckValidationService
                 errors.Add("Both commanders must have the Partner keyword.");
         }
 
-        var commanderColorIdentity = commanders
-            .SelectMany(c => c.Card.ColorIdentity)
-            .Distinct()
-            .ToHashSet();
+        return errors;
+    }
 
-        foreach (var dc in cards.Where(c => !c.IsCommander))
+    // Per-card errors for a single card in the context of its deck.
+    // Errors are returned without the card name — callers attach them directly to the card.
+    public List<string> GetCardErrors(DeckCard dc, Format format, HashSet<string> commanderColorIdentity)
+    {
+        var errors = new List<string>();
+
+        if (format == Format.Commander && !dc.IsCommander)
         {
             var limit = GetCardCopyLimit(dc.Card, isCommander: true);
             if (dc.Quantity > limit)
                 errors.Add(limit == 1
-                    ? $"{dc.Card.Name}: Commander decks are singleton (max 1 copy, except basic lands and cards allowing any number)."
-                    : $"{dc.Card.Name}: Maximum {limit} copies allowed in Commander.");
+                    ? "Commander decks are singleton (max 1 copy, except basic lands and cards allowing any number)."
+                    : $"Maximum {limit} copies allowed in Commander.");
 
-            var cardColorIdentity = dc.Card.ColorIdentity.ToHashSet();
-            if (!cardColorIdentity.IsSubsetOf(commanderColorIdentity))
-                errors.Add($"{dc.Card.Name}: Color identity {string.Join("", cardColorIdentity)} is outside the commander's color identity {string.Join("", commanderColorIdentity)}.");
-        }
-
-        return errors;
-    }
-
-    private static List<string> ValidateLegality(Format format, List<DeckCard> cards)
-    {
-        var errors = new List<string>();
-
-        if (!ScryfallFormatKeys.TryGetValue(format, out var scryfallFormat))
-            return errors;
-
-        foreach (var dc in cards.Where(c => !c.IsCommander))
-        {
-            if (!dc.Card.Legalities.TryGetValue(scryfallFormat, out var legality))
-                continue;
-
-            if (legality != "legal" && legality != "restricted")
+            if (commanderColorIdentity.Count > 0)
             {
-                errors.Add($"{dc.Card.Name} is not legal in {format} ({legality}).");
-                continue;
+                var cardColorIdentity = dc.Card.ColorIdentity.ToHashSet();
+                if (!cardColorIdentity.IsSubsetOf(commanderColorIdentity))
+                    errors.Add($"Color identity {{{string.Join("", cardColorIdentity)}}} is outside the commander's color identity {{{string.Join("", commanderColorIdentity)}}}.");
             }
+        }
 
-            // Restricted cards are capped at 1 copy regardless of the card's intrinsic limit
-            var maxCopies = legality == "restricted" ? 1 : GetCardCopyLimit(dc.Card, isCommander: false);
-            if (dc.Quantity > maxCopies)
-                errors.Add($"{dc.Card.Name}: Maximum {maxCopies} {(maxCopies == 1 ? "copy" : "copies")} allowed in {format}{(legality == "restricted" ? " (restricted)" : "")}.");
+        if (!dc.IsCommander && ScryfallFormatKeys.TryGetValue(format, out var scryfallFormat))
+        {
+            if (dc.Card.Legalities.TryGetValue(scryfallFormat, out var legality))
+            {
+                if (legality != "legal" && legality != "restricted")
+                {
+                    errors.Add($"Not legal in {format} ({legality}).");
+                }
+                else
+                {
+                    var maxCopies = legality == "restricted" ? 1 : GetCardCopyLimit(dc.Card, isCommander: false);
+                    if (dc.Quantity > maxCopies)
+                        errors.Add($"Maximum {maxCopies} {(maxCopies == 1 ? "copy" : "copies")} allowed in {format}{(legality == "restricted" ? " (restricted)" : "")}.");
+                }
+            }
         }
 
         return errors;
     }
+
+    public static HashSet<string> GetCommanderColorIdentity(List<DeckCard> cards) =>
+        cards.Where(c => c.IsCommander)
+             .SelectMany(c => c.Card.ColorIdentity)
+             .Distinct()
+             .ToHashSet();
 
     // Returns the maximum number of copies allowed for a card.
     // int.MaxValue means unlimited (basic lands, "A deck can have any number" cards).
     // isCommander: true uses a default of 1; false uses a default of 4.
     private static int GetCardCopyLimit(Card card, bool isCommander)
     {
-        // Basic lands are always unlimited
         if (BasicLandTypes.Any(t =>
             card.TypeLine.Contains(t, StringComparison.OrdinalIgnoreCase) &&
             card.TypeLine.Contains("Basic", StringComparison.OrdinalIgnoreCase)))
             return int.MaxValue;
 
-        // Named cards with a specific copy limit (e.g., Seven Dwarves = 7, The Nazgûl = 9)
         if (NamedCopyLimits.TryGetValue(card.Name, out var namedLimit))
             return namedLimit;
 
-        // Cards whose oracle text explicitly allows any number of copies
         if (card.OracleText != null &&
             card.OracleText.Contains("A deck can have any number", StringComparison.OrdinalIgnoreCase))
             return int.MaxValue;

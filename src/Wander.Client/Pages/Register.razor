@@ -1,0 +1,61 @@
+@page "/register"
+@inject WanderApiClient Api
+@inject LocalStorage LocalStorage
+@inject AuthenticationStateProvider AuthStateProvider
+@inject NavigationManager Nav
+
+<MudContainer MaxWidth="MaxWidth.Small" Class="mt-16">
+    <MudCard Style="background:#241a35; border: 1px solid #3d2d5e;">
+        <MudCardContent Class="pa-8">
+            <MudText Typo="Typo.h4" Class="mb-6" Style="color:#c9a84c; font-family:'Cinzel',serif;">
+                Create Account
+            </MudText>
+
+            <MudTextField @bind-Value="_username" Label="Username" Variant="Variant.Outlined"
+                          FullWidth="true" Class="mb-4" />
+            <MudTextField @bind-Value="_email" Label="Email" InputType="InputType.Email"
+                          Variant="Variant.Outlined" FullWidth="true" Class="mb-4" />
+            <MudTextField @bind-Value="_password" Label="Password" InputType="InputType.Password"
+                          Variant="Variant.Outlined" FullWidth="true" Class="mb-6" />
+
+            @if (_errors.Count > 0)
+            {
+                <MudAlert Severity="Severity.Error" Class="mb-4">
+                    @foreach (var e in _errors) { <div>@e</div> }
+                </MudAlert>
+            }
+
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" FullWidth="true"
+                       OnClick="Submit" Disabled="_loading" Size="Size.Large">
+                @(_loading ? "Inscribing..." : "Begin Your Journey")
+            </MudButton>
+        </MudCardContent>
+    </MudCard>
+</MudContainer>
+
+@code {
+    string _username = "", _email = "", _password = "";
+    List<string> _errors = [];
+    bool _loading;
+
+    async Task Submit()
+    {
+        _loading = true; _errors = [];
+        var response = await Api.RegisterRawAsync(_username, _email, _password);
+        if (!response.IsSuccessStatusCode)
+        {
+            var body = await response.Content.ReadFromJsonAsync<Dictionary<string, object>>();
+            _errors = body?.TryGetValue("errors", out var e) == true
+                ? [e.ToString()!]
+                : ["Registration failed. Please try again."];
+            _loading = false;
+            return;
+        }
+
+        var auth = await response.Content.ReadFromJsonAsync<AuthResponse>();
+        await LocalStorage.SetAsync("accessToken", auth!.AccessToken);
+        await LocalStorage.SetAsync("refreshToken", auth.RefreshToken);
+        ((JwtAuthStateProvider)AuthStateProvider).NotifyUserChanged();
+        Nav.NavigateTo("/decks");
+    }
+}

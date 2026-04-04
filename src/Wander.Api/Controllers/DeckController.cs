@@ -2,7 +2,6 @@ using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using System.Security.Claims;
 using Wander.Api.Domain;
 using Wander.Api.Infrastructure.Data;
 using Wander.Api.Models.Decks;
@@ -117,9 +116,6 @@ public class DeckController(WanderDbContext db, DeckValidationService validator)
         deck.Visibility = request.Visibility;
         deck.UpdatedAt = DateTimeOffset.UtcNow;
 
-        var errors = validator.Validate(deck, deck.Cards);
-        if (errors.Count > 0) return BadRequest(new { errors });
-
         await db.SaveChangesAsync(ct);
         return Ok(ToDetail(deck));
     }
@@ -183,9 +179,6 @@ public class DeckController(WanderDbContext db, DeckValidationService validator)
         deck.Cards = newCards;
         deck.UpdatedAt = DateTimeOffset.UtcNow;
 
-        var errors = validator.Validate(deck, deck.Cards);
-        if (errors.Count > 0) return BadRequest(new { errors });
-
         await db.SaveChangesAsync(ct);
         return Ok(ToDetail(deck));
     }
@@ -215,40 +208,41 @@ public class DeckController(WanderDbContext db, DeckValidationService validator)
             .Where(c => cardNames.Contains(c.Name))
             .ToDictionaryAsync(c => c.Name, StringComparer.OrdinalIgnoreCase, ct);
 
-        db.DeckCards.RemoveRange(deck.Cards);
-
-        var newCards = new List<DeckCard>();
-        foreach (var (name, qty, isCommander, isSideboard) in parsed)
-        {
-            if (!cards.TryGetValue(name, out var card))
-            {
-                notFound.Add(name);
-                continue;
-            }
-
-            newCards.Add(new DeckCard
-            {
-                Id = Guid.NewGuid(),
-                DeckId = deck.Id,
-                CardId = card.Id,
-                Card = card,
-                Quantity = qty,
-                IsCommander = isCommander,
-                IsSideboard = isSideboard,
-            });
-        }
-
         if (notFound.Count > 0)
             return BadRequest(new { errors = notFound.Select(n => $"Card not found: {n}") });
 
-        db.DeckCards.AddRange(newCards);
-        deck.Cards = newCards;
+        foreach (var (name, qty, isCommander, isSideboard) in parsed)
+        {
+            if (!cards.TryGetValue(name, out var card)) continue;
+
+            var existing = deck.Cards.FirstOrDefault(c =>
+                c.CardId == card.Id &&
+                c.IsCommander == isCommander &&
+                c.IsSideboard == isSideboard);
+
+            if (existing != null)
+                existing.Quantity += qty;
+            else
+                db.DeckCards.Add(new DeckCard
+                {
+                    Id = Guid.NewGuid(),
+                    DeckId = deck.Id,
+                    CardId = card.Id,
+                    Quantity = qty,
+                    IsCommander = isCommander,
+                    IsSideboard = isSideboard,
+                });
+        }
+
         deck.UpdatedAt = DateTimeOffset.UtcNow;
-
-        var errors = validator.Validate(deck, deck.Cards);
-        if (errors.Count > 0) return BadRequest(new { errors });
-
         await db.SaveChangesAsync(ct);
+
+        // Reload so Card navigation properties are populated for the response
+        deck = await db.Decks
+            .Include(d => d.Owner)
+            .Include(d => d.Cards).ThenInclude(dc => dc.Card)
+            .FirstAsync(d => d.Id == id, ct);
+
         return Ok(ToDetail(deck));
     }
 
@@ -302,27 +296,37 @@ public class DeckController(WanderDbContext db, DeckValidationService validator)
         d.CreatedAt,
         d.UpdatedAt);
 
-    private static DeckDetailResponse ToDetail(Deck d) => new(
-        d.Id,
-        d.Name,
-        d.Description,
-        d.Primer,
-        d.Format,
-        d.Visibility,
-        d.Owner?.UserName ?? "",
-        d.Cards.Select(dc => new DeckCardResponse(
-            dc.Id,
-            dc.CardId,
-            dc.Card?.Name ?? "",
-            dc.Card?.ManaCost,
-            dc.Card?.Cmc ?? 0,
-            dc.Card?.TypeLine ?? "",
-            dc.Card?.ColorIdentity ?? [],
-            dc.Card?.ImageUriNormal,
-            dc.Card?.ImageUriSmall,
-            dc.Quantity,
-            dc.IsCommander,
-            dc.IsSideboard)).ToList(),
-        d.CreatedAt,
-        d.UpdatedAt);
+    private DeckDetailResponse ToDetail(Deck d)
+    {
+        var commanderColorIdentity = DeckValidationService.GetCommanderColorIdentity(d.Cards);
+        var deckErrors = validator.GetStructuralErrors(d.Cards, d.Format);
+
+        return new DeckDetailResponse(
+            d.Id,
+            d.Name,
+            d.Description,
+            d.Primer,
+            d.Format,
+            d.Visibility,
+            d.Owner?.UserName ?? "",
+            d.Cards.Select(dc => new DeckCardResponse(
+                dc.Id,
+                dc.CardId,
+                dc.Card?.Name ?? "",
+                dc.Card?.ManaCost,
+                dc.Card?.Cmc ?? 0,
+                dc.Card?.TypeLine ?? "",
+                dc.Card?.ColorIdentity ?? [],
+                dc.Card?.ImageUriNormal,
+                dc.Card?.ImageUriSmall,
+                dc.Quantity,
+                dc.IsCommander,
+                dc.IsSideboard,
+                dc.Card != null
+                    ? validator.GetCardErrors(dc, d.Format, commanderColorIdentity)
+                    : [])).ToList(),
+            deckErrors,
+            d.CreatedAt,
+            d.UpdatedAt);
+    }
 }

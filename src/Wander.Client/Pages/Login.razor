@@ -1,0 +1,58 @@
+@page "/login"
+@inject WanderApiClient Api
+@inject LocalStorage LocalStorage
+@inject AuthenticationStateProvider AuthStateProvider
+@inject NavigationManager Nav
+
+<MudContainer MaxWidth="MaxWidth.Small" Class="mt-16">
+    <MudCard Style="background:#241a35; border: 1px solid #3d2d5e;">
+        <MudCardContent Class="pa-8">
+            <MudText Typo="Typo.h4" Class="mb-6" Style="color:#c9a84c; font-family:'Cinzel',serif;">
+                Sign In
+            </MudText>
+
+            <MudTextField @bind-Value="_email" Label="Email" InputType="InputType.Email"
+                          Variant="Variant.Outlined" FullWidth="true" Class="mb-4" />
+
+            <MudTextField @bind-Value="_password" Label="Password" InputType="InputType.Password"
+                          Variant="Variant.Outlined" FullWidth="true" Class="mb-6" />
+
+            @if (_error != null)
+            {
+                <MudAlert Severity="Severity.Error" Class="mb-4">@_error</MudAlert>
+            }
+
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" FullWidth="true"
+                       OnClick="Submit" Disabled="_loading" Size="Size.Large">
+                @(_loading ? "Entering..." : "Enter the Archive")
+            </MudButton>
+
+            <MudText Typo="Typo.body2" Class="mt-4 text-center">
+                No account? <MudLink Href="/register" Color="Color.Primary">Register</MudLink>
+            </MudText>
+        </MudCardContent>
+    </MudCard>
+</MudContainer>
+
+@code {
+    string _email = "", _password = "", _error = null!;
+    bool _loading;
+
+    async Task Submit()
+    {
+        _loading = true; _error = null!;
+        var response = await Api.LoginRawAsync(_email, _password);
+        if (!response.IsSuccessStatusCode)
+        {
+            _error = "Invalid email or password.";
+            _loading = false;
+            return;
+        }
+
+        var auth = await response.Content.ReadFromJsonAsync<AuthResponse>();
+        await LocalStorage.SetAsync("accessToken", auth!.AccessToken);
+        await LocalStorage.SetAsync("refreshToken", auth.RefreshToken);
+        ((JwtAuthStateProvider)AuthStateProvider).NotifyUserChanged();
+        Nav.NavigateTo("/decks");
+    }
+}

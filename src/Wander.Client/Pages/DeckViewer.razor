@@ -100,7 +100,7 @@
                     <MudText Typo="Typo.h6" Class="mb-3" Style="font-family:'Cinzel',serif;">Primer</MudText>
                     <div class="primer-content" style="color:#e8e0ff; line-height:1.7;">
                         @((MarkupString)Markdown.ToHtml(_deck.Primer,
-                            new MarkdownPipelineBuilder().UseAdvancedExtensions().Build()))
+                            new MarkdownPipelineBuilder().UseAdvancedExtensions().DisableHtml().Build()))
                     </div>
                 </MudCardContent>
             </MudCard>

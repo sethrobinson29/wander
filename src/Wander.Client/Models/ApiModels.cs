@@ -1,4 +1,4 @@
-﻿namespace Wander.Client.Models;
+namespace Wander.Client.Models;
 
 // ── Auth ─────────────────────────────────────────────────────────────────────
 
@@ -15,6 +15,7 @@ public record CardSearchResult(
     string? OracleText,
     List<string> Colors,
     List<string> ColorIdentity,
+    Guid? DefaultPrintingId,
     string? ImageUriNormal,
     string? ImageUriSmall,
     Dictionary<string, string> Legalities);
@@ -50,6 +51,7 @@ public record DeckDetail(
 public record DeckCardDetail(
     Guid Id,
     Guid CardId,
+    Guid? PrintingId,
     string CardName,
     string? ManaCost,
     decimal Cmc,
@@ -68,6 +70,6 @@ public record CreateDeckRequest(string Name, string? Description, Format Format,
 
 public record UpdateDeckRequest(string Name, string? Description, string? Primer, Format Format, Visibility Visibility);
 
-public record DeckCardRequest(Guid CardId, int Quantity, bool IsCommander, bool IsSideboard);
+public record DeckCardRequest(Guid CardId, Guid? PrintingId, int Quantity, bool IsCommander, bool IsSideboard);
 
 public record BulkImportRequest(string Decklist);

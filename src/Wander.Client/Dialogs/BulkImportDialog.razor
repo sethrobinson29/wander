@@ -42,6 +42,11 @@
     async Task Import()
     {
         if (string.IsNullOrWhiteSpace(_text)) return;
+        if (_text.Length > 200_000)
+        {
+            _errors = ["Decklist is too large (max 200,000 characters)."];
+            return;
+        }
         _loading = true; _errors = [];
         var response = await Api.BulkImportAsync(DeckId, _text);
         if (!response.IsSuccessStatusCode)

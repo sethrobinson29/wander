@@ -12,11 +12,17 @@
             </MudText>
 
             <MudTextField @bind-Value="_username" Label="Username" Variant="Variant.Outlined"
-                          FullWidth="true" Class="mb-4" />
+                          FullWidth="true" Class="mb-4"
+                          Error="@(_submitted && _usernameError != null)"
+                          ErrorText="@_usernameError" />
             <MudTextField @bind-Value="_email" Label="Email" InputType="InputType.Email"
-                          Variant="Variant.Outlined" FullWidth="true" Class="mb-4" />
+                          Variant="Variant.Outlined" FullWidth="true" Class="mb-4"
+                          Error="@(_submitted && _emailError != null)"
+                          ErrorText="@_emailError" />
             <MudTextField @bind-Value="_password" Label="Password" InputType="InputType.Password"
-                          Variant="Variant.Outlined" FullWidth="true" Class="mb-6" />
+                          Variant="Variant.Outlined" FullWidth="true" Class="mb-6"
+                          Error="@(_submitted && _passwordError != null)"
+                          ErrorText="@_passwordError" />
 
             @if (_errors.Count > 0)
             {
@@ -36,12 +42,25 @@
 @code {
     string _username = "", _email = "", _password = "";
     List<string> _errors = [];
-    bool _loading;
+    bool _loading, _submitted;
+    string? _usernameError, _emailError, _passwordError;
+
+    bool Validate()
+    {
+        _usernameError = _username.Trim().Length < 3 ? "Username must be at least 3 characters." :
+                         _username.Trim().Length > 50 ? "Username must be at most 50 characters." : null;
+        _emailError = string.IsNullOrWhiteSpace(_email) ? "Email is required." :
+                      !_email.Contains('@') ? "Enter a valid email address." : null;
+        _passwordError = _password.Length < 8 ? "Password must be at least 8 characters." : null;
+        return _usernameError == null && _emailError == null && _passwordError == null;
+    }
 
     async Task Submit()
     {
+        _submitted = true;
+        if (!Validate()) return;
         _loading = true; _errors = [];
-        var response = await Api.RegisterRawAsync(_username, _email, _password);
+        var response = await Api.RegisterRawAsync(_username.Trim(), _email.Trim(), _password);
         if (!response.IsSuccessStatusCode)
         {
             var body = await response.Content.ReadFromJsonAsync<Dictionary<string, object>>();

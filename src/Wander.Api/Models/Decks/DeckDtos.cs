@@ -1,23 +1,25 @@
+using System.ComponentModel.DataAnnotations;
 using Wander.Api.Domain;
 
 namespace Wander.Api.Models.Decks;
 
 public record CreateDeckRequest(
-    string Name,
-    string? Description,
+    [Required][MaxLength(200)] string Name,
+    [MaxLength(1000)] string? Description,
     Format Format,
     Visibility Visibility);
 
 public record UpdateDeckRequest(
-    string Name,
-    string? Description,
-    string? Primer,
+    [Required][MaxLength(200)] string Name,
+    [MaxLength(1000)] string? Description,
+    [MaxLength(50000)] string? Primer,
     Format Format,
     Visibility Visibility);
 
 public record DeckCardRequest(
     Guid CardId,
-    int Quantity,
+    Guid? PrintingId,
+    [Range(1, 99)] int Quantity,
     bool IsCommander,
     bool IsSideboard);
 
@@ -48,6 +50,7 @@ public record DeckDetailResponse(
 public record DeckCardResponse(
     Guid Id,
     Guid CardId,
+    Guid? PrintingId,
     string CardName,
     string? ManaCost,
     decimal Cmc,
@@ -60,4 +63,4 @@ public record DeckCardResponse(
     bool IsSideboard,
     List<string> Errors);
 
-public record BulkImportRequest(string Decklist);
+public record BulkImportRequest([Required][MaxLength(200_000)] string Decklist);

@@ -45,6 +45,7 @@ public class DeckController(WanderDbContext db, DeckValidationService validator)
             .OrderByDescending(d => d.UpdatedAt)
             .ToListAsync(ct);
 
+
         return Ok(decks.Select(ToSummary));
     }
 
@@ -53,7 +54,8 @@ public class DeckController(WanderDbContext db, DeckValidationService validator)
     {
         var deck = await db.Decks
             .Include(d => d.Owner)
-            .Include(d => d.Cards).ThenInclude(dc => dc.Card)
+            .Include(d => d.Cards).ThenInclude(dc => dc.Card).ThenInclude(c => c.Printings)
+            .Include(d => d.Cards).ThenInclude(dc => dc.Printing)
             .FirstOrDefaultAsync(d => d.Id == id, ct);
 
         if (deck is null) return NotFound();
@@ -76,6 +78,9 @@ public class DeckController(WanderDbContext db, DeckValidationService validator)
         CreateDeckRequest request,
         CancellationToken ct)
     {
+        if (!Enum.IsDefined(request.Format)) return BadRequest(new { error = "Invalid format." });
+        if (!Enum.IsDefined(request.Visibility)) return BadRequest(new { error = "Invalid visibility." });
+
         var deck = new Deck
         {
             Id = Guid.NewGuid(),
@@ -103,11 +108,15 @@ public class DeckController(WanderDbContext db, DeckValidationService validator)
     {
         var deck = await db.Decks
             .Include(d => d.Owner)
-            .Include(d => d.Cards).ThenInclude(dc => dc.Card)
+            .Include(d => d.Cards).ThenInclude(dc => dc.Card).ThenInclude(c => c.Printings)
+            .Include(d => d.Cards).ThenInclude(dc => dc.Printing)
             .FirstOrDefaultAsync(d => d.Id == id, ct);
 
         if (deck is null) return NotFound();
         if (deck.OwnerId != UserId) return Forbid();
+
+        if (!Enum.IsDefined(request.Format)) return BadRequest(new { error = "Invalid format." });
+        if (!Enum.IsDefined(request.Visibility)) return BadRequest(new { error = "Invalid visibility." });
 
         deck.Name = request.Name;
         deck.Description = request.Description;
@@ -145,7 +154,8 @@ public class DeckController(WanderDbContext db, DeckValidationService validator)
     {
         var deck = await db.Decks
             .Include(d => d.Owner)
-            .Include(d => d.Cards).ThenInclude(dc => dc.Card)
+            .Include(d => d.Cards).ThenInclude(dc => dc.Card).ThenInclude(c => c.Printings)
+            .Include(d => d.Cards).ThenInclude(dc => dc.Printing)
             .FirstOrDefaultAsync(d => d.Id == id, ct);
 
         if (deck is null) return NotFound();
@@ -161,6 +171,19 @@ public class DeckController(WanderDbContext db, DeckValidationService validator)
         if (missing.Count > 0)
             return BadRequest(new { errors = missing.Select(id => $"Card {id} not found.") });
 
+        // Validate any specified printings exist and belong to the right card
+        var printingIds = request.Where(r => r.PrintingId.HasValue).Select(r => r.PrintingId!.Value).Distinct().ToList();
+        var printings = printingIds.Count > 0
+            ? await db.CardPrintings.Where(p => printingIds.Contains(p.Id)).ToDictionaryAsync(p => p.Id, ct)
+            : [];
+
+        var badPrintings = request
+            .Where(r => r.PrintingId.HasValue && (!printings.TryGetValue(r.PrintingId.Value, out var p) || p.CardId != r.CardId))
+            .Select(r => $"Printing {r.PrintingId} not found for card {r.CardId}.")
+            .ToList();
+        if (badPrintings.Count > 0)
+            return BadRequest(new { errors = badPrintings });
+
         // Replace all cards (simplest correct approach for a PUT)
         db.DeckCards.RemoveRange(deck.Cards);
 
@@ -170,6 +193,7 @@ public class DeckController(WanderDbContext db, DeckValidationService validator)
             DeckId = deck.Id,
             CardId = r.CardId,
             Card = cards[r.CardId],
+            PrintingId = r.PrintingId,
             Quantity = r.Quantity,
             IsCommander = r.IsCommander,
             IsSideboard = r.IsSideboard,
@@ -194,20 +218,35 @@ public class DeckController(WanderDbContext db, DeckValidationService validator)
     {
         var deck = await db.Decks
             .Include(d => d.Owner)
-            .Include(d => d.Cards).ThenInclude(dc => dc.Card)
+            .Include(d => d.Cards).ThenInclude(dc => dc.Card).ThenInclude(c => c.Printings)
+            .Include(d => d.Cards).ThenInclude(dc => dc.Printing)
             .FirstOrDefaultAsync(d => d.Id == id, ct);
 
         if (deck is null) return NotFound();
         if (deck.OwnerId != UserId) return Forbid();
 
         var parsed = ParseDecklist(request.Decklist);
-        var notFound = new List<string>();
 
         var cardNames = parsed.Select(p => p.Name).Distinct().ToList();
-        var cards = await db.Cards
-            .Where(c => cardNames.Contains(c.Name))
-            .ToDictionaryAsync(c => c.Name, StringComparer.OrdinalIgnoreCase, ct);
+        // Double-faced cards are stored as "Front // Back" in the DB.
+        // Build a lookup that matches both the full name and the front face name.
+        var dbCards = await db.Cards
+            .Where(c => cardNames.Contains(c.Name) ||
+                        cardNames.Any(n => c.Name.StartsWith(n + " //")))
+            .ToListAsync(ct);
 
+        var cards = new Dictionary<string, Domain.Card>(StringComparer.OrdinalIgnoreCase);
+        foreach (var card in dbCards)
+        {
+            // Index by full name
+            cards.TryAdd(card.Name, card);
+            // Also index by front face name for DFCs (e.g. "Barkchannel Pathway")
+            var slashIndex = card.Name.IndexOf(" //", StringComparison.Ordinal);
+            if (slashIndex > 0)
+                cards.TryAdd(card.Name[..slashIndex], card);
+        }
+
+        var notFound = cardNames.Where(n => !cards.ContainsKey(n)).ToList();
         if (notFound.Count > 0)
             return BadRequest(new { errors = notFound.Select(n => $"Card not found: {n}") });
 
@@ -228,6 +267,7 @@ public class DeckController(WanderDbContext db, DeckValidationService validator)
                     Id = Guid.NewGuid(),
                     DeckId = deck.Id,
                     CardId = card.Id,
+                    PrintingId = null, // use default printing; user can update later
                     Quantity = qty,
                     IsCommander = isCommander,
                     IsSideboard = isSideboard,
@@ -237,10 +277,11 @@ public class DeckController(WanderDbContext db, DeckValidationService validator)
         deck.UpdatedAt = DateTimeOffset.UtcNow;
         await db.SaveChangesAsync(ct);
 
-        // Reload so Card navigation properties are populated for the response
+        // Reload so navigation properties are populated for the response
         deck = await db.Decks
             .Include(d => d.Owner)
-            .Include(d => d.Cards).ThenInclude(dc => dc.Card)
+            .Include(d => d.Cards).ThenInclude(dc => dc.Card).ThenInclude(c => c.Printings)
+            .Include(d => d.Cards).ThenInclude(dc => dc.Printing)
             .FirstAsync(d => d.Id == id, ct);
 
         return Ok(ToDetail(deck));
@@ -309,22 +350,27 @@ public class DeckController(WanderDbContext db, DeckValidationService validator)
             d.Format,
             d.Visibility,
             d.Owner?.UserName ?? "",
-            d.Cards.Select(dc => new DeckCardResponse(
-                dc.Id,
-                dc.CardId,
-                dc.Card?.Name ?? "",
-                dc.Card?.ManaCost,
-                dc.Card?.Cmc ?? 0,
-                dc.Card?.TypeLine ?? "",
-                dc.Card?.ColorIdentity ?? [],
-                dc.Card?.ImageUriNormal,
-                dc.Card?.ImageUriSmall,
-                dc.Quantity,
-                dc.IsCommander,
-                dc.IsSideboard,
-                dc.Card != null
-                    ? validator.GetCardErrors(dc, d.Format, commanderColorIdentity)
-                    : [])).ToList(),
+            d.Cards.Select(dc =>
+            {
+                var printing = dc.Printing ?? dc.Card?.Printings.FirstOrDefault();
+                return new DeckCardResponse(
+                    dc.Id,
+                    dc.CardId,
+                    dc.PrintingId,
+                    dc.Card?.Name ?? "",
+                    dc.Card?.ManaCost,
+                    dc.Card?.Cmc ?? 0,
+                    dc.Card?.TypeLine ?? "",
+                    dc.Card?.ColorIdentity ?? [],
+                    printing?.ImageUriNormal,
+                    printing?.ImageUriSmall,
+                    dc.Quantity,
+                    dc.IsCommander,
+                    dc.IsSideboard,
+                    dc.Card != null
+                        ? validator.GetCardErrors(dc, d.Format, commanderColorIdentity)
+                        : []);
+            }).ToList(),
             deckErrors,
             d.CreatedAt,
             d.UpdatedAt);

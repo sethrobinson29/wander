@@ -7,9 +7,12 @@
     </TitleContent>
     <DialogContent>
         <MudTextField @bind-Value="_name" Label="Name" Variant="Variant.Outlined"
-                      FullWidth="true" Class="mb-3" />
+                      FullWidth="true" Class="mb-3"
+                      Error="@(_submitted && _nameError != null)"
+                      ErrorText="@_nameError" />
         <MudTextField @bind-Value="_description" Label="Description (optional)"
-                      Variant="Variant.Outlined" FullWidth="true" Class="mb-3" />
+                      Variant="Variant.Outlined" FullWidth="true" Class="mb-3"
+                      MaxLength="1000" />
         <MudSelect T="Format" Value="_format" Label="Format" Variant="Variant.Outlined"
                    FullWidth="true" Class="mb-3" ValueChanged="OnFormatChanged">
             @foreach (Format f in Enum.GetValues<Format>())
@@ -93,7 +96,8 @@
     string _commanderSearch = "";
     List<CardSearchResult> _commanderResults = [];
     CardSearchResult? _selectedCommander;
-    bool _loading;
+    bool _loading, _submitted;
+    string? _nameError;
 
     void Cancel() => MudDialog.Cancel();
 
@@ -125,7 +129,10 @@
 
     async Task Create()
     {
-        if (string.IsNullOrWhiteSpace(_name)) return;
+        _submitted = true;
+        _nameError = string.IsNullOrWhiteSpace(_name) ? "Name is required." :
+                     _name.Length > 200 ? "Name must be at most 200 characters." : null;
+        if (_nameError != null) return;
         _loading = true;
 
         var response = await Api.CreateDeckAsync(
@@ -142,7 +149,7 @@
         if (_selectedCommander != null && created != null)
         {
             await Api.SetCardsAsync(created.Id,
-                [new DeckCardRequest(_selectedCommander.Id, 1, true, false)]);
+                [new DeckCardRequest(_selectedCommander.Id, _selectedCommander.DefaultPrintingId, 1, true, false)]);
         }
 
         MudDialog.Close(DialogResult.Ok(created));

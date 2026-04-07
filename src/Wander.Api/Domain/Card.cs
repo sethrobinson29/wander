@@ -13,12 +13,9 @@ public class Card
     public string? OracleText { get; set; }
     public List<string> Colors { get; set; } = [];
     public List<string> ColorIdentity { get; set; } = [];
-    public string? ImageUriNormal { get; set; }
-    public string? ImageUriSmall { get; set; }
-    public string? ImageUriArtCrop { get; set; }
-    public required string SetCode { get; set; }
-    public required string CollectorNumber { get; set; }
     public Dictionary<string, string> Legalities { get; set; } = [];
     public NpgsqlTsVector? NameSearchVector { get; set; }
     public DateTimeOffset UpdatedAt { get; set; }
+
+    public List<CardPrinting> Printings { get; set; } = [];
 }

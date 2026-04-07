@@ -10,6 +10,7 @@ public class WanderDbContext : IdentityDbContext<ApplicationUser>
     public WanderDbContext(DbContextOptions<WanderDbContext> options) : base(options) { }
 
     public DbSet<Card> Cards => Set<Card>();
+    public DbSet<CardPrinting> CardPrintings => Set<CardPrinting>();
     public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
     public DbSet<Deck> Decks => Set<Deck>();
     public DbSet<DeckCard> DeckCards => Set<DeckCard>();
@@ -38,6 +39,18 @@ public class WanderDbContext : IdentityDbContext<ApplicationUser>
 
             entity.HasIndex(c => c.NameSearchVector)
                   .HasMethod("GIN");
+
+            entity.HasMany(c => c.Printings)
+                  .WithOne(p => p.Card)
+                  .HasForeignKey(p => p.CardId)
+                  .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<CardPrinting>(entity =>
+        {
+            entity.HasKey(p => p.Id);
+            entity.HasIndex(p => p.ScryfallId).IsUnique();
+            entity.HasIndex(p => p.CardId);
         });
 
         modelBuilder.Entity<RefreshToken>(entity =>
@@ -70,6 +83,10 @@ public class WanderDbContext : IdentityDbContext<ApplicationUser>
                   .WithMany()
                   .HasForeignKey(dc => dc.CardId)
                   .OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(dc => dc.Printing)
+                  .WithMany()
+                  .HasForeignKey(dc => dc.PrintingId)
+                  .OnDelete(DeleteBehavior.SetNull);
         });
     }
 }

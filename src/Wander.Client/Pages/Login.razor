@@ -12,10 +12,14 @@
             </MudText>
 
             <MudTextField @bind-Value="_email" Label="Email" InputType="InputType.Email"
-                          Variant="Variant.Outlined" FullWidth="true" Class="mb-4" />
+                          Variant="Variant.Outlined" FullWidth="true" Class="mb-4"
+                          Error="@(_submitted && _emailError != null)"
+                          ErrorText="@_emailError" />
 
             <MudTextField @bind-Value="_password" Label="Password" InputType="InputType.Password"
-                          Variant="Variant.Outlined" FullWidth="true" Class="mb-6" />
+                          Variant="Variant.Outlined" FullWidth="true" Class="mb-6"
+                          Error="@(_submitted && _passwordError != null)"
+                          ErrorText="@_passwordError" />
 
             @if (_error != null)
             {
@@ -36,12 +40,23 @@
 
 @code {
     string _email = "", _password = "", _error = null!;
-    bool _loading;
+    bool _loading, _submitted;
+    string? _emailError, _passwordError;
+
+    bool Validate()
+    {
+        _emailError = string.IsNullOrWhiteSpace(_email) ? "Email is required." :
+                      !_email.Contains('@') ? "Enter a valid email address." : null;
+        _passwordError = string.IsNullOrWhiteSpace(_password) ? "Password is required." : null;
+        return _emailError == null && _passwordError == null;
+    }
 
     async Task Submit()
     {
+        _submitted = true;
+        if (!Validate()) return;
         _loading = true; _error = null!;
-        var response = await Api.LoginRawAsync(_email, _password);
+        var response = await Api.LoginRawAsync(_email.Trim(), _password);
         if (!response.IsSuccessStatusCode)
         {
             _error = "Invalid email or password.";

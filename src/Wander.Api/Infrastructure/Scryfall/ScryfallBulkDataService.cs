@@ -24,14 +24,18 @@ public class ScryfallBulkDataService(
             return;
         }
 
-        var existing = db.Cards
+        var existingCards = db.Cards
             .Select(c => new { c.ScryfallId, c.Id })
             .ToDictionary(c => c.ScryfallId, c => c.Id);
+
+        var existingPrintings = db.CardPrintings
+            .Select(p => new { p.ScryfallId, p.Id })
+            .ToDictionary(p => p.ScryfallId, p => p.Id);
 
         var count = 0;
         await foreach (var card in StreamCardsAsync(downloadUri, cancellationToken))
         {
-            UpsertCard(card, existing);
+            UpsertCard(card, existingCards, existingPrintings);
             count++;
 
             if (count % 1000 == 0)
@@ -63,18 +67,24 @@ public class ScryfallBulkDataService(
         await foreach (var card in JsonSerializer.DeserializeAsyncEnumerable<ScryfallCard>(
             stream, options, ct))
         {
-            if (card is not null && card.ImageUris is not null)
+            if (card is not null && card.EffectiveImageUris is not null)
                 yield return card;
         }
     }
 
-    private void UpsertCard(ScryfallCard src, Dictionary<string, Guid> existing)
+    private void UpsertCard(
+        ScryfallCard src,
+        Dictionary<string, Guid> existingCards,
+        Dictionary<string, Guid> existingPrintings)
     {
-        if (!existing.TryGetValue(src.Id, out var existingId))
+        Guid cardId;
+
+        if (!existingCards.TryGetValue(src.Id, out var existingCardId))
         {
+            cardId = Guid.NewGuid();
             db.Cards.Add(new Card
             {
-                Id = Guid.NewGuid(),
+                Id = cardId,
                 ScryfallId = src.Id,
                 Name = src.Name,
                 ManaCost = src.ManaCost,
@@ -83,18 +93,15 @@ public class ScryfallBulkDataService(
                 OracleText = src.OracleText,
                 Colors = src.Colors ?? [],
                 ColorIdentity = src.ColorIdentity,
-                ImageUriSmall = src.ImageUris?.Small,
-                ImageUriNormal = src.ImageUris?.Normal,
-                ImageUriArtCrop = src.ImageUris?.ArtCrop,
-                SetCode = src.Set,
-                CollectorNumber = src.CollectorNumber,
                 Legalities = src.Legalities,
                 UpdatedAt = DateTimeOffset.UtcNow,
             });
+            existingCards[src.Id] = cardId;
         }
         else
         {
-            var tracked = db.Cards.Find(existingId)!;
+            cardId = existingCardId;
+            var tracked = db.Cards.Find(existingCardId)!;
             tracked.Name = src.Name;
             tracked.ManaCost = src.ManaCost;
             tracked.Cmc = src.Cmc;
@@ -102,12 +109,33 @@ public class ScryfallBulkDataService(
             tracked.OracleText = src.OracleText;
             tracked.Colors = src.Colors ?? [];
             tracked.ColorIdentity = src.ColorIdentity;
-            tracked.ImageUriSmall = src.ImageUris?.Small;
-            tracked.ImageUriNormal = src.ImageUris?.Normal;
-            tracked.ImageUriArtCrop = src.ImageUris?.ArtCrop;
+            tracked.Legalities = src.Legalities;
+            tracked.UpdatedAt = DateTimeOffset.UtcNow;
+        }
+
+        if (!existingPrintings.TryGetValue(src.Id, out var existingPrintingId))
+        {
+            db.CardPrintings.Add(new CardPrinting
+            {
+                Id = Guid.NewGuid(),
+                ScryfallId = src.Id,
+                CardId = cardId,
+                SetCode = src.Set,
+                CollectorNumber = src.CollectorNumber,
+                ImageUriSmall = src.EffectiveImageUris?.Small,
+                ImageUriNormal = src.EffectiveImageUris?.Normal,
+                ImageUriArtCrop = src.EffectiveImageUris?.ArtCrop,
+                UpdatedAt = DateTimeOffset.UtcNow,
+            });
+        }
+        else
+        {
+            var tracked = db.CardPrintings.Find(existingPrintingId)!;
             tracked.SetCode = src.Set;
             tracked.CollectorNumber = src.CollectorNumber;
-            tracked.Legalities = src.Legalities;
+            tracked.ImageUriSmall = src.EffectiveImageUris?.Small;
+            tracked.ImageUriNormal = src.EffectiveImageUris?.Normal;
+            tracked.ImageUriArtCrop = src.EffectiveImageUris?.ArtCrop;
             tracked.UpdatedAt = DateTimeOffset.UtcNow;
         }
     }

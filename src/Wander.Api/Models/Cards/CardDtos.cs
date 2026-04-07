@@ -9,6 +9,7 @@ public record CardSearchResponse(
     string? OracleText,
     List<string> Colors,
     List<string> ColorIdentity,
+    Guid? DefaultPrintingId,
     string? ImageUriNormal,
     string? ImageUriSmall,
     Dictionary<string, string> Legalities);

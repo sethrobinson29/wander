@@ -196,7 +196,7 @@
             _localCards = _localCards.Select(c => c == existing
                 ? c with { Quantity = c.Quantity + 1 } : c).ToList();
         else
-            _localCards.Add(new DeckCardDetail(Guid.NewGuid(), card.Id, card.Name, card.ManaCost,
+            _localCards.Add(new DeckCardDetail(Guid.NewGuid(), card.Id, card.DefaultPrintingId, card.Name, card.ManaCost,
                 card.Cmc, card.TypeLine, card.ColorIdentity, card.ImageUriNormal, card.ImageUriSmall,
                 1, false, false, []));
     }
@@ -208,7 +208,7 @@
             _localCards = _localCards.Select(c => c == existing
                 ? c with { Quantity = c.Quantity + 1 } : c).ToList();
         else
-            _localCards.Add(new DeckCardDetail(Guid.NewGuid(), card.Id, card.Name, card.ManaCost,
+            _localCards.Add(new DeckCardDetail(Guid.NewGuid(), card.Id, card.DefaultPrintingId, card.Name, card.ManaCost,
                 card.Cmc, card.TypeLine, card.ColorIdentity, card.ImageUriNormal, card.ImageUriSmall,
                 1, false, true, []));
     }
@@ -216,7 +216,7 @@
     void AddAsCommander(CardSearchResult card)
     {
         if (_localCards.Any(c => c.CardId == card.Id && c.IsCommander)) return;
-        _localCards.Add(new DeckCardDetail(Guid.NewGuid(), card.Id, card.Name, card.ManaCost,
+        _localCards.Add(new DeckCardDetail(Guid.NewGuid(), card.Id, card.DefaultPrintingId, card.Name, card.ManaCost,
             card.Cmc, card.TypeLine, card.ColorIdentity, card.ImageUriNormal, card.ImageUriSmall,
             1, true, false, []));
     }
@@ -251,7 +251,7 @@
     {
         _saving = true;
         var requests = _localCards.Select(c =>
-            new DeckCardRequest(c.CardId, c.Quantity, c.IsCommander, c.IsSideboard)).ToList();
+            new DeckCardRequest(c.CardId, c.PrintingId, c.Quantity, c.IsCommander, c.IsSideboard)).ToList();
         var response = await Api.SetCardsAsync(Id, requests);
         if (!response.IsSuccessStatusCode)
         {

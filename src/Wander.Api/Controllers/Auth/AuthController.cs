@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using Wander.Api.Domain;
 using Wander.Api.Infrastructure.Data;
@@ -10,6 +11,7 @@ namespace Wander.Api.Controllers.Auth;
 
 [ApiController]
 [Route("auth")]
+[EnableRateLimiting("auth")]
 public class AuthController(
     UserManager<ApplicationUser> userManager,
     WanderDbContext db,

@@ -47,11 +47,13 @@
 
     bool Validate()
     {
-        _usernameError = _username.Trim().Length < 3 ? "Username must be at least 3 characters." :
-                         _username.Trim().Length > 50 ? "Username must be at most 50 characters." : null;
-        _emailError = string.IsNullOrWhiteSpace(_email) ? "Email is required." :
-                      !_email.Contains('@') ? "Enter a valid email address." : null;
-        _passwordError = _password.Length < 8 ? "Password must be at least 8 characters." : null;
+        var trimmed = _username.Trim();
+        _usernameError = InputValidator.Validate(trimmed, TextFieldType.Generic)
+                         ?? (trimmed.Length < 3 ? "Username must be at least 3 characters."
+                             : trimmed.Length > 50 ? "Username must be at most 50 characters."
+                             : null);
+        _emailError    = InputValidator.Validate(_email.Trim(), TextFieldType.Email);
+        _passwordError = InputValidator.Validate(_password, TextFieldType.PasswordRegister);
         return _usernameError == null && _emailError == null && _passwordError == null;
     }
 

@@ -291,20 +291,26 @@ public class DeckController(WanderDbContext db, DeckValidationService validator)
 
     // Parses lines in the format:
     //   4 Lightning Bolt
-    //   4 Lightning Bolt (LEA) 162
     //   1 Atraxa, Praetors' Voice *CMDR*
-    //   SB: 2 Tormod's Crypt
+    //   1 Barkchannel Pathway // Tidechannel Pathway
+    //   SIDEBOARD:
+    //   2 Tormod's Crypt
     private static List<(string Name, int Qty, bool IsCommander, bool IsSideboard)> ParseDecklist(string text)
     {
         var results = new List<(string, int, bool, bool)>();
+        var inSideboard = false;
 
         foreach (var raw in text.Split('\n', StringSplitOptions.RemoveEmptyEntries))
         {
             var line = raw.Trim();
             if (string.IsNullOrEmpty(line) || line.StartsWith("//")) continue;
 
-            var isSideboard = line.StartsWith("SB:", StringComparison.OrdinalIgnoreCase);
-            if (isSideboard) line = line[3..].Trim();
+            // SIDEBOARD: section marker — all subsequent lines are sideboard cards
+            if (line.Equals("SIDEBOARD:", StringComparison.OrdinalIgnoreCase))
+            {
+                inSideboard = true;
+                continue;
+            }
 
             var isCommander = line.Contains("*CMDR*", StringComparison.OrdinalIgnoreCase);
             line = line.Replace("*CMDR*", "", StringComparison.OrdinalIgnoreCase).Trim();
@@ -314,13 +320,9 @@ public class DeckController(WanderDbContext db, DeckValidationService validator)
             if (spaceIndex < 1) continue;
 
             if (!int.TryParse(line[..spaceIndex], out var qty)) continue;
-            var rest = line[(spaceIndex + 1)..].Trim();
+            var name = line[(spaceIndex + 1)..].Trim();
 
-            // Strip set code and collector number: "Lightning Bolt (LEA) 162" → "Lightning Bolt"
-            var setIndex = rest.IndexOf(" (", StringComparison.Ordinal);
-            var name = setIndex > 0 ? rest[..setIndex].Trim() : rest;
-
-            results.Add((name, qty, isCommander, isSideboard));
+            results.Add((name, qty, isCommander, inSideboard));
         }
 
         return results;

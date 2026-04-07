@@ -130,8 +130,8 @@
     async Task Create()
     {
         _submitted = true;
-        _nameError = string.IsNullOrWhiteSpace(_name) ? "Name is required." :
-                     _name.Length > 200 ? "Name must be at most 200 characters." : null;
+        _nameError = InputValidator.Validate(_name.Trim(), TextFieldType.Generic)
+                     ?? (_name.Trim().Length > 200 ? "Name must be at most 200 characters." : null);
         if (_nameError != null) return;
         _loading = true;
 

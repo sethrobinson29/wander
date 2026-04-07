@@ -7,10 +7,12 @@
     </TitleContent>
     <DialogContent>
         <MudText Typo="Typo.body2" Class="mb-3" Style="color:#9e94c8;">
-            Paste your decklist. Supports MTGO/Arena format:<br/>
+            Paste your decklist — one card per line:<br/>
             <code style="color:#c9a84c;">4 Lightning Bolt</code><br/>
             <code style="color:#c9a84c;">1 Atraxa, Praetors' Voice *CMDR*</code><br/>
-            <code style="color:#c9a84c;">SB: 2 Tormod's Crypt</code>
+            <code style="color:#c9a84c;">1 Barkchannel Pathway // Tidechannel Pathway</code><br/>
+            <code style="color:#c9a84c;">SIDEBOARD:</code><br/>
+            <code style="color:#c9a84c;">2 Tormod's Crypt</code>
         </MudText>
         <MudTextField @bind-Value="_text" Variant="Variant.Outlined" Lines="14"
                       FullWidth="true" Placeholder="Paste decklist here..." />
@@ -41,12 +43,13 @@
 
     async Task Import()
     {
-        if (string.IsNullOrWhiteSpace(_text)) return;
         if (_text.Length > 200_000)
         {
             _errors = ["Decklist is too large (max 200,000 characters)."];
             return;
         }
+        _errors = InputValidator.ValidateBulkImport(_text);
+        if (_errors.Count > 0) return;
         _loading = true; _errors = [];
         var response = await Api.BulkImportAsync(DeckId, _text);
         if (!response.IsSuccessStatusCode)

@@ -45,9 +45,8 @@
 
     bool Validate()
     {
-        _emailError = string.IsNullOrWhiteSpace(_email) ? "Email is required." :
-                      !_email.Contains('@') ? "Enter a valid email address." : null;
-        _passwordError = string.IsNullOrWhiteSpace(_password) ? "Password is required." : null;
+        _emailError    = InputValidator.Validate(_email.Trim(), TextFieldType.Email);
+        _passwordError = InputValidator.Validate(_password, TextFieldType.PasswordLogin);
         return _emailError == null && _passwordError == null;
     }
 

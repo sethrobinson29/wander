@@ -118,6 +118,9 @@ public class DeckController(WanderDbContext db, DeckValidationService validator)
         if (!Enum.IsDefined(request.Format)) return BadRequest(new { error = "Invalid format." });
         if (!Enum.IsDefined(request.Visibility)) return BadRequest(new { error = "Invalid visibility." });
 
+        var primerError = MarkdownValidator.ValidatePrimer(request.Primer);
+        if (primerError != null) return BadRequest(new { error = primerError });
+
         deck.Name = request.Name;
         deck.Description = request.Description;
         deck.Primer = request.Primer;

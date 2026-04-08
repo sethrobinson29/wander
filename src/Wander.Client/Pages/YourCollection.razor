@@ -45,7 +45,7 @@ else
                     <div @onclick:stopPropagation="true">
                         <MudCardActions>
                             <MudButton Size="Size.Small"
-                                       OnClick='() => Nav.NavigateTo($"/decks/{deck.Id}/edit")'>
+                                       OnClick='() => Nav.NavigateTo($"/decks/{deck.Id}")'>
                                 Edit
                             </MudButton>
                             <MudButton Size="Size.Small" Color="Color.Error"
@@ -75,7 +75,7 @@ else
         var dialog = await Dialogs.ShowAsync<Dialogs.CreateDeckDialog>("New Deck");
         var result = await dialog.Result;
         if (result is not null && !result.Canceled && result.Data is DeckSummary created)
-            Nav.NavigateTo($"/decks/{created.Id}/edit");
+            Nav.NavigateTo($"/decks/{created.Id}");
     }
 
     async Task DeleteDeck(DeckSummary deck)

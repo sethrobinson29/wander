@@ -1,0 +1,213 @@
+@page "/decks/{Id:guid}/primer"
+@inject WanderApiClient Api
+@inject ISnackbar Snackbar
+@inject NavigationManager Nav
+@inject IJSRuntime JS
+@using Markdig
+@using Microsoft.AspNetCore.Components.Authorization
+@using Microsoft.JSInterop
+
+@if (_deck == null)
+{
+    <MudProgressLinear Color="Color.Primary" Indeterminate="true" />
+    return;
+}
+
+<AuthorizeView>
+    <Authorized Context="authContext">
+        @{
+            bool isOwner = _deck.OwnerUsername == authContext.User.Identity?.Name;
+        }
+
+        <div class="d-flex justify-space-between align-center mb-4">
+            <div class="d-flex align-center gap-2">
+                <MudIconButton Icon="@Icons.Material.Filled.ArrowBack"
+                               OnClick='() => Nav.NavigateTo($"/decks/{Id}")'
+                               Style="color:#9e94c8;" />
+                <div>
+                    <MudText Typo="Typo.h4" Style="font-family:'Cinzel',serif; color:#c9a84c;">
+                        @_deck.Name
+                    </MudText>
+                    <MudText Typo="Typo.caption" Style="color:#9e94c8;">Primer</MudText>
+                </div>
+            </div>
+            @if (isOwner)
+            {
+                <MudButton Variant="Variant.Filled" Color="Color.Primary"
+                           OnClick="SavePrimer" Disabled="_saving">
+                    @(_saving ? "Saving..." : "Save Primer")
+                </MudButton>
+            }
+        </div>
+
+        @if (isOwner)
+        {
+            <MudTabs Elevation="0" Rounded="false" PanelClass="pt-3"
+                     Style="background:transparent;">
+                <MudTabPanel Text="Write">
+                    <div class="d-flex gap-1 mb-2" style="flex-wrap:wrap;">
+                        <MudButton Size="Size.Small" Variant="Variant.Outlined"
+                                   Style="min-width:36px; font-weight:700; color:#e8e0ff; border-color:#3d2d5e;"
+                                   OnClick='() => InsertFormat("**", "**", "bold text")'>B</MudButton>
+                        <MudButton Size="Size.Small" Variant="Variant.Outlined"
+                                   Style="min-width:36px; font-style:italic; color:#e8e0ff; border-color:#3d2d5e;"
+                                   OnClick='() => InsertFormat("_", "_", "italic text")'>I</MudButton>
+                        <MudButton Size="Size.Small" Variant="Variant.Outlined"
+                                   Style="min-width:44px; font-family:'Cinzel',serif; font-size:0.75rem; color:#c9a84c; border-color:#3d2d5e;"
+                                   OnClick='() => InsertFormat("# ", "", "Heading 1")'>H1</MudButton>
+                        <MudButton Size="Size.Small" Variant="Variant.Outlined"
+                                   Style="min-width:44px; font-family:'Cinzel',serif; font-size:0.75rem; color:#c9a84c; border-color:#3d2d5e;"
+                                   OnClick='() => InsertFormat("## ", "", "Heading 2")'>H2</MudButton>
+                        <MudButton Size="Size.Small" Variant="Variant.Outlined"
+                                   Style="min-width:36px; color:#e8e0ff; border-color:#3d2d5e;"
+                                   Title="Bullet list"
+                                   OnClick='() => InsertFormat("- ", "", "list item")'>
+                            <MudIcon Icon="@Icons.Material.Filled.FormatListBulleted" Size="Size.Small" />
+                        </MudButton>
+                        <MudButton Size="Size.Small" Variant="Variant.Outlined"
+                                   Style="min-width:36px; color:#e8e0ff; border-color:#3d2d5e;"
+                                   Title="Numbered list"
+                                   OnClick='() => InsertFormat("1. ", "", "list item")'>
+                            <MudIcon Icon="@Icons.Material.Filled.FormatListNumbered" Size="Size.Small" />
+                        </MudButton>
+                    </div>
+
+                    <textarea @ref="_editorRef"
+                              @bind="_primerText"
+                              @bind:event="oninput"
+                              rows="28"
+                              placeholder="Write your deck primer here... Markdown is supported."
+                              style="width:100%; resize:vertical; padding:12px 16px;
+                                     background:#241a35; color:#e8e0ff;
+                                     border:1px solid #3d2d5e; border-radius:4px;
+                                     font-family:'Inter',sans-serif; font-size:0.95rem;
+                                     line-height:1.6; outline:none; box-sizing:border-box;">
+                    </textarea>
+                </MudTabPanel>
+
+                <MudTabPanel Text="Preview">
+                    @if (string.IsNullOrWhiteSpace(_primerText))
+                    {
+                        <MudText Style="color:#9e94c8; font-style:italic;">
+                            Nothing to preview yet. Switch to Write and add some content.
+                        </MudText>
+                    }
+                    else
+                    {
+                        <div class="primer-content" style="color:#e8e0ff; line-height:1.7;">
+                            @RenderMarkdown(_primerText)
+                        </div>
+                    }
+                </MudTabPanel>
+            </MudTabs>
+        }
+        else
+        {
+            @ReadOnlyView(_deck.Primer)
+        }
+    </Authorized>
+
+    <NotAuthorized>
+        <div class="d-flex align-center gap-2 mb-4">
+            <MudIconButton Icon="@Icons.Material.Filled.ArrowBack"
+                           OnClick='() => Nav.NavigateTo($"/decks/{Id}")'
+                           Style="color:#9e94c8;" />
+            <div>
+                <MudText Typo="Typo.h4" Style="font-family:'Cinzel',serif; color:#c9a84c;">
+                    @_deck.Name
+                </MudText>
+                <MudText Typo="Typo.caption" Style="color:#9e94c8;">Primer</MudText>
+            </div>
+        </div>
+        @ReadOnlyView(_deck.Primer)
+    </NotAuthorized>
+</AuthorizeView>
+
+@code {
+    [Parameter] public Guid Id { get; set; }
+
+    DeckDetail? _deck;
+    string _primerText = "";
+    bool _saving;
+    ElementReference _editorRef;
+
+    static readonly MarkdownPipeline Pipeline =
+        new MarkdownPipelineBuilder().UseAdvancedExtensions().DisableHtml().Build();
+
+    protected override async Task OnInitializedAsync()
+    {
+        _deck = await Api.GetDeckAsync(Id);
+        if (_deck != null)
+            _primerText = _deck.Primer ?? "";
+    }
+
+    RenderFragment ReadOnlyView(string? primer) => @<text>
+        @if (string.IsNullOrWhiteSpace(primer))
+        {
+            <MudCard Style="background:#241a35; border:1px solid #3d2d5e;">
+                <MudCardContent>
+                    <MudText Style="color:#9e94c8; font-style:italic;">
+                        No primer has been written for this deck yet.
+                    </MudText>
+                </MudCardContent>
+            </MudCard>
+        }
+        else
+        {
+            <MudCard Style="background:#241a35; border:1px solid #3d2d5e;">
+                <MudCardContent>
+                    <div class="primer-content" style="color:#e8e0ff; line-height:1.7;">
+                        @RenderMarkdown(primer)
+                    </div>
+                </MudCardContent>
+            </MudCard>
+        }
+    </text>;
+
+    MarkupString RenderMarkdown(string text) =>
+        (MarkupString)Markdown.ToHtml(text, Pipeline);
+
+    async Task InsertFormat(string before, string after, string placeholder)
+    {
+        await JS.InvokeVoidAsync("wanderEditor.insertText", _editorRef, before, after, placeholder);
+        _primerText = await JS.InvokeAsync<string>("wanderEditor.getValue", _editorRef);
+    }
+
+    async Task SavePrimer()
+    {
+        if (_deck == null) return;
+
+        var validationError = InputValidator.ValidatePrimer(_primerText);
+        if (validationError != null)
+        {
+            Snackbar.Add(validationError, Severity.Error);
+            return;
+        }
+
+        _saving = true;
+        try
+        {
+            var newPrimer = string.IsNullOrWhiteSpace(_primerText) ? null : _primerText.Trim();
+            var response = await Api.UpdateDeckAsync(Id, new UpdateDeckRequest(
+                _deck.Name,
+                _deck.Description,
+                newPrimer,
+                _deck.Format,
+                _deck.Visibility));
+
+            if (response.IsSuccessStatusCode)
+            {
+                _deck = _deck with { Primer = newPrimer };
+                Snackbar.Add("Primer saved.", Severity.Success);
+            }
+            else
+            {
+                Snackbar.Add("Failed to save primer.", Severity.Error);
+            }
+        }
+        finally
+        {
+            _saving = false;
+        }
+    }
+}

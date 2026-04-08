@@ -46,6 +46,7 @@ public class JwtAuthStateProvider(LocalStorage localStorage) : AuthenticationSta
             {
                 "sub" => ClaimTypes.NameIdentifier,
                 "email" => ClaimTypes.Email,
+                "unique_name" => ClaimTypes.Name,
                 "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier" => ClaimTypes.NameIdentifier,
                 _ => kvp.Key,
             };

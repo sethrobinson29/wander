@@ -23,6 +23,12 @@ public static class InputValidator
         new(@"^[^@\s]+@[^@\s]+\.[^@\s]+$",
             RegexOptions.Compiled | RegexOptions.IgnoreCase);
 
+    // Detects HTML tags, javascript:/data: protocols, and inline event handlers.
+    // Markdig's DisableHtml() strips these at render time, but we block storage too.
+    private static readonly Regex DangerousMarkdownPattern =
+        new(@"<[^>]+>|javascript\s*:|data\s*:\s*text/html|on\w+\s*=",
+            RegexOptions.Compiled | RegexOptions.IgnoreCase);
+
     /// <summary>
     /// Validates a text field value against rules for the given field type.
     /// Returns null if valid, or an error message string if invalid.
@@ -60,6 +66,24 @@ public static class InputValidator
             default:
                 throw new ArgumentOutOfRangeException(nameof(type), type, "Unknown TextFieldType.");
         }
+    }
+
+    /// <summary>
+    /// Validates primer Markdown text. Returns null if valid, or an error message.
+    /// Primer is optional — null/empty is accepted.
+    /// </summary>
+    public static string? ValidatePrimer(string? input)
+    {
+        if (string.IsNullOrWhiteSpace(input))
+            return null;
+
+        if (input.Length > 50_000)
+            return "Primer exceeds the maximum length of 50,000 characters.";
+
+        if (DangerousMarkdownPattern.IsMatch(input))
+            return "Primer contains invalid content. HTML tags and scripts are not permitted.";
+
+        return null;
     }
 
     /// <summary>

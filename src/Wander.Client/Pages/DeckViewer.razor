@@ -76,26 +76,21 @@
         }
         @if (_isOwner)
         {
-            <MudMenu AnchorOrigin="Origin.BottomLeft" TransformOrigin="Origin.TopLeft">
-                <ActivatorContent>
-                    <MudButton Variant="Variant.Outlined"
-                               StartIcon="@VisibilityIcon(_deck.Visibility)"
-                               EndIcon="@Icons.Material.Filled.ArrowDropDown"
-                               Style="color:#9e94c8; border-color:#3d2d5e;">
-                        @_deck.Visibility
-                    </MudButton>
-                </ActivatorContent>
-                <ChildContent>
-                    @foreach (var v in Enum.GetValues<Visibility>())
-                    {
-                        var vis = v;
-                        <MudMenuItem OnClick="() => ChangeVisibility(vis)"
-                                     Disabled="vis == _deck.Visibility">
-                            <MudIcon Icon="@VisibilityIcon(vis)" Size="Size.Small" Class="mr-2" />
-                            @vis
-                        </MudMenuItem>
-                    }
-                </ChildContent>
+            <MudMenu Label="@_deck.Visibility.ToString()"
+                     StartIcon="@VisibilityIcon(_deck.Visibility)"
+                     EndIcon="@Icons.Material.Filled.ArrowDropDown"
+                     Variant="Variant.Outlined"
+                     Style="color:#9e94c8; border-color:#3d2d5e;"
+                     AnchorOrigin="Origin.BottomLeft" TransformOrigin="Origin.TopLeft">
+                @foreach (var v in Enum.GetValues<Visibility>())
+                {
+                    var vis = v;
+                    <MudMenuItem OnClick="() => ChangeVisibility(vis)"
+                                 Disabled="vis == _deck.Visibility">
+                        <MudIcon Icon="@VisibilityIcon(vis)" Size="Size.Small" Class="mr-2" />
+                        @vis
+                    </MudMenuItem>
+                }
             </MudMenu>
             <MudButton Variant="Variant.Outlined" OnClick="OpenBulkImport">Bulk Import</MudButton>
             <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="SaveCards"
@@ -121,6 +116,7 @@
             <MudCard Style="background:#241a35; border:1px solid #3d2d5e; position:sticky; top:16px;">
                 <MudCardContent>
                     <MudText Typo="Typo.h6" Class="mb-3" Style="font-family:'Cinzel',serif;">Add Cards</MudText>
+                    <div @onfocusout="OnSearchFocusOut" tabindex="-1">
                     <MudTextField T="string" Value="_searchQuery" ValueChanged="OnSearchInput"
                                   Label="Search cards..."
                                   Variant="Variant.Outlined" FullWidth="true"
@@ -150,19 +146,25 @@
                                             </div>
                                         </ActivatorContent>
                                         <ChildContent>
-                                            <MudMenuItem Icon="@Icons.Material.Filled.Add"
-                                                         OnClick="() => AddCard(card)">
-                                                Add to Deck
+                                            <MudMenuItem OnClick="() => AddCard(card)">
+                                                <div class="wander-ctx-item">
+                                                    <MudIcon Icon="@Icons.Material.Filled.Add" Size="Size.Small" />
+                                                    Add to Deck
+                                                </div>
                                             </MudMenuItem>
-                                            <MudMenuItem Icon="@Icons.Material.Filled.SwapHoriz"
-                                                         OnClick="() => AddToSideboard(card)">
-                                                Add to Sideboard
+                                            <MudMenuItem OnClick="() => AddToSideboard(card)">
+                                                <div class="wander-ctx-item">
+                                                    <MudIcon Icon="@Icons.Material.Filled.SwapHoriz" Size="Size.Small" />
+                                                    Add to Sideboard
+                                                </div>
                                             </MudMenuItem>
                                             @if (card.TypeLine.Contains("Legendary", StringComparison.OrdinalIgnoreCase))
                                             {
-                                                <MudMenuItem Icon="@Icons.Material.Filled.Star"
-                                                             OnClick="() => AddAsCommander(card)">
-                                                    Add as Commander
+                                                <MudMenuItem OnClick="() => AddAsCommander(card)">
+                                                    <div class="wander-ctx-item">
+                                                        <MudIcon Icon="@Icons.Material.Filled.Star" Size="Size.Small" Style="color:#c9a84c;" />
+                                                        Add as Commander
+                                                    </div>
                                                 </MudMenuItem>
                                             }
                                         </ChildContent>
@@ -171,6 +173,7 @@
                             }
                         </MudList>
                     }
+                    </div>
                 </MudCardContent>
             </MudCard>
         </MudItem>
@@ -314,6 +317,7 @@ else
         Data = Enumerable.Range(0, 8)
             .Select(cmc => (double)(_localCards
                 .Where(c => !c.IsCommander && !c.IsSideboard &&
+                    !c.TypeLine.Contains("Land", StringComparison.OrdinalIgnoreCase) &&
                     (cmc == 7 ? c.Cmc >= 7 : (int)c.Cmc == cmc))
                 .Sum(c => c.Quantity)))
             .ToArray()
@@ -409,10 +413,20 @@ else
         _searchResults = await Api.SearchCardsAsync(q);
     }
 
+    async Task OnSearchFocusOut()
+    {
+        // Small delay so a click on a result registers before the list is cleared.
+        await Task.Delay(50);
+        _searchResults = [];
+        _searchQuery = "";
+    }
+
     // ── Card mutations ────────────────────────────────────────────────────────
 
     void AddCard(CardSearchResult card)
     {
+        _searchResults = [];
+        _searchQuery = "";
         var existing = _localCards.FirstOrDefault(c => c.CardId == card.Id && !c.IsCommander);
         if (existing != null)
             _localCards = _localCards.Select(c => c == existing
@@ -425,6 +439,8 @@ else
 
     void AddToSideboard(CardSearchResult card)
     {
+        _searchResults = [];
+        _searchQuery = "";
         var existing = _localCards.FirstOrDefault(c => c.CardId == card.Id && c.IsSideboard);
         if (existing != null)
             _localCards = _localCards.Select(c => c == existing
@@ -437,6 +453,8 @@ else
 
     void AddAsCommander(CardSearchResult card)
     {
+        _searchResults = [];
+        _searchQuery = "";
         if (_localCards.Any(c => c.CardId == card.Id && c.IsCommander)) return;
         _localCards.Add(new DeckCardDetail(Guid.NewGuid(), card.Id, card.DefaultPrintingId, card.Name, card.ManaCost,
             card.Cmc, card.TypeLine, card.ColorIdentity, card.ImageUriNormal, card.ImageUriSmall,

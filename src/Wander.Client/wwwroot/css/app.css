@@ -83,3 +83,14 @@ html, body {
 
 /* Prevent text highlight flash on right-click */
 .card-row-activator { user-select: none; -webkit-user-select: none; }
+
+/* Context menu item rows */
+.wander-ctx-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+    cursor: pointer;
+    padding: 2px 0;
+}
+.wander-ctx-item-danger { color: var(--mud-palette-error); }

@@ -8,68 +8,83 @@
         </div>
     </ActivatorContent>
     <ChildContent>
-        @switch (Context)
+        @if (Context == CardContext.BuilderMain)
         {
-            case CardContext.BuilderMain:
-                @if (!Card!.IsCommander &&
-                     Card.TypeLine.Contains("Legendary", StringComparison.OrdinalIgnoreCase))
-                {
-                    <MudMenuItem Icon="@Icons.Material.Filled.Star"
-                                 OnClick="() => OnSetCommander.InvokeAsync(Card)">
+            @if (!Card!.IsCommander &&
+                 Card.TypeLine.Contains("Legendary", StringComparison.OrdinalIgnoreCase))
+            {
+                <MudMenuItem OnClick="() => OnSetCommander.InvokeAsync(Card)">
+                    <div class="wander-ctx-item">
+                        <MudIcon Icon="@Icons.Material.Filled.Star" Size="Size.Small" Style="color:#c9a84c;" />
                         Set as Commander
-                    </MudMenuItem>
-                }
-                @if (Card!.IsSideboard)
-                {
-                    <MudMenuItem Icon="@Icons.Material.Filled.SwapHoriz"
-                                 OnClick="() => OnMoveToMain.InvokeAsync(Card)">
+                    </div>
+                </MudMenuItem>
+            }
+            @if (Card!.IsSideboard)
+            {
+                <MudMenuItem OnClick="() => OnMoveToMain.InvokeAsync(Card)">
+                    <div class="wander-ctx-item">
+                        <MudIcon Icon="@Icons.Material.Filled.SwapHoriz" Size="Size.Small" />
                         Move to Main Deck
-                    </MudMenuItem>
-                }
-                else
-                {
-                    <MudMenuItem Icon="@Icons.Material.Filled.SwapHoriz"
-                                 OnClick="() => OnMoveToSideboard.InvokeAsync(Card)">
+                    </div>
+                </MudMenuItem>
+            }
+            else
+            {
+                <MudMenuItem OnClick="() => OnMoveToSideboard.InvokeAsync(Card)">
+                    <div class="wander-ctx-item">
+                        <MudIcon Icon="@Icons.Material.Filled.SwapHoriz" Size="Size.Small" />
                         Move to Sideboard
-                    </MudMenuItem>
-                }
-                <MudMenuItem Icon="@Icons.Material.Filled.Close" IconColor="Color.Error"
-                             OnClick="() => OnRemove.InvokeAsync(Card)">
-                    Remove from Deck
+                    </div>
                 </MudMenuItem>
-                break;
-
-            case CardContext.BuilderCommander:
-                <MudMenuItem Icon="@Icons.Material.Filled.Close" IconColor="Color.Error"
-                             OnClick="() => OnRemove.InvokeAsync(Card)">
+            }
+            <MudMenuItem OnClick="() => OnRemove.InvokeAsync(Card)">
+                <div class="wander-ctx-item wander-ctx-item-danger">
+                    <MudIcon Icon="@Icons.Material.Filled.Close" Size="Size.Small" />
                     Remove from Deck
-                </MudMenuItem>
-                break;
-
-            case CardContext.BuilderSearch:
-                <MudMenuItem Icon="@Icons.Material.Filled.Add"
-                             OnClick="() => OnAddToDeck.InvokeAsync()">
+                </div>
+            </MudMenuItem>
+        }
+        else if (Context == CardContext.BuilderCommander)
+        {
+            <MudMenuItem OnClick="() => OnRemove.InvokeAsync(Card)">
+                <div class="wander-ctx-item wander-ctx-item-danger">
+                    <MudIcon Icon="@Icons.Material.Filled.Close" Size="Size.Small" />
+                    Remove from Deck
+                </div>
+            </MudMenuItem>
+        }
+        else if (Context == CardContext.BuilderSearch)
+        {
+            <MudMenuItem OnClick="() => OnAddToDeck.InvokeAsync()">
+                <div class="wander-ctx-item">
+                    <MudIcon Icon="@Icons.Material.Filled.Add" Size="Size.Small" />
                     Add to Deck
-                </MudMenuItem>
-                <MudMenuItem Icon="@Icons.Material.Filled.SwapHoriz"
-                             OnClick="() => OnAddToSideboard.InvokeAsync()">
+                </div>
+            </MudMenuItem>
+            <MudMenuItem OnClick="() => OnAddToSideboard.InvokeAsync()">
+                <div class="wander-ctx-item">
+                    <MudIcon Icon="@Icons.Material.Filled.SwapHoriz" Size="Size.Small" />
                     Add to Sideboard
-                </MudMenuItem>
-                @if (SearchCard!.TypeLine.Contains("Legendary", StringComparison.OrdinalIgnoreCase))
-                {
-                    <MudMenuItem Icon="@Icons.Material.Filled.Star"
-                                 OnClick="() => OnAddAsCommander.InvokeAsync()">
+                </div>
+            </MudMenuItem>
+            @if (SearchCard!.TypeLine.Contains("Legendary", StringComparison.OrdinalIgnoreCase))
+            {
+                <MudMenuItem OnClick="() => OnAddAsCommander.InvokeAsync()">
+                    <div class="wander-ctx-item">
+                        <MudIcon Icon="@Icons.Material.Filled.Star" Size="Size.Small" Style="color:#c9a84c;" />
                         Add as Commander
-                    </MudMenuItem>
-                }
-                break;
-
-            case CardContext.Viewer:
-                <MudMenuItem Icon="@Icons.Material.Filled.OpenInNew"
-                             OnClick="() => OnOpenScryfall.InvokeAsync()">
-                    Open on Scryfall
+                    </div>
                 </MudMenuItem>
-                break;
+            }
+        }
+        else if (Context == CardContext.Viewer)
+        {
+            <MudMenuItem Href="@($"https://scryfall.com/search?q=!\"{Uri.EscapeDataString(Card!.CardName)}\"")"
+                         Target="_blank"
+                         Icon="@Icons.Material.Filled.OpenInNew">
+                Open on Scryfall
+            </MudMenuItem>
         }
     </ChildContent>
 </MudMenu>

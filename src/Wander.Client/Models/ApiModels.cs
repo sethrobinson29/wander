@@ -4,6 +4,41 @@ namespace Wander.Client.Models;
 
 public record AuthResponse(string AccessToken, string RefreshToken, DateTimeOffset ExpiresAt);
 
+// ── Users ────────────────────────────────────────────────────────────────────
+
+public enum Privacy { Public, Restricted, Private }
+
+public record MyProfileResponse(
+    string Id, string Username, string Email,
+    string? FirstName, string? LastName, string? Pronouns, string? Bio, string? ProfilePhotoUrl,
+    Privacy EmailPrivacy, Privacy FirstNamePrivacy, Privacy LastNamePrivacy,
+    Privacy PronounsPrivacy, Privacy BioPrivacy, Privacy ProfilePhotoPrivacy,
+    Privacy FollowingCountPrivacy, Privacy FollowerCountPrivacy,
+    DateTimeOffset CreatedAt);
+
+public record PublicProfileResponse(
+    string Username, string? FirstName, string? LastName,
+    string? Pronouns, string? Bio, string? ProfilePhotoUrl,
+    string? Email, int? FollowingCount, int? FollowerCount,
+    bool IsFollowing,
+    List<PublicDeckSummary> PublicDecks, DateTimeOffset CreatedAt);
+
+public record PublicDeckSummary(
+    Guid Id, string Name, string? Description,
+    string Format, int CardCount, DateTimeOffset UpdatedAt);
+
+public record UpdateProfileRequest(
+    string? FirstName, string? LastName, string? Pronouns, string? Bio);
+
+public record UpdateSecurityRequest(
+    string NewEmail, string NewUsername,
+    string CurrentPassword, string? NewPassword);
+
+public record UpdatePrivacyRequest(
+    Privacy EmailPrivacy, Privacy FirstNamePrivacy, Privacy LastNamePrivacy,
+    Privacy PronounsPrivacy, Privacy BioPrivacy, Privacy ProfilePhotoPrivacy,
+    Privacy FollowingCountPrivacy, Privacy FollowerCountPrivacy);
+
 // ── Cards ────────────────────────────────────────────────────────────────────
 
 public record CardSearchResult(

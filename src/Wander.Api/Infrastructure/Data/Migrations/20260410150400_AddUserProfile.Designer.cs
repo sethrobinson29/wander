@@ -3,6 +3,7 @@ using System;
 using System.Collections.Generic;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using NpgsqlTypes;
@@ -13,9 +14,11 @@ using Wander.Api.Infrastructure.Data;
 namespace Wander.Api.Infrastructure.Data.Migrations
 {
     [DbContext(typeof(WanderDbContext))]
-    partial class WanderDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260410150400_AddUserProfile")]
+    partial class AddUserProfile
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -470,24 +473,6 @@ namespace Wander.Api.Infrastructure.Data.Migrations
                     b.ToTable("RefreshTokens");
                 });
 
-            modelBuilder.Entity("Wander.Api.Domain.UserFollow", b =>
-                {
-                    b.Property<string>("FollowerId")
-                        .HasColumnType("text");
-
-                    b.Property<string>("FolloweeId")
-                        .HasColumnType("text");
-
-                    b.Property<DateTimeOffset>("CreatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.HasKey("FollowerId", "FolloweeId");
-
-                    b.HasIndex("FolloweeId");
-
-                    b.ToTable("Follows");
-                });
-
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRoleClaim<string>", b =>
                 {
                     b.HasOne("Microsoft.AspNetCore.Identity.IdentityRole", null)
@@ -598,32 +583,9 @@ namespace Wander.Api.Infrastructure.Data.Migrations
                     b.Navigation("User");
                 });
 
-            modelBuilder.Entity("Wander.Api.Domain.UserFollow", b =>
-                {
-                    b.HasOne("Wander.Api.Domain.ApplicationUser", "Followee")
-                        .WithMany("Followers")
-                        .HasForeignKey("FolloweeId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("Wander.Api.Domain.ApplicationUser", "Follower")
-                        .WithMany("Following")
-                        .HasForeignKey("FollowerId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Followee");
-
-                    b.Navigation("Follower");
-                });
-
             modelBuilder.Entity("Wander.Api.Domain.ApplicationUser", b =>
                 {
                     b.Navigation("Decks");
-
-                    b.Navigation("Followers");
-
-                    b.Navigation("Following");
                 });
 
             modelBuilder.Entity("Wander.Api.Domain.Card", b =>

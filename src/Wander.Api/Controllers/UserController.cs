@@ -1,0 +1,224 @@
+﻿using System.Security.Claims;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
+using Wander.Api.Domain;
+using Wander.Api.Infrastructure.Data;
+using Wander.Api.Models.Auth;
+using Wander.Api.Models.Users;
+using Wander.Api.Services;
+
+namespace Wander.Api.Controllers;
+
+[ApiController]
+[Route("users")]
+public class UserController(
+    UserManager<ApplicationUser> userManager,
+    WanderDbContext db,
+    TokenService tokenService) : ControllerBase
+{
+    private string UserId => User.FindFirstValue(ClaimTypes.NameIdentifier)!;
+
+    // ── Queries ──────────────────────────────────────────────────────────────
+
+    [HttpGet("me")]
+    [Authorize]
+    public async Task<ActionResult<MyProfileResponse>> GetMyProfile()
+    {
+        var user = await userManager.FindByIdAsync(UserId);
+        if (user is null) return NotFound();
+
+        return Ok(new MyProfileResponse(
+            user.Id,
+            user.UserName!,
+            user.Email!,
+            user.FirstName,
+            user.LastName,
+            user.Pronouns,
+            user.Bio,
+            user.ProfilePhotoUrl,
+            user.EmailPrivacy,
+            user.FirstNamePrivacy,
+            user.LastNamePrivacy,
+            user.PronounsPrivacy,
+            user.BioPrivacy,
+            user.ProfilePhotoPrivacy,
+            user.FollowingCountPrivacy,
+            user.FollowerCountPrivacy,
+            user.CreatedAt));
+    }
+
+    [HttpGet("{username}")]
+    public async Task<ActionResult<PublicProfileResponse>> GetProfile(string username)
+    {
+        var user = await userManager.FindByNameAsync(username);
+        if (user is null) return NotFound();
+
+        var requesterId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        var isSelf = requesterId == user.Id;
+        var isFollowing = requesterId != null && !isSelf &&
+                          await db.Follows.AnyAsync(f => f.FollowerId == requesterId && f.FolloweeId == user.Id);
+
+        // Privacy is applied the same regardless of viewer — /users/{username} is a true preview.
+        // Owners see their own data via GET /users/me; the public profile shows what others see.
+        bool IsVisible(Privacy p) =>
+            p == Privacy.Public ||
+            (p == Privacy.Restricted && isFollowing);
+
+        var followerCount  = await db.Follows.CountAsync(f => f.FolloweeId == user.Id);
+        var followingCount = await db.Follows.CountAsync(f => f.FollowerId == user.Id);
+
+        var publicDecks = await db.Decks
+            .Where(d => d.OwnerId == user.Id && d.Visibility == Visibility.Public)
+            .Include(d => d.Cards)
+            .OrderByDescending(d => d.UpdatedAt)
+            .ToListAsync();
+
+        return Ok(new PublicProfileResponse(
+            user.UserName!,
+            IsVisible(user.FirstNamePrivacy)      ? user.FirstName       : null,
+            IsVisible(user.LastNamePrivacy)        ? user.LastName        : null,
+            IsVisible(user.PronounsPrivacy)        ? user.Pronouns        : null,
+            IsVisible(user.BioPrivacy)             ? user.Bio             : null,
+            IsVisible(user.ProfilePhotoPrivacy)    ? user.ProfilePhotoUrl : null,
+            IsVisible(user.EmailPrivacy)           ? user.Email           : null,
+            IsVisible(user.FollowingCountPrivacy)  ? followingCount : null,
+            IsVisible(user.FollowerCountPrivacy)   ? followerCount  : null,
+            isFollowing,
+            publicDecks.Select(d => new PublicDeckSummary(
+                d.Id,
+                d.Name,
+                d.Description,
+                d.Format.ToString(),
+                d.Cards.Sum(c => c.Quantity),
+                d.UpdatedAt)).ToList(),
+            user.CreatedAt));
+    }
+
+    [HttpPost("{username}/follow")]
+    [Authorize]
+    public async Task<IActionResult> Follow(string username)
+    {
+        var target = await userManager.FindByNameAsync(username);
+        if (target is null) return NotFound();
+        if (target.Id == UserId) return BadRequest(new { error = "You cannot follow yourself." });
+
+        var alreadyFollowing = await db.Follows.AnyAsync(f => f.FollowerId == UserId && f.FolloweeId == target.Id);
+        if (alreadyFollowing) return NoContent(); // idempotent — double-follow is not an error
+
+        db.Follows.Add(new UserFollow { FollowerId = UserId, FolloweeId = target.Id, CreatedAt = DateTimeOffset.UtcNow });
+        await db.SaveChangesAsync();
+        return NoContent();
+    }
+
+    [HttpDelete("{username}/follow")]
+    [Authorize]
+    public async Task<IActionResult> Unfollow(string username)
+    {
+        var target = await userManager.FindByNameAsync(username);
+        if (target is null) return NotFound();
+
+        // ExecuteDeleteAsync is safe even if the row doesn't exist
+        await db.Follows
+            .Where(f => f.FollowerId == UserId && f.FolloweeId == target.Id)
+            .ExecuteDeleteAsync();
+        return NoContent();
+    }
+
+    // ── Mutations ────────────────────────────────────────────────────────────
+
+    [HttpPut("me/profile")]
+    [Authorize]
+    public async Task<IActionResult> UpdateProfile(UpdateProfileRequest request)
+    {
+        var user = await userManager.FindByIdAsync(UserId);
+        if (user is null) return NotFound();
+
+        user.FirstName = request.FirstName?.Trim();
+        user.LastName = request.LastName?.Trim();
+        user.Pronouns = request.Pronouns?.Trim();
+        user.Bio = request.Bio?.Trim();
+
+        await db.SaveChangesAsync();
+        return NoContent();
+    }
+
+    [HttpPut("me/security")]
+    [Authorize]
+    public async Task<ActionResult<AuthResponse>> UpdateSecurity(UpdateSecurityRequest request)
+    {
+        var user = await userManager.FindByIdAsync(UserId);
+        if (user is null) return NotFound();
+
+        if (!await userManager.CheckPasswordAsync(user, request.CurrentPassword))
+            return BadRequest(new { errors = new[] { "Current password is incorrect." } });
+
+        if (request.NewPassword is not null)
+        {
+            var result = await userManager.ChangePasswordAsync(user, request.CurrentPassword, request.NewPassword);
+            if (!result.Succeeded)
+                return BadRequest(new { errors = result.Errors.Select(e => e.Description) });
+        }
+
+        if (!string.Equals(user.Email, request.NewEmail, StringComparison.OrdinalIgnoreCase))
+        {
+            if (await userManager.FindByEmailAsync(request.NewEmail) is not null)
+                return BadRequest(new { errors = new[] { "Email is already in use." } });
+
+            var result = await userManager.SetEmailAsync(user, request.NewEmail);
+            if (!result.Succeeded)
+                return BadRequest(new { errors = result.Errors.Select(e => e.Description) });
+        }
+
+        if (!string.Equals(user.UserName, request.NewUsername, StringComparison.OrdinalIgnoreCase))
+        {
+            if (await userManager.FindByNameAsync(request.NewUsername) is not null)
+                return BadRequest(new { errors = new[] { "Username is already in use." } });
+
+            var result = await userManager.SetUserNameAsync(user, request.NewUsername);
+            if (!result.Succeeded)
+                return BadRequest(new { errors = result.Errors.Select(e => e.Description) });
+        }
+
+        // Invalidate all existing sessions before issuing new tokens
+        await db.RefreshTokens.Where(t => t.UserId == user.Id).ExecuteDeleteAsync();
+
+        return Ok(await IssueTokensAsync(user));
+    }
+
+    [HttpPut("me/privacy")]
+    [Authorize]
+    public async Task<IActionResult> UpdatePrivacy(UpdatePrivacyRequest request)
+    {
+        var user = await userManager.FindByIdAsync(UserId);
+        if (user is null) return NotFound();
+
+        user.EmailPrivacy = request.EmailPrivacy;
+        user.FirstNamePrivacy = request.FirstNamePrivacy;
+        user.LastNamePrivacy = request.LastNamePrivacy;
+        user.PronounsPrivacy = request.PronounsPrivacy;
+        user.BioPrivacy = request.BioPrivacy;
+        user.ProfilePhotoPrivacy = request.ProfilePhotoPrivacy;
+        user.FollowingCountPrivacy = request.FollowingCountPrivacy;
+        user.FollowerCountPrivacy = request.FollowerCountPrivacy;
+
+        await db.SaveChangesAsync();
+        return NoContent();
+    }
+
+    // ── Helpers ──────────────────────────────────────────────────────────────
+
+    // Verbatim copy of AuthController.IssueTokensAsync — needed here to re-issue tokens
+    // after a security change without creating a shared dependency on AuthController
+    private async Task<AuthResponse> IssueTokensAsync(ApplicationUser user)
+    {
+        var (accessToken, expiresAt) = tokenService.GenerateAccessToken(user);
+        var refreshToken = tokenService.GenerateRefreshToken(user.Id);
+
+        db.RefreshTokens.Add(refreshToken);
+        await db.SaveChangesAsync();
+
+        return new AuthResponse(accessToken, refreshToken.Token, expiresAt);
+    }
+}

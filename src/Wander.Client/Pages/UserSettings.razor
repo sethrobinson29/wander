@@ -1,0 +1,322 @@
+﻿@page "/settings"
+@attribute [Authorize]
+@inject WanderApiClient Api
+@inject ISnackbar Snackbar
+@inject LocalStorage LocalStorage
+@inject AuthenticationStateProvider AuthStateProvider
+@using Microsoft.AspNetCore.Components.Authorization
+@using Wander.Client.Models
+
+@if (_loading)
+{
+    <MudProgressLinear Color="Color.Primary" Indeterminate="true" />
+    return;
+}
+
+<MudContainer MaxWidth="MaxWidth.Large" Class="mt-8">
+    <MudText Typo="Typo.h4" Class="mb-6" Style="font-family:'Cinzel',serif; color:#c9a84c;">
+        Account Settings
+    </MudText>
+
+    <MudGrid>
+        <!-- Sidebar -->
+        <MudItem xs="12" md="3">
+            <MudCard Style="background:#241a35; border:1px solid #3d2d5e;">
+                <MudCardContent Class="pa-2">
+                    <MudNavMenu>
+                        <MudNavLink OnClick='() => _section = "about"'
+                                    Style="@(_section == "about" ? "color:#c9a84c;" : "")">
+                            About Me
+                        </MudNavLink>
+                        <MudNavLink OnClick='() => _section = "security"'
+                                    Style="@(_section == "security" ? "color:#c9a84c;" : "")">
+                            Login &amp; Security
+                        </MudNavLink>
+                        <MudNavLink OnClick='() => _section = "privacy"'
+                                    Style="@(_section == "privacy" ? "color:#c9a84c;" : "")">
+                            Privacy
+                        </MudNavLink>
+                    </MudNavMenu>
+                </MudCardContent>
+            </MudCard>
+        </MudItem>
+
+        <!-- Content -->
+        <MudItem xs="12" md="9">
+            <MudCard Style="background:#241a35; border:1px solid #3d2d5e;">
+                <MudCardContent Class="pa-6">
+                    @switch (_section)
+                    {
+                        case "about":
+                            <MudText Typo="Typo.h6" Class="mb-4" Style="font-family:'Cinzel',serif;">About Me</MudText>
+                            <MudGrid>
+                                <MudItem xs="12" sm="6">
+                                    <MudTextField @bind-Value="_firstName" Label="First Name"
+                                                  Variant="Variant.Outlined" FullWidth="true" MaxLength="100" />
+                                </MudItem>
+                                <MudItem xs="12" sm="6">
+                                    <MudTextField @bind-Value="_lastName" Label="Last Name"
+                                                  Variant="Variant.Outlined" FullWidth="true" MaxLength="100" />
+                                </MudItem>
+                                <MudItem xs="12">
+                                    <MudTextField @bind-Value="_pronouns" Label="Pronouns"
+                                                  Variant="Variant.Outlined" FullWidth="true" MaxLength="50" />
+                                </MudItem>
+                                <MudItem xs="12">
+                                    <MudTextField @bind-Value="_bio" Label="Bio"
+                                                  Variant="Variant.Outlined" FullWidth="true"
+                                                  Lines="4" MaxLength="500" />
+                                </MudItem>
+                                <MudItem xs="12">
+                                    <!-- Photo upload deferred; field wired to ProfilePhotoUrl for future use -->
+                                    <MudTextField Value="@("Profile photo upload — coming soon")"
+                                                  Label="Profile Photo"
+                                                  Variant="Variant.Outlined" FullWidth="true"
+                                                  Disabled="true" />
+                                </MudItem>
+                            </MudGrid>
+                            <MudButton Variant="Variant.Filled" Color="Color.Primary"
+                                       Class="mt-4" OnClick="SaveProfile" Disabled="_saving">
+                                @(_saving ? "Saving..." : "Save")
+                            </MudButton>
+                            break;
+
+                        case "security":
+                            <MudText Typo="Typo.h6" Class="mb-4" Style="font-family:'Cinzel',serif;">Login &amp; Security</MudText>
+                            <MudGrid>
+                                <MudItem xs="12">
+                                    <MudTextField @bind-Value="_newEmail" Label="Email"
+                                                  InputType="InputType.Email"
+                                                  Variant="Variant.Outlined" FullWidth="true"
+                                                  Error="@(_securitySubmitted && _newEmailError != null)"
+                                                  ErrorText="@_newEmailError" />
+                                </MudItem>
+                                <MudItem xs="12">
+                                    <MudTextField @bind-Value="_newUsername" Label="Username"
+                                                  Variant="Variant.Outlined" FullWidth="true"
+                                                  Error="@(_securitySubmitted && _newUsernameError != null)"
+                                                  ErrorText="@_newUsernameError" />
+                                </MudItem>
+                                <MudItem xs="12">
+                                    <!-- "new-password" is the correct autocomplete value to suppress autofill;
+                                         browsers deliberately ignore "off" for password fields -->
+                                    <MudTextField @bind-Value="_currentPassword" Label="Current Password"
+                                                  InputType="InputType.Password" AutoComplete="new-password"
+                                                  Variant="Variant.Outlined" FullWidth="true"
+                                                  Error="@(_securitySubmitted && _currentPasswordError != null)"
+                                                  ErrorText="@_currentPasswordError" />
+                                </MudItem>
+                                <MudItem xs="12">
+                                    <MudTextField @bind-Value="_newPassword" Label="New Password"
+                                                  InputType="InputType.Password"
+                                                  Variant="Variant.Outlined" FullWidth="true"
+                                                  HelperText="Leave blank to keep current password"
+                                                  Error="@(_securitySubmitted && _newPasswordError != null)"
+                                                  ErrorText="@_newPasswordError" />
+                                </MudItem>
+                                <MudItem xs="12">
+                                    <MudTextField @bind-Value="_confirmPassword" Label="Confirm New Password"
+                                                  InputType="InputType.Password"
+                                                  Variant="Variant.Outlined" FullWidth="true"
+                                                  Disabled="@(string.IsNullOrEmpty(_newPassword))"
+                                                  Error="@(_securitySubmitted && _confirmPasswordError != null)"
+                                                  ErrorText="@_confirmPasswordError" />
+                                </MudItem>
+                            </MudGrid>
+                            @if (_securityErrors.Count > 0)
+                            {
+                                <MudAlert Severity="Severity.Error" Class="mt-4">
+                                    @foreach (var e in _securityErrors)
+                                    {
+                                        <div>@e</div>
+                                    }
+                                </MudAlert>
+                            }
+                            <MudButton Variant="Variant.Filled" Color="Color.Primary"
+                                       Class="mt-4" OnClick="SaveSecurity" Disabled="_saving">
+                                @(_saving ? "Saving..." : "Save")
+                            </MudButton>
+                            break;
+
+                        case "privacy":
+                            <MudText Typo="Typo.h6" Class="mb-4" Style="font-family:'Cinzel',serif;">Privacy</MudText>
+                            <MudText Typo="Typo.body2" Class="mb-4" Style="color:#9e94c8;">
+                                Control who can see each piece of your profile.
+                                "Followers Only" is treated as Private until the follower system is built.
+                            </MudText>
+                            @foreach (var (label, getter, setter) in PrivacyFields())
+                            {
+                                <div class="d-flex justify-space-between align-center mb-3">
+                                    <MudText Style="min-width:180px;">@label</MudText>
+                                    <MudSelect T="Privacy" Value="@getter()" ValueChanged="@(v => setter(v))"
+                                               Variant="Variant.Outlined" Dense="true" Style="max-width:200px;">
+                                        <MudSelectItem Value="Privacy.Public">Public</MudSelectItem>
+                                        <MudSelectItem Value="Privacy.Restricted">Followers Only</MudSelectItem>
+                                        <MudSelectItem Value="Privacy.Private">Private</MudSelectItem>
+                                    </MudSelect>
+                                </div>
+                            }
+                            <MudButton Variant="Variant.Filled" Color="Color.Primary"
+                                       Class="mt-4" OnClick="SavePrivacy" Disabled="_saving">
+                                @(_saving ? "Saving..." : "Save")
+                            </MudButton>
+                            break;
+                    }
+                </MudCardContent>
+            </MudCard>
+        </MudItem>
+    </MudGrid>
+</MudContainer>
+
+@code {
+    string _section = "about";
+    bool _loading = true, _saving;
+
+    // ── About Me ──────────────────────────────────────────────────────────────
+    string? _firstName, _lastName, _pronouns, _bio;
+
+    // ── Security ──────────────────────────────────────────────────────────────
+    string _newEmail = "", _newUsername = "", _currentPassword = "", _newPassword = "", _confirmPassword = "";
+    bool _securitySubmitted;
+    string? _newEmailError, _newUsernameError, _currentPasswordError, _newPasswordError, _confirmPasswordError;
+    List<string> _securityErrors = [];
+
+    // ── Privacy ───────────────────────────────────────────────────────────────
+    Privacy _emailPrivacy, _firstNamePrivacy, _lastNamePrivacy, _pronounsPrivacy;
+    Privacy _bioPrivacy, _profilePhotoPrivacy, _followingCountPrivacy, _followerCountPrivacy;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var profile = await Api.GetMyProfileAsync();
+        if (profile is null) return;
+
+        _firstName = profile.FirstName;
+        _lastName = profile.LastName;
+        _pronouns = profile.Pronouns;
+        _bio = profile.Bio;
+
+        _newEmail = profile.Email;
+        _newUsername = profile.Username;
+
+        _emailPrivacy = profile.EmailPrivacy;
+        _firstNamePrivacy = profile.FirstNamePrivacy;
+        _lastNamePrivacy = profile.LastNamePrivacy;
+        _pronounsPrivacy = profile.PronounsPrivacy;
+        _bioPrivacy = profile.BioPrivacy;
+        _profilePhotoPrivacy = profile.ProfilePhotoPrivacy;
+        _followingCountPrivacy = profile.FollowingCountPrivacy;
+        _followerCountPrivacy = profile.FollowerCountPrivacy;
+
+        _loading = false;
+    }
+
+    // ── About Me save ─────────────────────────────────────────────────────────
+
+    async Task SaveProfile()
+    {
+        if (!string.IsNullOrWhiteSpace(_firstName) && _firstName.Trim().Length > 100)
+        { Snackbar.Add("First name must be at most 100 characters.", Severity.Warning); return; }
+        if (!string.IsNullOrWhiteSpace(_lastName) && _lastName.Trim().Length > 100)
+        { Snackbar.Add("Last name must be at most 100 characters.", Severity.Warning); return; }
+        if (!string.IsNullOrWhiteSpace(_pronouns) && _pronouns.Trim().Length > 50)
+        { Snackbar.Add("Pronouns must be at most 50 characters.", Severity.Warning); return; }
+        if (!string.IsNullOrWhiteSpace(_bio) && _bio.Trim().Length > 500)
+        { Snackbar.Add("Bio must be at most 500 characters.", Severity.Warning); return; }
+
+        _saving = true;
+        var response = await Api.UpdateProfileAsync(new UpdateProfileRequest(
+            string.IsNullOrWhiteSpace(_firstName) ? null : _firstName.Trim(),
+            string.IsNullOrWhiteSpace(_lastName) ? null : _lastName.Trim(),
+            string.IsNullOrWhiteSpace(_pronouns) ? null : _pronouns.Trim(),
+            string.IsNullOrWhiteSpace(_bio) ? null : _bio.Trim()));
+
+        Snackbar.Add(response.IsSuccessStatusCode ? "Profile saved." : "Failed to save profile.",
+                     response.IsSuccessStatusCode ? Severity.Success : Severity.Error);
+        _saving = false;
+    }
+
+    // ── Security save ─────────────────────────────────────────────────────────
+
+    bool ValidateSecurity()
+    {
+        var username = _newUsername.Trim();
+        _newEmailError = InputValidator.Validate(_newEmail.Trim(), TextFieldType.Email);
+        _newUsernameError = InputValidator.Validate(username, TextFieldType.Generic)
+                                ?? (username.Length < 3 ? "Username must be at least 3 characters."
+                                  : username.Length > 50 ? "Username must be at most 50 characters."
+                                  : null);
+        _currentPasswordError = string.IsNullOrEmpty(_currentPassword) ? "Current password is required." : null;
+        _newPasswordError = !string.IsNullOrEmpty(_newPassword)
+                                    ? InputValidator.Validate(_newPassword, TextFieldType.PasswordRegister)
+                                    : null;
+        _confirmPasswordError = !string.IsNullOrEmpty(_newPassword) && _confirmPassword != _newPassword
+                                    ? "Passwords do not match."
+                                    : null;
+
+        return _newEmailError == null && _newUsernameError == null &&
+               _currentPasswordError == null && _newPasswordError == null && _confirmPasswordError == null;
+    }
+
+    async Task SaveSecurity()
+    {
+        _securitySubmitted = true;
+        if (!ValidateSecurity()) return;
+
+        _saving = true;
+        _securityErrors = [];
+
+        var response = await Api.UpdateSecurityAsync(new UpdateSecurityRequest(
+            _newEmail.Trim(),
+            _newUsername.Trim(),
+            _currentPassword,
+            string.IsNullOrEmpty(_newPassword) ? null : _newPassword));
+
+        if (!response.IsSuccessStatusCode)
+        {
+            var body = await response.Content.ReadFromJsonAsync<Dictionary<string, List<string>>>();
+            _securityErrors = body?.GetValueOrDefault("errors") ?? ["Failed to update security settings."];
+            _saving = false;
+            return;
+        }
+
+        // Re-store tokens so the user stays logged in under the new credentials
+        var auth = await response.Content.ReadFromJsonAsync<AuthResponse>();
+        await LocalStorage.SetAsync("accessToken", auth!.AccessToken);
+        await LocalStorage.SetAsync("refreshToken", auth.RefreshToken);
+        ((JwtAuthStateProvider)AuthStateProvider).NotifyUserChanged();
+
+        _currentPassword   = "";
+        _newPassword       = "";
+        _confirmPassword   = "";
+        _securitySubmitted = false;
+        Snackbar.Add("Security settings saved.", Severity.Success);
+        _saving = false;
+    }
+
+    // ── Privacy save ──────────────────────────────────────────────────────────
+
+    async Task SavePrivacy()
+    {
+        _saving = true;
+        var response = await Api.UpdatePrivacyAsync(new UpdatePrivacyRequest(
+            _emailPrivacy, _firstNamePrivacy, _lastNamePrivacy, _pronounsPrivacy,
+            _bioPrivacy, _profilePhotoPrivacy, _followingCountPrivacy, _followerCountPrivacy));
+
+        Snackbar.Add(response.IsSuccessStatusCode ? "Privacy settings saved." : "Failed to save privacy settings.",
+                     response.IsSuccessStatusCode ? Severity.Success : Severity.Error);
+        _saving = false;
+    }
+
+    // Returns (label, getter, setter) tuples to drive the 8 privacy rows without repetition
+    IEnumerable<(string Label, Func<Privacy> Get, Action<Privacy> Set)> PrivacyFields() =>
+    [
+        ("Email",           () => _emailPrivacy,          v => _emailPrivacy = v),
+        ("First Name",      () => _firstNamePrivacy,      v => _firstNamePrivacy = v),
+        ("Last Name",       () => _lastNamePrivacy,       v => _lastNamePrivacy = v),
+        ("Pronouns",        () => _pronounsPrivacy,       v => _pronounsPrivacy = v),
+        ("Bio",             () => _bioPrivacy,            v => _bioPrivacy = v),
+        ("Profile Photo",   () => _profilePhotoPrivacy,   v => _profilePhotoPrivacy = v),
+        ("Following Count", () => _followingCountPrivacy, v => _followingCountPrivacy = v),
+        ("Follower Count",  () => _followerCountPrivacy,  v => _followerCountPrivacy = v),
+    ];
+}

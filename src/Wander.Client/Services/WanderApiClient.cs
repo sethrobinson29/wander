@@ -18,6 +18,50 @@ public class WanderApiClient(HttpClient http, LocalStorage localStorage)
     public Task<HttpResponseMessage> LoginRawAsync(string email, string password) =>
         http.PostAsJsonAsync("auth/login", new { email, password });
 
+    // ── Users ──────────────────────────────────────────────────────────────────
+
+    public async Task<MyProfileResponse?> GetMyProfileAsync()
+    {
+        await AttachTokenAsync();
+        return await http.GetFromJsonAsync<MyProfileResponse>("users/me");
+    }
+
+    public async Task<HttpResponseMessage> UpdateProfileAsync(UpdateProfileRequest req)
+    {
+        await AttachTokenAsync();
+        return await http.PutAsJsonAsync("users/me/profile", req);
+    }
+
+    public async Task<HttpResponseMessage> UpdateSecurityAsync(UpdateSecurityRequest req)
+    {
+        await AttachTokenAsync();
+        return await http.PutAsJsonAsync("users/me/security", req);
+    }
+
+    public async Task<HttpResponseMessage> UpdatePrivacyAsync(UpdatePrivacyRequest req)
+    {
+        await AttachTokenAsync();
+        return await http.PutAsJsonAsync("users/me/privacy", req);
+    }
+
+    public async Task<PublicProfileResponse?> GetUserProfileAsync(string username)
+    {
+        await AttachTokenAsync();
+        return await http.GetFromJsonAsync<PublicProfileResponse>($"users/{Uri.EscapeDataString(username)}");
+    }
+
+    public async Task<HttpResponseMessage> FollowUserAsync(string username)
+    {
+        await AttachTokenAsync();
+        return await http.PostAsync($"users/{Uri.EscapeDataString(username)}/follow", null);
+    }
+
+    public async Task<HttpResponseMessage> UnfollowUserAsync(string username)
+    {
+        await AttachTokenAsync();
+        return await http.DeleteAsync($"users/{Uri.EscapeDataString(username)}/follow");
+    }
+
     // ── Cards ─────────────────────────────────────────────────────────────────
 
     public async Task<List<CardSearchResult>> SearchCardsAsync(string q)

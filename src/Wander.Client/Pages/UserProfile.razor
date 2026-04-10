@@ -1,0 +1,173 @@
+﻿@page "/users/{Username}"
+@inject WanderApiClient Api
+@inject NavigationManager Nav
+@inject ISnackbar Snackbar
+@inject AuthenticationStateProvider AuthState
+@using Microsoft.AspNetCore.Components.Authorization
+@using Wander.Client.Models
+
+@if (_loading)
+{
+    <MudProgressLinear Color="Color.Primary" Indeterminate="true" />
+    return;
+}
+
+@if (_profile == null)
+{
+    <MudContainer MaxWidth="MaxWidth.Small" Class="mt-16 text-center">
+        <MudText Typo="Typo.h5" Style="color:#9e94c8;">User not found.</MudText>
+    </MudContainer>
+    return;
+}
+
+<MudContainer MaxWidth="MaxWidth.Large" Class="mt-8">
+    @if (_isSelf)
+    {
+        <MudAlert Severity="Severity.Info" Class="mb-4">
+            This is how your profile appears to others.
+            <MudLink Href="/settings" Color="Color.Primary" Class="ml-1">Edit your profile</MudLink>
+        </MudAlert>
+    }
+
+    <!-- Profile header -->
+    <div class="d-flex align-center gap-4 mb-6">
+        <!-- Photo slot: renders URL when available, falls back to person icon -->
+        <MudAvatar Style="width:80px; height:80px; background:#3d2d5e;">
+            @if (_profile.ProfilePhotoUrl != null)
+            {
+                <MudImage Src="@_profile.ProfilePhotoUrl" Alt="@_profile.Username" />
+            }
+            else
+            {
+                <MudIcon Icon="@Icons.Material.Filled.Person" Style="font-size:2.5rem; color:#9e94c8;" />
+            }
+        </MudAvatar>
+        <div class="flex-grow-1">
+            <MudText Typo="Typo.h4" Style="font-family:'Cinzel',serif; color:#c9a84c;">
+                @_profile.Username
+            </MudText>
+            @if (_profile.FirstName != null || _profile.LastName != null)
+            {
+                <MudText Typo="Typo.h6" Style="color:#e8e0f0;">
+                    @string.Join(" ", new[] { _profile.FirstName, _profile.LastName }.Where(s => s != null))
+                </MudText>
+            }
+            @if (_profile.Pronouns != null)
+            {
+                <MudText Typo="Typo.caption" Style="color:#9e94c8;">@_profile.Pronouns</MudText>
+            }
+        </div>
+        @if (_isAuthenticated && !_isSelf)
+        {
+            <MudButton Variant="@(_isFollowing ? Variant.Outlined : Variant.Filled)"
+                       Color="Color.Primary"
+                       OnClick="ToggleFollow"
+                       Disabled="_followBusy">
+                @(_isFollowing ? "Unfollow" : "Follow")
+            </MudButton>
+        }
+    </div>
+
+    @if (_profile.Bio != null)
+    {
+        <MudCard Style="background:#241a35; border:1px solid #3d2d5e;" Class="mb-4">
+            <MudCardContent>
+                <MudText Typo="Typo.body1">@_profile.Bio</MudText>
+            </MudCardContent>
+        </MudCard>
+    }
+
+    <!-- null means hidden by privacy, not "no followers" — only render when the value is visible -->
+    @if (_profile.FollowerCount != null || _profile.FollowingCount != null)
+    {
+        <div class="d-flex gap-4 mb-6">
+            @if (_profile.FollowerCount != null)
+            {
+                <MudText Typo="Typo.body2" Style="color:#9e94c8;">
+                    <strong style="color:#e8e0f0;">@_profile.FollowerCount</strong> followers
+                </MudText>
+            }
+            @if (_profile.FollowingCount != null)
+            {
+                <MudText Typo="Typo.body2" Style="color:#9e94c8;">
+                    <strong style="color:#e8e0f0;">@_profile.FollowingCount</strong> following
+                </MudText>
+            }
+        </div>
+    }
+
+    <!-- Public decks -->
+    @if (_profile.PublicDecks.Count > 0)
+    {
+        <MudText Typo="Typo.h6" Class="mb-3" Style="font-family:'Cinzel',serif;">Public Decks</MudText>
+        <MudGrid>
+            @foreach (var deck in _profile.PublicDecks)
+            {
+                <MudItem xs="12" sm="6" md="4">
+                    <MudCard Style="background:#241a35; border:1px solid #3d2d5e; cursor:pointer;" Class="deck-card"
+                             @onclick='() => Nav.NavigateTo($"/decks/{deck.Id}")'>
+                        <MudCardContent>
+                            <MudText Typo="Typo.h6" Style="font-family:'Cinzel',serif;">@deck.Name</MudText>
+                            <div class="d-flex align-center gap-2 mt-1">
+                                <MudText Typo="Typo.caption" Style="color:#9e94c8;">@deck.Format</MudText>
+                                <MudText Typo="Typo.caption" Style="color:#9e94c8;">· @deck.CardCount cards</MudText>
+                            </div>
+                            @if (deck.Description != null)
+                            {
+                                <MudText Typo="Typo.body2" Class="mt-2" Style="color:#9e94c8;">@deck.Description</MudText>
+                            }
+                        </MudCardContent>
+                    </MudCard>
+                </MudItem>
+            }
+        </MudGrid>
+    }
+    else
+    {
+        <MudText Style="color:#9e94c8;">No public decks.</MudText>
+    }
+</MudContainer>
+
+@code {
+    [Parameter] public string Username { get; set; } = "";
+
+    PublicProfileResponse? _profile;
+    bool _loading = true, _isSelf, _isAuthenticated, _isFollowing, _followBusy;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _profile = await Api.GetUserProfileAsync(Username);
+        if (_profile != null)
+        {
+            var authState = await AuthState.GetAuthenticationStateAsync();
+            var identity = authState.User.Identity;
+            _isAuthenticated = identity?.IsAuthenticated == true;
+            _isSelf = _isAuthenticated &&
+                      string.Equals(identity!.Name, Username, StringComparison.OrdinalIgnoreCase);
+            _isFollowing = _profile.IsFollowing;
+        }
+        _loading = false;
+    }
+
+    async Task ToggleFollow()
+    {
+        _followBusy = true;
+        var wasFollowing = _isFollowing;
+        var response = wasFollowing
+            ? await Api.UnfollowUserAsync(_profile!.Username)
+            : await Api.FollowUserAsync(_profile!.Username);
+
+        if (response.IsSuccessStatusCode)
+        {
+            _isFollowing = !wasFollowing;
+            // Optimistic count update — only if FollowerCount is visible (not hidden by privacy)
+            if (_profile!.FollowerCount != null)
+                _profile = _profile with { FollowerCount = _profile.FollowerCount + (wasFollowing ? -1 : 1) };
+        }
+        else
+        {
+            Snackbar.Add(wasFollowing ? "Failed to unfollow." : "Failed to follow.", Severity.Error);
+        }
+        _followBusy = false;
+    }
+}

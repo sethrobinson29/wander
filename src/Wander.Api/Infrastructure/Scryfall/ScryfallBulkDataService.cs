@@ -13,6 +13,10 @@ public class ScryfallBulkDataService(
 {
     private const string BulkDataUrl = "https://api.scryfall.com/bulk-data";
 
+    // Layouts that are not deck-legal cards (art cards, tokens, emblems, digital-only variants)
+    private static readonly HashSet<string> ExcludedLayouts =
+        ["art_series", "token", "double_faced_token", "emblem"];
+
     public async Task SyncAsync(CancellationToken cancellationToken = default)
     {
         logger.LogInformation("Starting Scryfall sync...");
@@ -67,10 +71,20 @@ public class ScryfallBulkDataService(
         await foreach (var card in JsonSerializer.DeserializeAsyncEnumerable<ScryfallCard>(
             stream, options, ct))
         {
-            if (card is not null && card.EffectiveImageUris is not null)
+            if (card is not null
+                && card.EffectiveImageUris is not null
+                && !ExcludedLayouts.Contains(card.Layout)
+                && !IsPlaceholderTypeLine(card.TypeLine))
                 yield return card;
         }
     }
+
+    // Filters out art series / tokens / placeholder entries that have no real type line.
+    // "Card // Card" and "Card" are Scryfall placeholder types used for art cards and some
+    // digital reprints — every part of the type line being literally "Card" means it's not a
+    // playable Magic card.
+    private static bool IsPlaceholderTypeLine(string typeLine) =>
+        typeLine.Split(" // ").All(part => part.Trim().Equals("Card", StringComparison.OrdinalIgnoreCase));
 
     private void UpsertCard(
         ScryfallCard src,

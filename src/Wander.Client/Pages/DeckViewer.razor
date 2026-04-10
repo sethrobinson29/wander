@@ -553,10 +553,16 @@ else
     }
 
     // ── Helpers ───────────────────────────────────────────────────────────────
+    static string GetTypeGroup(string typeLine)
+    {
+        // MDFCs store both faces' types as "Front Type // Back Type" — group by front face only
+        var frontTypeLine = typeLine.Contains(" // ", StringComparison.Ordinal)
+            ? typeLine[..typeLine.IndexOf(" // ", StringComparison.Ordinal)]
+            : typeLine;
 
-    static string GetTypeGroup(string typeLine) =>
-        new[] { "Creature", "Instant", "Sorcery", "Enchantment", "Artifact", "Planeswalker", "Battle", "Land" }
-            .FirstOrDefault(t => typeLine.Contains(t, StringComparison.OrdinalIgnoreCase)) ?? "Other";
+        return new[] { "Creature", "Instant", "Sorcery", "Enchantment", "Artifact", "Planeswalker", "Battle", "Land" }
+            .FirstOrDefault(t => frontTypeLine.Contains(t, StringComparison.OrdinalIgnoreCase)) ?? "Other";
+    }
 
     static int TypeGroupOrder(string group) =>
         group switch

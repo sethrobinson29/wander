@@ -257,24 +257,45 @@ public class DeckController(WanderDbContext db, DeckValidationService validator)
         {
             if (!cards.TryGetValue(name, out var card)) continue;
 
-            var existing = deck.Cards.FirstOrDefault(c =>
-                c.CardId == card.Id &&
-                c.IsCommander == isCommander &&
-                c.IsSideboard == isSideboard);
+            if (isCommander)
+            {
+                // A deck has exactly one commander — replace all existing commanders with the imported one
+                var existingCommanders = deck.Cards.Where(c => c.IsCommander).ToList();
+                db.DeckCards.RemoveRange(existingCommanders);
+                foreach (var c in existingCommanders) deck.Cards.Remove(c);
 
-            if (existing != null)
-                existing.Quantity += qty;
-            else
                 db.DeckCards.Add(new DeckCard
                 {
                     Id = Guid.NewGuid(),
                     DeckId = deck.Id,
                     CardId = card.Id,
-                    PrintingId = null, // use default printing; user can update later
-                    Quantity = qty,
-                    IsCommander = isCommander,
-                    IsSideboard = isSideboard,
+                    PrintingId = null,
+                    Quantity = 1,
+                    IsCommander = true,
+                    IsSideboard = false,
                 });
+            }
+            else
+            {
+                var existing = deck.Cards.FirstOrDefault(c =>
+                    c.CardId == card.Id &&
+                    !c.IsCommander &&
+                    c.IsSideboard == isSideboard);
+
+                if (existing != null)
+                    existing.Quantity += qty;
+                else
+                    db.DeckCards.Add(new DeckCard
+                    {
+                        Id = Guid.NewGuid(),
+                        DeckId = deck.Id,
+                        CardId = card.Id,
+                        PrintingId = null, // use default printing; user can update later
+                        Quantity = qty,
+                        IsCommander = false,
+                        IsSideboard = isSideboard,
+                    });
+            }
         }
 
         deck.UpdatedAt = DateTimeOffset.UtcNow;

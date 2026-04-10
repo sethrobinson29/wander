@@ -91,7 +91,7 @@ public class UserController(
                 d.Name,
                 d.Description,
                 d.Format.ToString(),
-                d.Cards.Sum(c => c.Quantity),
+                d.Cards.Where(c => !c.IsSideboard).Sum(c => c.Quantity),
                 d.UpdatedAt)).ToList(),
             user.CreatedAt));
     }

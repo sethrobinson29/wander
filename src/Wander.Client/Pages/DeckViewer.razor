@@ -226,6 +226,30 @@
                     </MudCardContent>
                 </MudCard>
             }
+
+            @{
+                var sideboardCards = _localCards.Where(c => c.IsSideboard).ToList();
+            }
+            @if (sideboardCards.Count > 0)
+            {
+                <MudCard Style="background:#241a35; border:1px solid #3d2d5e; margin-bottom:12px;">
+                    <MudCardContent>
+                        <div class="d-flex align-center mb-2">
+                            <MudText Typo="Typo.h6" Style="font-family:'Cinzel',serif;">Sideboard</MudText>
+                            <MudText Typo="Typo.caption" Class="ml-2" Style="color:#9e94c8;">
+                                (@sideboardCards.Sum(c => c.Quantity))
+                            </MudText>
+                        </div>
+                        @foreach (var card in sideboardCards.OrderBy(c => c.Cmc).ThenBy(c => c.CardName))
+                        {
+                            <CardRow Card="@card" ShowQuantityControl="true" ShowRemove="true"
+                                     Context="CardContext.BuilderMain"
+                                     OnIncrement="IncrementCard" OnDecrement="DecrementCard"
+                                     OnRemove="RemoveCard" OnMoveToMain="MoveToMain" />
+                        }
+                    </MudCardContent>
+                </MudCard>
+            }
         </MudItem>
     </MudGrid>
 }
@@ -273,6 +297,28 @@ else
                     </MudCardContent>
                 </MudCard>
             }
+
+            @{
+                var sideboardCards = _localCards.Where(c => c.IsSideboard).ToList();
+            }
+            @if (sideboardCards.Count > 0)
+            {
+                <MudCard Style="background:#241a35; border:1px solid #3d2d5e; margin-bottom:12px;">
+                    <MudCardContent>
+                        <div class="d-flex align-center mb-2">
+                            <MudText Typo="Typo.h6" Style="font-family:'Cinzel',serif;">Sideboard</MudText>
+                            <MudText Typo="Typo.caption" Class="ml-2" Style="color:#9e94c8;">
+                                (@sideboardCards.Sum(c => c.Quantity))
+                            </MudText>
+                        </div>
+                        @foreach (var card in sideboardCards.OrderBy(c => c.Cmc).ThenBy(c => c.CardName))
+                        {
+                            <CardRow Card="@card" Context="CardContext.Viewer"
+                                     OnOpenScryfall="() => OpenScryfall(card)" />
+                        }
+                    </MudCardContent>
+                </MudCard>
+            }
         </MudItem>
 
         <MudItem xs="12" md="5">
@@ -303,7 +349,7 @@ else
     string _pendingName = "", _pendingDescription = "";
     bool _editingName, _editingDescription, _savingMeta;
 
-    int TotalCards => _localCards.Where(c => !c.IsCommander).Sum(c => c.Quantity);
+    int TotalCards => _localCards.Where(c => !c.IsSideboard).Sum(c => c.Quantity);
 
     IEnumerable<IGrouping<string, DeckCardDetail>> GroupedCards =>
         _localCards

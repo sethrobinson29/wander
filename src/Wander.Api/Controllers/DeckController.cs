@@ -359,7 +359,7 @@ public class DeckController(WanderDbContext db, DeckValidationService validator)
         d.Format,
         d.Visibility,
         d.Owner.UserName!,
-        d.Cards.Sum(c => c.Quantity),
+        d.Cards.Where(c => !c.IsSideboard).Sum(c => c.Quantity),
         d.CreatedAt,
         d.UpdatedAt);
 

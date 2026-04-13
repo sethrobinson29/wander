@@ -3,6 +3,7 @@ using Wander.Api.Infrastructure.Data;
 
 namespace Wander.Tests.Infrastructure;
 
+[Trait("Category", "Integration")]
 public class DbConnectionTests
 {
     private const string TestConnectionString =

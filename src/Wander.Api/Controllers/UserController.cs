@@ -60,12 +60,6 @@ public class UserController(
         var isFollowing = requesterId != null && !isSelf &&
                           await db.Follows.AnyAsync(f => f.FollowerId == requesterId && f.FolloweeId == user.Id);
 
-        // Privacy is applied the same regardless of viewer — /users/{username} is a true preview.
-        // Owners see their own data via GET /users/me; the public profile shows what others see.
-        bool IsVisible(Privacy p) =>
-            p == Privacy.Public ||
-            (p == Privacy.Restricted && isFollowing);
-
         var followerCount  = await db.Follows.CountAsync(f => f.FolloweeId == user.Id);
         var followingCount = await db.Follows.CountAsync(f => f.FollowerId == user.Id);
 
@@ -77,14 +71,14 @@ public class UserController(
 
         return Ok(new PublicProfileResponse(
             user.UserName!,
-            IsVisible(user.FirstNamePrivacy)      ? user.FirstName       : null,
-            IsVisible(user.LastNamePrivacy)        ? user.LastName        : null,
-            IsVisible(user.PronounsPrivacy)        ? user.Pronouns        : null,
-            IsVisible(user.BioPrivacy)             ? user.Bio             : null,
-            IsVisible(user.ProfilePhotoPrivacy)    ? user.ProfilePhotoUrl : null,
-            IsVisible(user.EmailPrivacy)           ? user.Email           : null,
-            IsVisible(user.FollowingCountPrivacy)  ? followingCount : null,
-            IsVisible(user.FollowerCountPrivacy)   ? followerCount  : null,
+            PrivacyService.IsVisible(user.FirstNamePrivacy, isFollowing)      ? user.FirstName       : null,
+            PrivacyService.IsVisible(user.LastNamePrivacy, isFollowing)        ? user.LastName        : null,
+            PrivacyService.IsVisible(user.PronounsPrivacy, isFollowing)        ? user.Pronouns        : null,
+            PrivacyService.IsVisible(user.BioPrivacy, isFollowing)             ? user.Bio             : null,
+            PrivacyService.IsVisible(user.ProfilePhotoPrivacy, isFollowing)    ? user.ProfilePhotoUrl : null,
+            PrivacyService.IsVisible(user.EmailPrivacy, isFollowing)           ? user.Email           : null,
+            PrivacyService.IsVisible(user.FollowingCountPrivacy, isFollowing)  ? followingCount : null,
+            PrivacyService.IsVisible(user.FollowerCountPrivacy, isFollowing)   ? followerCount  : null,
             isFollowing,
             publicDecks.Select(d => new PublicDeckSummary(
                 d.Id,

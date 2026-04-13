@@ -26,32 +26,72 @@ public class DeckValidationService
         ["The Nazgûl"]    = 9,
     };
 
-    // Deck-level structural errors that don't belong to any single card
-    // (commander count, partner keyword requirement).
+    // MinDeck is a minimum for non-exact formats, or the required exact total for Commander.
+    private record FormatRules(int MinDeck, int MaxSideboard, bool Exact = false);
+
+    private static readonly Dictionary<Format, FormatRules> DeckRules = new()
+    {
+        [Format.Standard]  = new(60, 15),
+        [Format.Pioneer]   = new(60, 15),
+        [Format.Modern]    = new(60, 15),
+        [Format.Legacy]    = new(60, 15),
+        [Format.Vintage]   = new(60, 15),
+        [Format.Pauper]    = new(60, 15),
+        [Format.Explorer]  = new(60, 15),
+        [Format.Historic]  = new(60, 15),
+        [Format.Timeless]  = new(60, 15),
+        [Format.Commander] = new(100, 0, Exact: true),
+    };
+
+    // Deck-level structural errors that don't belong to any single card.
     public List<string> GetStructuralErrors(List<DeckCard> cards, Format format)
     {
-        if (format != Format.Commander) return [];
-
         var errors = new List<string>();
-        var commanders = cards.Where(c => c.IsCommander).ToList();
 
-        if (commanders.Count == 0)
-            errors.Add("Commander deck must have at least one commander.");
-
-        if (commanders.Count > 2)
-            errors.Add("Commander deck cannot have more than two commanders.");
-
-        if (commanders.Count == 2)
+        if (format == Format.Commander)
         {
-            var bothHavePartner = commanders.All(c =>
-                c.Card.OracleText != null &&
-                (c.Card.OracleText.Contains("Partner with", StringComparison.OrdinalIgnoreCase) ||
-                 c.Card.OracleText.Contains("\nPartner\n", StringComparison.OrdinalIgnoreCase) ||
-                 c.Card.OracleText.EndsWith("\nPartner", StringComparison.OrdinalIgnoreCase) ||
-                 c.Card.OracleText.EndsWith("Partner", StringComparison.OrdinalIgnoreCase)));
+            var commanders = cards.Where(c => c.IsCommander).ToList();
 
-            if (!bothHavePartner)
-                errors.Add("Both commanders must have the Partner keyword.");
+            if (commanders.Count == 0)
+                errors.Add("Commander deck must have at least one commander.");
+
+            if (commanders.Count > 2)
+                errors.Add("Commander deck cannot have more than two commanders.");
+
+            if (commanders.Count == 2)
+            {
+                var bothHavePartner = commanders.All(c =>
+                    c.Card.OracleText != null &&
+                    (c.Card.OracleText.Contains("Partner with", StringComparison.OrdinalIgnoreCase) ||
+                     c.Card.OracleText.Contains("\nPartner\n", StringComparison.OrdinalIgnoreCase) ||
+                     c.Card.OracleText.EndsWith("\nPartner", StringComparison.OrdinalIgnoreCase) ||
+                     c.Card.OracleText.EndsWith("Partner", StringComparison.OrdinalIgnoreCase)));
+
+                if (!bothHavePartner)
+                    errors.Add("Both commanders must have the Partner keyword.");
+            }
+        }
+
+        if (DeckRules.TryGetValue(format, out var rules))
+        {
+            var mainCount = cards.Where(c => !c.IsSideboard).Sum(c => c.Quantity);
+            var sideCount = cards.Where(c => c.IsSideboard).Sum(c => c.Quantity);
+
+            if (rules.Exact)
+            {
+                if (mainCount != rules.MinDeck)
+                    errors.Add($"{format} decks must have exactly {rules.MinDeck} cards (currently {mainCount}).");
+            }
+            else
+            {
+                if (mainCount < rules.MinDeck)
+                    errors.Add($"{format} decks must have at least {rules.MinDeck} cards in the main deck (currently {mainCount}).");
+            }
+
+            if (sideCount > rules.MaxSideboard)
+                errors.Add(rules.MaxSideboard == 0
+                    ? $"{format} decks do not use a sideboard."
+                    : $"Sideboard cannot exceed {rules.MaxSideboard} cards (currently {sideCount}).");
         }
 
         return errors;

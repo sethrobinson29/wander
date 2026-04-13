@@ -1,11 +1,12 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
-using System.ComponentModel;
+using Npgsql;
 using Wander.Api.Infrastructure.Data;
 using Wander.Api.Infrastructure.Scryfall;
 
 namespace Wander.Tests.Infrastructure;
 
+[Trait("Category", "Integration")]
 public class ScryfallSyncTests
 {
     private const string TestConnectionString =
@@ -13,15 +14,22 @@ public class ScryfallSyncTests
 
     [Fact]
     [Trait("Category", "Integration")]
+    [Trait("Category", "ScryfallSync")]
     public async Task SyncAsync_PopulatesCards()
     {
+        var dataSourceBuilder = new NpgsqlDataSourceBuilder(TestConnectionString);
+        dataSourceBuilder.EnableDynamicJson();
+
         var options = new DbContextOptionsBuilder<WanderDbContext>()
-            .UseNpgsql(TestConnectionString)
+            .UseNpgsql(dataSourceBuilder.Build())
             .Options;
 
         await using var db = new WanderDbContext(options);
 
         var httpClient = new HttpClient();
+        httpClient.DefaultRequestHeaders.Add("User-Agent", "Wander/1.0 (mtg-deck-manager)");
+        httpClient.DefaultRequestHeaders.Add("Accept", "application/json");
+        httpClient.Timeout = TimeSpan.FromMinutes(10);
         var logger = NullLogger<ScryfallBulkDataService>.Instance;
         var service = new ScryfallBulkDataService(httpClient, db, logger);
 

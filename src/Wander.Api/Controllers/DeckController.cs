@@ -228,7 +228,7 @@ public class DeckController(WanderDbContext db, DeckValidationService validator)
         if (deck is null) return NotFound();
         if (deck.OwnerId != UserId) return Forbid();
 
-        var parsed = ParseDecklist(request.Decklist);
+        var parsed = DecklistParser.Parse(request.Decklist);
 
         var cardNames = parsed.Select(p => p.Name).Distinct().ToList();
         // Double-faced cards are stored as "Front // Back" in the DB.
@@ -312,45 +312,6 @@ public class DeckController(WanderDbContext db, DeckValidationService validator)
     }
 
     // ── Helpers ──────────────────────────────────────────────────────────────
-
-    // Parses lines in the format:
-    //   4 Lightning Bolt
-    //   1 Atraxa, Praetors' Voice *CMDR*
-    //   1 Barkchannel Pathway // Tidechannel Pathway
-    //   SIDEBOARD:
-    //   2 Tormod's Crypt
-    private static List<(string Name, int Qty, bool IsCommander, bool IsSideboard)> ParseDecklist(string text)
-    {
-        var results = new List<(string, int, bool, bool)>();
-        var inSideboard = false;
-
-        foreach (var raw in text.Split('\n', StringSplitOptions.RemoveEmptyEntries))
-        {
-            var line = raw.Trim();
-            if (string.IsNullOrEmpty(line) || line.StartsWith("//")) continue;
-
-            // SIDEBOARD: section marker — all subsequent lines are sideboard cards
-            if (line.Equals("SIDEBOARD:", StringComparison.OrdinalIgnoreCase))
-            {
-                inSideboard = true;
-                continue;
-            }
-
-            var isCommander = line.Contains("*CMDR*", StringComparison.OrdinalIgnoreCase);
-            line = line.Replace("*CMDR*", "", StringComparison.OrdinalIgnoreCase).Trim();
-
-            // Match leading quantity
-            var spaceIndex = line.IndexOf(' ');
-            if (spaceIndex < 1) continue;
-
-            if (!int.TryParse(line[..spaceIndex], out var qty)) continue;
-            var name = line[(spaceIndex + 1)..].Trim();
-
-            results.Add((name, qty, isCommander, inSideboard));
-        }
-
-        return results;
-    }
 
     private static DeckSummaryResponse ToSummary(Deck d) => new(
         d.Id,

@@ -107,7 +107,7 @@
                                     <!-- "new-password" is the correct autocomplete value to suppress autofill;
                                          browsers deliberately ignore "off" for password fields -->
                                     <MudTextField @bind-Value="_currentPassword" Label="Current Password"
-                                                  InputType="InputType.Password" AutoComplete="new-password"
+                                                  InputType="InputType.Password" autocomplete="new-password"
                                                   Variant="Variant.Outlined" FullWidth="true"
                                                   Error="@(_securitySubmitted && _currentPasswordError != null)"
                                                   ErrorText="@_currentPasswordError" />

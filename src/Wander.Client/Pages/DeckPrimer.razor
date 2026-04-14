@@ -42,9 +42,9 @@
 
         @if (isOwner)
         {
-            <MudTabs Elevation="0" Rounded="false" PanelClass="pt-3"
+            <MudTabs Elevation="0" Rounded="false"
                      Style="background:transparent;">
-                <MudTabPanel Text="Write">
+                <MudTabPanel Text="Write" PanelClass="pt-3">
                     <div class="d-flex gap-1 mb-2" style="flex-wrap:wrap;">
                         <MudButton Size="Size.Small" Variant="Variant.Outlined"
                                    Style="min-width:36px; font-weight:700; color:#e8e0ff; border-color:#3d2d5e;"
@@ -60,13 +60,13 @@
                                    OnClick='() => InsertFormat("## ", "", "Heading 2")'>H2</MudButton>
                         <MudButton Size="Size.Small" Variant="Variant.Outlined"
                                    Style="min-width:36px; color:#e8e0ff; border-color:#3d2d5e;"
-                                   Title="Bullet list"
+                                   title="Bullet list"
                                    OnClick='() => InsertFormat("- ", "", "list item")'>
                             <MudIcon Icon="@Icons.Material.Filled.FormatListBulleted" Size="Size.Small" />
                         </MudButton>
                         <MudButton Size="Size.Small" Variant="Variant.Outlined"
                                    Style="min-width:36px; color:#e8e0ff; border-color:#3d2d5e;"
-                                   Title="Numbered list"
+                                   title="Numbered list"
                                    OnClick='() => InsertFormat("1. ", "", "list item")'>
                             <MudIcon Icon="@Icons.Material.Filled.FormatListNumbered" Size="Size.Small" />
                         </MudButton>
@@ -85,7 +85,7 @@
                     </textarea>
                 </MudTabPanel>
 
-                <MudTabPanel Text="Preview">
+                <MudTabPanel Text="Preview" PanelClass="pt-3">
                     @if (string.IsNullOrWhiteSpace(_primerText))
                     {
                         <MudText Style="color:#9e94c8; font-style:italic;">

@@ -13,4 +13,5 @@ public class Deck
     public List<DeckCard> Cards { get; set; } = [];
     public DateTimeOffset CreatedAt { get; set; }
     public DateTimeOffset UpdatedAt { get; set; }
+    public ICollection<DeckLike> Likes { get; set; } = [];
 }

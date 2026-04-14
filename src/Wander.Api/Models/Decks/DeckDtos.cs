@@ -45,7 +45,9 @@ public record DeckDetailResponse(
     List<DeckCardResponse> Cards,
     List<string> DeckErrors,
     DateTimeOffset CreatedAt,
-    DateTimeOffset UpdatedAt);
+    DateTimeOffset UpdatedAt,
+    int LikeCount,
+    bool IsLikedByCurrentUser);
 
 public record DeckCardResponse(
     Guid Id,

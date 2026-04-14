@@ -122,6 +122,18 @@ public class WanderApiClient(HttpClient http, LocalStorage localStorage)
         return await http.DeleteAsync($"decks/{id}");
     }
 
+    public async Task<HttpResponseMessage> LikeDeckAsync(Guid id)
+    {
+        await AttachTokenAsync();
+        return await http.PostAsync($"decks/{id}/like", null);
+    }
+
+    public async Task<HttpResponseMessage> UnlikeDeckAsync(Guid id)
+    {
+        await AttachTokenAsync();
+        return await http.DeleteAsync($"decks/{id}/like");
+    }
+
     // ── Helpers ───────────────────────────────────────────────────────────────
 
     private async Task AttachTokenAsync()

@@ -67,7 +67,8 @@ public class DeckController(WanderDbContext db, DeckValidationService validator)
             if (requesterId != deck.OwnerId) return NotFound();
         }
 
-        return Ok(ToDetail(deck));
+        var (likeCount, isLiked) = await GetLikeInfoAsync(id, ct);
+        return Ok(ToDetail(deck, likeCount, isLiked));
     }
 
     // ── Mutations ────────────────────────────────────────────────────────────
@@ -96,7 +97,7 @@ public class DeckController(WanderDbContext db, DeckValidationService validator)
         db.Decks.Add(deck);
         await db.SaveChangesAsync(ct);
 
-        return CreatedAtAction(nameof(Get), new { id = deck.Id }, ToDetail(deck));
+        return CreatedAtAction(nameof(Get), new { id = deck.Id }, ToDetail(deck, 0, false));
     }
 
     [HttpPut("{id:guid}")]
@@ -129,7 +130,8 @@ public class DeckController(WanderDbContext db, DeckValidationService validator)
         deck.UpdatedAt = DateTimeOffset.UtcNow;
 
         await db.SaveChangesAsync(ct);
-        return Ok(ToDetail(deck));
+        var (likeCount, isLiked) = await GetLikeInfoAsync(id, ct);
+        return Ok(ToDetail(deck, likeCount, isLiked));
     }
 
     [HttpDelete("{id:guid}")]
@@ -143,6 +145,41 @@ public class DeckController(WanderDbContext db, DeckValidationService validator)
 
         db.Decks.Remove(deck);
         await db.SaveChangesAsync(ct);
+        return NoContent();
+    }
+
+    [HttpPost("{id}/like")]
+    [Authorize]
+    public async Task<IActionResult> Like(Guid id)
+    {
+        // Only public or owned decks can be liked
+        var deck = await db.Decks.FindAsync(id);
+        if (deck is null) return NotFound();
+        if (deck.Visibility != Visibility.Public && deck.OwnerId != UserId) return NotFound();
+
+        var exists = await db.DeckLikes.AnyAsync(l => l.DeckId == id && l.UserId == UserId);
+        if (exists) return Conflict();
+
+        db.DeckLikes.Add(new DeckLike
+        {
+            UserId = UserId,
+            DeckId = id,
+            CreatedAt = DateTimeOffset.UtcNow
+        });
+        await db.SaveChangesAsync();
+        return NoContent();
+    }
+
+    [HttpDelete("{id}/like")]
+    [Authorize]
+    public async Task<IActionResult> Unlike(Guid id)
+    {
+        var like = await db.DeckLikes
+            .FirstOrDefaultAsync(l => l.DeckId == id && l.UserId == UserId);
+        if (like is null) return NotFound();
+
+        db.DeckLikes.Remove(like);
+        await db.SaveChangesAsync();
         return NoContent();
     }
 
@@ -207,7 +244,8 @@ public class DeckController(WanderDbContext db, DeckValidationService validator)
         deck.UpdatedAt = DateTimeOffset.UtcNow;
 
         await db.SaveChangesAsync(ct);
-        return Ok(ToDetail(deck));
+        var (likeCount, isLiked) = await GetLikeInfoAsync(id, ct);
+        return Ok(ToDetail(deck, likeCount, isLiked));
     }
 
     // ── Bulk import ──────────────────────────────────────────────────────────
@@ -308,7 +346,8 @@ public class DeckController(WanderDbContext db, DeckValidationService validator)
             .Include(d => d.Cards).ThenInclude(dc => dc.Printing)
             .FirstAsync(d => d.Id == id, ct);
 
-        return Ok(ToDetail(deck));
+        var (likeCount, isLiked) = await GetLikeInfoAsync(id, ct);
+        return Ok(ToDetail(deck, likeCount, isLiked));
     }
 
     // ── Helpers ──────────────────────────────────────────────────────────────
@@ -324,7 +363,16 @@ public class DeckController(WanderDbContext db, DeckValidationService validator)
         d.CreatedAt,
         d.UpdatedAt);
 
-    private DeckDetailResponse ToDetail(Deck d)
+    private async Task<(int LikeCount, bool IsLiked)> GetLikeInfoAsync(Guid deckId, CancellationToken ct)
+    {
+        var userId    = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        var likeCount = await db.DeckLikes.CountAsync(l => l.DeckId == deckId, ct);
+        var isLiked   = userId != null &&
+                        await db.DeckLikes.AnyAsync(l => l.DeckId == deckId && l.UserId == userId, ct);
+        return (likeCount, isLiked);
+    }
+
+    private DeckDetailResponse ToDetail(Deck d, int likeCount, bool isLiked)
     {
         var commanderColorIdentity = DeckValidationService.GetCommanderColorIdentity(d.Cards);
         var deckErrors = validator.GetStructuralErrors(d.Cards, d.Format);
@@ -360,6 +408,8 @@ public class DeckController(WanderDbContext db, DeckValidationService validator)
             }).ToList(),
             deckErrors,
             d.CreatedAt,
-            d.UpdatedAt);
+            d.UpdatedAt,
+            likeCount,
+            isLiked);
     }
 }

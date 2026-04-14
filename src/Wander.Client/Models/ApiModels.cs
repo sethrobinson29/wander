@@ -82,6 +82,8 @@ public record DeckDetail(
     Visibility Visibility,
     string OwnerUsername,
     List<DeckCardDetail> Cards,
+    int LikeCount,
+    bool IsLikedByCurrentUser,
     DateTimeOffset CreatedAt,
     DateTimeOffset UpdatedAt);
 

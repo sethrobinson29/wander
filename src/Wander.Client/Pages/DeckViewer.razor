@@ -65,6 +65,23 @@
     </div>
 
     <div class="d-flex gap-2">
+        @if (!_isOwner)
+        {
+            <MudButton Variant="@(_isLiked? Variant.Filled: Variant.Outlined)"
+                       StartIcon="@(_isLiked ? Icons.Material.Filled.Favorite : Icons.Material.Outlined.FavoriteBorder)"
+                       Style="@(_isLiked ? "color:white;" : "color:#9e94c8; border-color:#3d2d5e;")"
+                       Disabled="_likeBusy || !_isAuthenticated"
+                       OnClick="ToggleLike">
+                @_likeCount
+            </MudButton>
+        }
+        else
+        {
+            <div class="d-flex align-center gap-1" style="color:#9e94c8; padding:6px 8px;">
+                <MudIcon Icon="@Icons.Material.Filled.Favorite" Size="Size.Small" />
+                <MudText Typo="Typo.body2">@_likeCount</MudText>
+            </div>
+        }
         @if (_isOwner || !string.IsNullOrWhiteSpace(_deck.Primer))
         {
             <MudButton Variant="Variant.Outlined"
@@ -344,7 +361,8 @@ else
     List<CardSearchResult> _searchResults = [];
     List<string> _validationErrors = [];
     string _searchQuery = "";
-    bool _saving, _isOwner;
+    bool _saving, _isOwner, _isLiked, _likeBusy, _isAuthenticated;
+    int _likeCount;
 
     string _pendingName = "", _pendingDescription = "";
     bool _editingName, _editingDescription, _savingMeta;
@@ -378,9 +396,32 @@ else
         {
             _localCards = _deck.Cards.ToList();
             var authState = await AuthState.GetAuthenticationStateAsync();
-            _isOwner = authState.User.Identity?.IsAuthenticated == true
-                       && _deck.OwnerUsername == authState.User.Identity.Name;
+            _isAuthenticated = authState.User.Identity?.IsAuthenticated == true;
+            _isOwner = _isAuthenticated && _deck.OwnerUsername == authState.User.Identity!.Name;
+            _likeCount = _deck.LikeCount;
+            _isLiked = _deck.IsLikedByCurrentUser;
         }
+    }
+
+    async Task ToggleLike()
+    {
+        if (!_isAuthenticated) return;
+        _likeBusy = true;
+        var wasLiked = _isLiked;
+        var response = wasLiked
+            ? await Api.UnlikeDeckAsync(Id)
+            : await Api.LikeDeckAsync(Id);
+
+        if (response.IsSuccessStatusCode)
+        {
+            _isLiked = !wasLiked;
+            _likeCount += wasLiked ? -1 : 1;
+        }
+        else
+        {
+            Snackbar.Add(wasLiked ? "Failed to unlike." : "Failed to like.", Severity.Error);
+        }
+        _likeBusy = false;
     }
 
     // ── Name / description inline editing ────────────────────────────────────

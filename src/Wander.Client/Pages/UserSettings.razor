@@ -1,5 +1,6 @@
 ﻿@page "/settings"
 @attribute [Authorize]
+@inject IDialogService Dialogs
 @inject WanderApiClient Api
 @inject ISnackbar Snackbar
 @inject LocalStorage LocalStorage
@@ -49,6 +50,18 @@
                     {
                         case "about":
                             <MudText Typo="Typo.h6" Class="mb-4" Style="font-family:'Cinzel',serif;">About Me</MudText>
+
+                            @* Avatar *@
+                            <div class="d-flex align-center gap-4 mb-5">
+                                <AvatarDisplay Username="@_newUsername" AvatarId="@_avatarId" Size="80" />
+                                <div>
+                                    <MudText Typo="Typo.body2" Style="color:#9e94c8;" Class="mb-1">@AvatarLabel</MudText>
+                                    <MudButton Variant="Variant.Outlined" Size="Size.Small"
+                                               Style="color:#9e94c8; border-color:#3d2d5e;"
+                                               OnClick="OpenAvatarPicker">Change</MudButton>
+                                </div>
+                            </div>
+
                             <MudGrid>
                                 <MudItem xs="12" sm="6">
                                     <MudTextField @bind-Value="_firstName" Label="First Name"
@@ -66,13 +79,6 @@
                                     <MudTextField @bind-Value="_bio" Label="Bio"
                                                   Variant="Variant.Outlined" FullWidth="true"
                                                   Lines="4" MaxLength="500" />
-                                </MudItem>
-                                <MudItem xs="12">
-                                    <!-- Photo upload deferred; field wired to ProfilePhotoUrl for future use -->
-                                    <MudTextField Value="@("Profile photo upload — coming soon")"
-                                                  Label="Profile Photo"
-                                                  Variant="Variant.Outlined" FullWidth="true"
-                                                  Disabled="true" />
                                 </MudItem>
                             </MudGrid>
                             <MudButton Variant="Variant.Filled" Color="Color.Primary"
@@ -172,8 +178,24 @@
     string _section = "about";
     bool _loading = true, _saving;
 
+    string AvatarLabel => _avatarId is null ? "Using generated avatar" : $"Using preset: {_avatarId}";
+
+    async Task OpenAvatarPicker()
+    {
+        var parameters = new DialogParameters
+        {
+            ["Username"] = _newUsername,
+            ["CurrentAvatarId"] = _avatarId
+        };
+        var dialog = await Dialogs.ShowAsync<Dialogs.AvatarPicker>("", parameters,
+            new DialogOptions { MaxWidth = MaxWidth.ExtraSmall, FullWidth = true });
+        var result = await dialog.Result;
+        if (result is { Canceled: false })
+            _avatarId = (string?)result.Data;
+    }
+
     // ── About Me ──────────────────────────────────────────────────────────────
-    string? _firstName, _lastName, _pronouns, _bio;
+    string? _firstName, _lastName, _pronouns, _bio, _avatarId;
 
     // ── Security ──────────────────────────────────────────────────────────────
     string _newEmail = "", _newUsername = "", _currentPassword = "", _newPassword = "", _confirmPassword = "";
@@ -183,7 +205,7 @@
 
     // ── Privacy ───────────────────────────────────────────────────────────────
     Privacy _emailPrivacy, _firstNamePrivacy, _lastNamePrivacy, _pronounsPrivacy;
-    Privacy _bioPrivacy, _profilePhotoPrivacy, _followingCountPrivacy, _followerCountPrivacy;
+    Privacy _bioPrivacy, _followingCountPrivacy, _followerCountPrivacy;
 
     protected override async Task OnInitializedAsync()
     {
@@ -203,7 +225,6 @@
         _lastNamePrivacy = profile.LastNamePrivacy;
         _pronounsPrivacy = profile.PronounsPrivacy;
         _bioPrivacy = profile.BioPrivacy;
-        _profilePhotoPrivacy = profile.ProfilePhotoPrivacy;
         _followingCountPrivacy = profile.FollowingCountPrivacy;
         _followerCountPrivacy = profile.FollowerCountPrivacy;
 
@@ -225,10 +246,11 @@
 
         _saving = true;
         var response = await Api.UpdateProfileAsync(new UpdateProfileRequest(
-            string.IsNullOrWhiteSpace(_firstName) ? null : _firstName.Trim(),
-            string.IsNullOrWhiteSpace(_lastName) ? null : _lastName.Trim(),
-            string.IsNullOrWhiteSpace(_pronouns) ? null : _pronouns.Trim(),
-            string.IsNullOrWhiteSpace(_bio) ? null : _bio.Trim()));
+                    string.IsNullOrWhiteSpace(_firstName) ? null : _firstName.Trim(),
+                    string.IsNullOrWhiteSpace(_lastName) ? null : _lastName.Trim(),
+                    string.IsNullOrWhiteSpace(_pronouns) ? null : _pronouns.Trim(),
+                    string.IsNullOrWhiteSpace(_bio) ? null : _bio.Trim(),
+                    _avatarId));
 
         Snackbar.Add(response.IsSuccessStatusCode ? "Profile saved." : "Failed to save profile.",
                      response.IsSuccessStatusCode ? Severity.Success : Severity.Error);
@@ -300,7 +322,7 @@
         _saving = true;
         var response = await Api.UpdatePrivacyAsync(new UpdatePrivacyRequest(
             _emailPrivacy, _firstNamePrivacy, _lastNamePrivacy, _pronounsPrivacy,
-            _bioPrivacy, _profilePhotoPrivacy, _followingCountPrivacy, _followerCountPrivacy));
+            _bioPrivacy, _followingCountPrivacy, _followerCountPrivacy));
 
         Snackbar.Add(response.IsSuccessStatusCode ? "Privacy settings saved." : "Failed to save privacy settings.",
                      response.IsSuccessStatusCode ? Severity.Success : Severity.Error);
@@ -315,7 +337,6 @@
         ("Last Name",       () => _lastNamePrivacy,       v => _lastNamePrivacy = v),
         ("Pronouns",        () => _pronounsPrivacy,       v => _pronounsPrivacy = v),
         ("Bio",             () => _bioPrivacy,            v => _bioPrivacy = v),
-        ("Profile Photo",   () => _profilePhotoPrivacy,   v => _profilePhotoPrivacy = v),
         ("Following Count", () => _followingCountPrivacy, v => _followingCountPrivacy = v),
         ("Follower Count",  () => _followerCountPrivacy,  v => _followerCountPrivacy = v),
     ];

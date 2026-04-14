@@ -31,17 +31,7 @@
 
     <!-- Profile header -->
     <div class="d-flex align-center gap-4 mb-6">
-        <!-- Photo slot: renders URL when available, falls back to person icon -->
-        <MudAvatar Style="width:80px; height:80px; background:#3d2d5e;">
-            @if (_profile.ProfilePhotoUrl != null)
-            {
-                <MudImage Src="@_profile.ProfilePhotoUrl" Alt="@_profile.Username" />
-            }
-            else
-            {
-                <MudIcon Icon="@Icons.Material.Filled.Person" Style="font-size:2.5rem; color:#9e94c8;" />
-            }
-        </MudAvatar>
+        <AvatarDisplay Username="@_profile.Username" AvatarId="@_profile.AvatarId" Size="80" />
         <div class="flex-grow-1">
             <MudText Typo="Typo.h4" Style="font-family:'Cinzel',serif; color:#c9a84c;">
                 @_profile.Username

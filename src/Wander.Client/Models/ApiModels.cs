@@ -1,3 +1,5 @@
+using static MudBlazor.CategoryTypes;
+
 namespace Wander.Client.Models;
 
 // ── Auth ─────────────────────────────────────────────────────────────────────
@@ -10,15 +12,15 @@ public enum Privacy { Public, Restricted, Private }
 
 public record MyProfileResponse(
     string Id, string Username, string Email,
-    string? FirstName, string? LastName, string? Pronouns, string? Bio, string? ProfilePhotoUrl,
+    string? FirstName, string? LastName, string? Pronouns, string? Bio, string? AvatarId,
     Privacy EmailPrivacy, Privacy FirstNamePrivacy, Privacy LastNamePrivacy,
-    Privacy PronounsPrivacy, Privacy BioPrivacy, Privacy ProfilePhotoPrivacy,
+    Privacy PronounsPrivacy, Privacy BioPrivacy,
     Privacy FollowingCountPrivacy, Privacy FollowerCountPrivacy,
     DateTimeOffset CreatedAt);
 
 public record PublicProfileResponse(
     string Username, string? FirstName, string? LastName,
-    string? Pronouns, string? Bio, string? ProfilePhotoUrl,
+    string? Pronouns, string? Bio, string? AvatarId,
     string? Email, int? FollowingCount, int? FollowerCount,
     bool IsFollowing,
     List<PublicDeckSummary> PublicDecks, DateTimeOffset CreatedAt);
@@ -28,7 +30,7 @@ public record PublicDeckSummary(
     string Format, int CardCount, DateTimeOffset UpdatedAt);
 
 public record UpdateProfileRequest(
-    string? FirstName, string? LastName, string? Pronouns, string? Bio);
+    string? FirstName, string? LastName, string? Pronouns, string? Bio, string? AvatarId);
 
 public record UpdateSecurityRequest(
     string NewEmail, string NewUsername,
@@ -36,7 +38,7 @@ public record UpdateSecurityRequest(
 
 public record UpdatePrivacyRequest(
     Privacy EmailPrivacy, Privacy FirstNamePrivacy, Privacy LastNamePrivacy,
-    Privacy PronounsPrivacy, Privacy BioPrivacy, Privacy ProfilePhotoPrivacy,
+    Privacy PronounsPrivacy, Privacy BioPrivacy,
     Privacy FollowingCountPrivacy, Privacy FollowerCountPrivacy);
 
 // ── Cards ────────────────────────────────────────────────────────────────────

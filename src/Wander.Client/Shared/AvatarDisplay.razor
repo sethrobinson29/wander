@@ -1,0 +1,38 @@
+﻿@if (AvatarId is not null)
+{
+    <img src="/avatars/@(AvatarId).svg"
+         width="@Size" height="@Size"
+         style="border-radius:50%; object-fit:cover;"
+         alt="@Username avatar" />
+}
+else
+{
+    <svg width="@Size" height="@Size" xmlns="http://www.w3.org/2000/svg"
+         style="display:block; flex-shrink:0;">
+        <circle cx="@(Size / 2)" cy="@(Size / 2)" r="@(Size / 2)" fill="@Color" />
+        <text x="50%" y="50%" text-anchor="middle" dy=".35em"
+              fill="white" font-size="@((int)(Size * 0.4))"
+              font-family="sans-serif" font-weight="600">
+            @Initials
+        </text>
+    </svg>
+}
+
+@code {
+    [Parameter] public string Username { get; set; } = "";
+    [Parameter] public string? AvatarId { get; set; }
+    [Parameter] public int Size { get; set; } = 40;
+
+    string Initials => string.IsNullOrEmpty(Username)
+        ? "?"
+        : Username[0].ToString().ToUpperInvariant();
+
+    string Color
+    {
+        get
+        {
+            int hue = Math.Abs(Username.GetHashCode()) % 360;
+            return $"hsl({hue},55%,45%)";
+        }
+    }
+}

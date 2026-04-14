@@ -7,7 +7,8 @@ public record UpdateProfileRequest(
     [MaxLength(100)] string? FirstName,
     [MaxLength(100)] string? LastName,
     [MaxLength(50)] string? Pronouns,
-    [MaxLength(500)] string? Bio);
+    [MaxLength(500)] string? Bio,
+    [MaxLength(10)] string? AvatarId);
 
 public record UpdateSecurityRequest(
     [Required][EmailAddress][MaxLength(256)] string NewEmail,
@@ -21,16 +22,15 @@ public record UpdatePrivacyRequest(
     Privacy LastNamePrivacy,
     Privacy PronounsPrivacy,
     Privacy BioPrivacy,
-    Privacy ProfilePhotoPrivacy,
     Privacy FollowingCountPrivacy,
     Privacy FollowerCountPrivacy);
 
 // Full self-view — includes all profile fields + privacy settings
 public record MyProfileResponse(
     string Id, string Username, string Email,
-    string? FirstName, string? LastName, string? Pronouns, string? Bio, string? ProfilePhotoUrl,
+    string? FirstName, string? LastName, string? Pronouns, string? Bio, string? AvatarId,
     Privacy EmailPrivacy, Privacy FirstNamePrivacy, Privacy LastNamePrivacy,
-    Privacy PronounsPrivacy, Privacy BioPrivacy, Privacy ProfilePhotoPrivacy,
+    Privacy PronounsPrivacy, Privacy BioPrivacy,
     Privacy FollowingCountPrivacy, Privacy FollowerCountPrivacy,
     DateTimeOffset CreatedAt);
 
@@ -38,7 +38,7 @@ public record MyProfileResponse(
 // null means "hidden by privacy" (not "user has no value")
 public record PublicProfileResponse(
     string Username,
-    string? FirstName, string? LastName, string? Pronouns, string? Bio, string? ProfilePhotoUrl,
+    string? FirstName, string? LastName, string? Pronouns, string? Bio, string? AvatarId,
     string? Email, int? FollowingCount, int? FollowerCount,
     bool IsFollowing,
     List<PublicDeckSummary> PublicDecks,

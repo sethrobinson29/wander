@@ -37,13 +37,12 @@ public class UserController(
             user.LastName,
             user.Pronouns,
             user.Bio,
-            user.ProfilePhotoUrl,
+            user.AvatarId,
             user.EmailPrivacy,
             user.FirstNamePrivacy,
             user.LastNamePrivacy,
             user.PronounsPrivacy,
             user.BioPrivacy,
-            user.ProfilePhotoPrivacy,
             user.FollowingCountPrivacy,
             user.FollowerCountPrivacy,
             user.CreatedAt));
@@ -75,7 +74,7 @@ public class UserController(
             PrivacyService.IsVisible(user.LastNamePrivacy, isFollowing)        ? user.LastName        : null,
             PrivacyService.IsVisible(user.PronounsPrivacy, isFollowing)        ? user.Pronouns        : null,
             PrivacyService.IsVisible(user.BioPrivacy, isFollowing)             ? user.Bio             : null,
-            PrivacyService.IsVisible(user.ProfilePhotoPrivacy, isFollowing)    ? user.ProfilePhotoUrl : null,
+            user.AvatarId,
             PrivacyService.IsVisible(user.EmailPrivacy, isFollowing)           ? user.Email           : null,
             PrivacyService.IsVisible(user.FollowingCountPrivacy, isFollowing)  ? followingCount : null,
             PrivacyService.IsVisible(user.FollowerCountPrivacy, isFollowing)   ? followerCount  : null,
@@ -129,10 +128,14 @@ public class UserController(
         var user = await userManager.FindByIdAsync(UserId);
         if (user is null) return NotFound();
 
+        if (!AvatarService.IsValidAvatarId(request.AvatarId))
+            return BadRequest(new { error = "Invalid avatar selection." });
+
         user.FirstName = request.FirstName?.Trim();
         user.LastName = request.LastName?.Trim();
         user.Pronouns = request.Pronouns?.Trim();
         user.Bio = request.Bio?.Trim();
+        user.AvatarId = request.AvatarId;
 
         await db.SaveChangesAsync();
         return NoContent();
@@ -193,7 +196,6 @@ public class UserController(
         user.LastNamePrivacy = request.LastNamePrivacy;
         user.PronounsPrivacy = request.PronounsPrivacy;
         user.BioPrivacy = request.BioPrivacy;
-        user.ProfilePhotoPrivacy = request.ProfilePhotoPrivacy;
         user.FollowingCountPrivacy = request.FollowingCountPrivacy;
         user.FollowerCountPrivacy = request.FollowerCountPrivacy;
 

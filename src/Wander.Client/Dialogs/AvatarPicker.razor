@@ -1,0 +1,51 @@
+<MudDialog>
+    <DialogContent>
+        <MudText Typo="Typo.body1" Class="mb-4">Choose an avatar</MudText>
+        <div class="d-flex gap-4 flex-wrap">
+            @* Default — generated SVG *@
+            <div style="cursor:pointer;" @onclick="SelectDefault">
+                <div style="@SelectedStyle(null) border-radius:50%; padding:2px;">
+                    <AvatarDisplay Username="@Username" AvatarId="@((string?)null)" Size="64" />
+                </div>
+                <MudText Typo="Typo.caption" Style="text-align:center; display:block; margin-top:4px; color:#9e94c8;">
+                    Default
+                </MudText>
+            </div>
+            @foreach (var id in new[] { "lotus", "bolt", "scholar" })
+            {
+                var localId = id;
+                <div style="cursor:pointer;" @onclick="() => SelectPreset(localId)">
+                    <div style="@SelectedStyle(localId) border-radius:50%; padding:2px;">
+                        <AvatarDisplay Username="@Username" AvatarId="@localId" Size="64" />
+                    </div>
+                    <MudText Typo="Typo.caption" Style="text-align:center; display:block; margin-top:4px; color:#9e94c8;">
+                        @(char.ToUpperInvariant(localId[0]) + localId[1..])
+                    </MudText>
+                </div>
+            }
+        </div>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">Cancel</MudButton>
+        <MudButton Color="Color.Primary" Variant="Variant.Filled" OnClick="Save">Save</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] IMudDialogInstance MudDialog { get; set; } = null!;
+
+    [Parameter] public string  Username        { get; set; } = "";
+    [Parameter] public string? CurrentAvatarId { get; set; }
+
+    string? _pending;
+
+    protected override void OnParametersSet() => _pending = CurrentAvatarId;
+
+    void SelectDefault()          => _pending = null;
+    void SelectPreset(string id)  => _pending = id;
+    void Save()                   => MudDialog.Close(DialogResult.Ok(_pending));
+    void Cancel()                 => MudDialog.Cancel();
+
+    string SelectedStyle(string? id) =>
+        _pending == id ? "outline:2px solid #c9a84c;" : "outline:2px solid transparent;";
+}

@@ -134,6 +134,31 @@ public class WanderApiClient(HttpClient http, LocalStorage localStorage)
         return await http.DeleteAsync($"decks/{id}/like");
     }
 
+    public async Task<List<CommentResponse>> GetCommentsAsync(Guid deckId)
+    {
+        await AttachTokenAsync();
+        return await http.GetFromJsonAsync<List<CommentResponse>>($"decks/{deckId}/comments") ?? [];
+    }
+
+    public async Task<HttpResponseMessage> PostCommentAsync(Guid deckId, string body)
+    {
+        await AttachTokenAsync();
+        return await http.PostAsJsonAsync($"decks/{deckId}/comments", new PostCommentRequest(body));
+    }
+
+    public async Task<HttpResponseMessage> PostReplyAsync(Guid parentCommentId, string body)
+    {
+        await AttachTokenAsync();
+        return await http.PostAsJsonAsync($"comments/{parentCommentId}/replies",
+            new PostCommentRequest(body));
+    }
+
+    public async Task<HttpResponseMessage> DeleteCommentAsync(Guid commentId)
+    {
+        await AttachTokenAsync();
+        return await http.DeleteAsync($"comments/{commentId}");
+    }
+
     // ── Helpers ───────────────────────────────────────────────────────────────
 
     private async Task AttachTokenAsync()

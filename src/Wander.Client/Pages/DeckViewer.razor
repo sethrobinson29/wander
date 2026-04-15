@@ -353,6 +353,8 @@ else
     </MudGrid>
 }
 
+<CommentSection DeckId="@_deck.Id" OwnerId="@_ownerId" />
+
 @code {
     [Parameter] public Guid Id { get; set; }
 
@@ -363,6 +365,7 @@ else
     string _searchQuery = "";
     bool _saving, _isOwner, _isLiked, _likeBusy, _isAuthenticated;
     int _likeCount;
+    string _ownerId = "";
 
     string _pendingName = "", _pendingDescription = "";
     bool _editingName, _editingDescription, _savingMeta;
@@ -398,6 +401,7 @@ else
             var authState = await AuthState.GetAuthenticationStateAsync();
             _isAuthenticated = authState.User.Identity?.IsAuthenticated == true;
             _isOwner = _isAuthenticated && _deck.OwnerUsername == authState.User.Identity!.Name;
+            _ownerId = _deck.OwnerId;
             _likeCount = _deck.LikeCount;
             _isLiked = _deck.IsLikedByCurrentUser;
         }

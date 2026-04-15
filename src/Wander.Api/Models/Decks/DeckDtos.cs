@@ -41,6 +41,7 @@ public record DeckDetailResponse(
     string? Primer,
     Format Format,
     Visibility Visibility,
+    string OwnerId,
     string OwnerUsername,
     List<DeckCardResponse> Cards,
     List<string> DeckErrors,

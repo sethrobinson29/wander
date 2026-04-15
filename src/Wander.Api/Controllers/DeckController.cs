@@ -384,6 +384,7 @@ public class DeckController(WanderDbContext db, DeckValidationService validator)
             d.Primer,
             d.Format,
             d.Visibility,
+            d.OwnerId,
             d.Owner?.UserName ?? "",
             d.Cards.Select(dc =>
             {

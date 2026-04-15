@@ -1,0 +1,260 @@
+﻿@namespace Wander.Client.Shared
+@inject WanderApiClient Api
+@inject AuthenticationStateProvider AuthState
+@inject ISnackbar Snackbar
+@using System.Net.Http.Json
+@using System.Security.Claims
+@using Wander.Client.Models
+@using Wander.Client.Services
+
+<div class="mt-8">
+    <MudText Typo="Typo.h6" Class="mb-4" Style="font-family:'Cinzel',serif;">
+        Comments (@TotalCount)
+    </MudText>
+
+    @if (_isAuthenticated)
+    {
+        <div class="d-flex gap-2 align-start mb-6">
+            <MudTextField @bind-Value="_newBody"
+                          Placeholder="Write a comment..."
+                          Variant="Variant.Outlined" FullWidth="true" Lines="2"
+                          Style="background:#1a1228;" />
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" Class="mt-1"
+                       OnClick="PostComment"
+                       Disabled="_posting || string.IsNullOrWhiteSpace(_newBody)">
+                Post
+            </MudButton>
+        </div>
+    }
+    else
+    {
+        <MudText Typo="Typo.body2" Style="color:#9e94c8;" Class="mb-4">
+            <MudLink Href="/login" Style="color:#c9a84c;">Log in</MudLink> to leave a comment.
+        </MudText>
+    }
+
+    @foreach (var comment in _comments)
+    {
+        <MudCard Style="background:#1a1228; border:1px solid #3d2d5e;" Class="mb-3">
+            <MudCardContent Class="pa-3">
+
+                @* Top-level comment *@
+                <div class="d-flex gap-3">
+                    <AvatarDisplay Username="@comment.AuthorUsername"
+                                   AvatarId="@comment.AuthorAvatarId" Size="32" />
+                    <div class="flex-grow-1">
+                        <div class="d-flex align-center gap-2 mb-1">
+                            <MudText Typo="Typo.body2"
+                                     Style="font-weight:600; color:#e8e0f0;">
+                                @comment.AuthorUsername
+                            </MudText>
+                            <MudText Typo="Typo.caption" Style="color:#9e94c8;">
+                                @comment.CreatedAt.ToString("MMM d, yyyy")
+                            </MudText>
+                            @if (comment.UpdatedAt.HasValue && !comment.IsDeleted)
+                            {
+                                <MudText Typo="Typo.caption"
+                                         Style="color:#9e94c8; font-style:italic;">
+                                    (edited)
+                                </MudText>
+                            }
+                        </div>
+                        <MudText Typo="Typo.body2"
+                                 Style="@(comment.IsDeleted ? "color:#9e94c8; font-style:italic;" : "color:#e8e0f0;")">
+                            @comment.Body
+                        </MudText>
+
+                        @if (!comment.IsDeleted)
+                        {
+                            <div class="d-flex gap-1 mt-1">
+                                @* Reply button only on top-level comments *@
+                                @if (_isAuthenticated)
+                                {
+                                    <MudButton Variant="Variant.Text" Size="Size.Small"
+                                               Style="color:#9e94c8; min-width:0; padding:0 8px;"
+                                               OnClick="() => ToggleReplyBox(comment.Id)">
+                                        Reply
+                                    </MudButton>
+                                }
+                                @if (_currentUserId == comment.AuthorId || _isOwner)
+                                {
+                                    <MudButton Variant="Variant.Text" Size="Size.Small"
+                                               Color="Color.Error"
+                                               Style="min-width:0; padding:0 8px;"
+                                               OnClick="() => DeleteComment(comment.Id, isReply: false, parentId: null)">
+                                        Delete
+                                    </MudButton>
+                                }
+                            </div>
+                        }
+                    </div>
+                </div>
+
+                @* Inline reply input *@
+                @if (_replyingTo == comment.Id)
+                {
+                    <div class="d-flex gap-2 align-start mt-3 ml-10">
+                        <MudTextField @bind-Value="_replyBody"
+                                      Placeholder="Write a reply..."
+                                      Variant="Variant.Outlined" FullWidth="true" Lines="2"
+                                      Style="background:#241a35;" />
+                        <div class="d-flex flex-column gap-1 mt-1">
+                            <MudButton Variant="Variant.Filled" Color="Color.Primary"
+                                       Size="Size.Small"
+                                       OnClick="() => PostReply(comment.Id)"
+                                       Disabled="_posting || string.IsNullOrWhiteSpace(_replyBody)">
+                                Post
+                            </MudButton>
+                            <MudButton Variant="Variant.Text" Size="Size.Small"
+                                       OnClick="() => { _replyingTo = null; _replyBody = string.Empty; }">
+                                Cancel
+                            </MudButton>
+                        </div>
+                    </div>
+                }
+
+                @* Replies (indented, no Reply button) *@
+                @foreach (var reply in comment.Replies)
+                {
+                    <div class="ml-10 mt-3 pt-3" style="border-top:1px solid #2d2045;">
+                        <div class="d-flex gap-3">
+                            <AvatarDisplay Username="@reply.AuthorUsername"
+                                           AvatarId="@reply.AuthorAvatarId" Size="28" />
+                            <div class="flex-grow-1">
+                                <div class="d-flex align-center gap-2 mb-1">
+                                    <MudText Typo="Typo.body2"
+                                             Style="font-weight:600; color:#e8e0f0;">
+                                        @reply.AuthorUsername
+                                    </MudText>
+                                    <MudText Typo="Typo.caption" Style="color:#9e94c8;">
+                                        @reply.CreatedAt.ToString("MMM d, yyyy")
+                                    </MudText>
+                                    @if (reply.UpdatedAt.HasValue && !reply.IsDeleted)
+                                    {
+                                        <MudText Typo="Typo.caption"
+                                                 Style="color:#9e94c8; font-style:italic;">
+                                            (edited)
+                                        </MudText>
+                                    }
+                                </div>
+                                <MudText Typo="Typo.body2"
+                                         Style="@(reply.IsDeleted ? "color:#9e94c8; font-style:italic;" : "color:#e8e0f0;")">
+                                    @reply.Body
+                                </MudText>
+                                @if (!reply.IsDeleted && (_currentUserId == reply.AuthorId || _isOwner))
+                                {
+                                    <MudButton Variant="Variant.Text" Size="Size.Small"
+                                               Color="Color.Error"
+                                               Style="min-width:0; padding:0 8px; margin-top:4px;"
+                                               OnClick="() => DeleteComment(reply.Id, isReply: true, parentId: comment.Id)">
+                                        Delete
+                                    </MudButton>
+                                }
+                            </div>
+                        </div>
+                    </div>
+                }
+            </MudCardContent>
+        </MudCard>
+    }
+</div>
+
+@code {
+    [Parameter] public Guid DeckId { get; set; }
+    [Parameter] public string OwnerId { get; set; } = "";
+
+    List<CommentResponse> _comments = [];
+    bool _isAuthenticated, _isOwner, _posting;
+    string? _currentUserId;
+    string _newBody = "", _replyBody = "";
+    Guid? _replyingTo;
+
+    int TotalCount => _comments.Sum(c => 1 + c.Replies.Count);
+
+    protected override async Task OnInitializedAsync()
+    {
+        var authState = await AuthState.GetAuthenticationStateAsync();
+        _isAuthenticated = authState.User.Identity?.IsAuthenticated == true;
+        _currentUserId = authState.User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        _isOwner = _currentUserId == OwnerId;
+        _comments = await Api.GetCommentsAsync(DeckId);
+    }
+
+    void ToggleReplyBox(Guid commentId)
+    {
+        if (_replyingTo == commentId)
+        {
+            _replyingTo = null;
+            _replyBody = "";
+        }
+        else
+        {
+            _replyingTo = commentId;
+            _replyBody = "";
+        }
+    }
+
+    async Task PostComment()
+    {
+        if (string.IsNullOrWhiteSpace(_newBody)) return;
+        _posting = true;
+        var response = await Api.PostCommentAsync(DeckId, _newBody.Trim());
+        if (response.IsSuccessStatusCode)
+        {
+            var comment = await response.Content.ReadFromJsonAsync<CommentResponse>();
+            if (comment is not null) _comments.Add(comment);
+            _newBody = "";
+        }
+        else
+        {
+            Snackbar.Add("Failed to post comment.", Severity.Error);
+        }
+        _posting = false;
+    }
+
+    async Task PostReply(Guid parentId)
+    {
+        if (string.IsNullOrWhiteSpace(_replyBody)) return;
+        _posting = true;
+        var response = await Api.PostReplyAsync(parentId, _replyBody.Trim());
+        if (response.IsSuccessStatusCode)
+        {
+            var reply = await response.Content.ReadFromJsonAsync<CommentResponse>();
+            var parent = _comments.FirstOrDefault(c => c.Id == parentId);
+            if (parent is not null && reply is not null)
+                parent.Replies.Add(reply);
+            _replyBody = "";
+            _replyingTo = null;
+        }
+        else
+        {
+            Snackbar.Add("Failed to post reply.", Severity.Error);
+        }
+        _posting = false;
+    }
+
+    async Task DeleteComment(Guid commentId, bool isReply, Guid? parentId)
+    {
+        var response = await Api.DeleteCommentAsync(commentId);
+        if (response.IsSuccessStatusCode)
+        {
+            if (!isReply)
+            {
+                _comments = await Api.GetCommentsAsync(DeckId); // re-fetch to get [deleted] state
+            }
+            else if (parentId.HasValue)
+            {
+                var parent = _comments.FirstOrDefault(c => c.Id == parentId.Value);
+                if (parent is not null)
+                {
+                    // Re-fetch just this comment's replies by reloading all
+                    _comments = await Api.GetCommentsAsync(DeckId);
+                }
+            }
+        }
+        else
+        {
+            Snackbar.Add("Failed to delete comment.", Severity.Error);
+        }
+    }
+}

@@ -16,6 +16,7 @@ public class WanderDbContext : IdentityDbContext<ApplicationUser>
     public DbSet<DeckCard> DeckCards => Set<DeckCard>();
     public DbSet<UserFollow> Follows => Set<UserFollow>();
     public DbSet<DeckLike> DeckLikes => Set<DeckLike>();
+    public DbSet<DeckComment> DeckComments => Set<DeckComment>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -105,5 +106,12 @@ public class WanderDbContext : IdentityDbContext<ApplicationUser>
         });
 
         modelBuilder.Entity<DeckLike>().HasKey(l => new { l.UserId, l.DeckId });
-    }
+
+        modelBuilder.Entity<DeckComment>()
+                .ToTable("DeckComment")
+                .HasOne(c => c.ParentComment)
+                .WithMany(c => c.Replies)
+                .HasForeignKey(c => c.ParentCommentId)
+                .OnDelete(DeleteBehavior.Restrict);
+                }
 }

@@ -5,6 +5,7 @@ using Microsoft.EntityFrameworkCore;
 using Wander.Api.Domain;
 using Wander.Api.Infrastructure.Data;
 using Wander.Api.Models.Decks;
+using Wander.Api.Services;
 
 namespace Wander.Api.Controllers;
 
@@ -75,7 +76,7 @@ public class CommentController(WanderDbContext db) : ControllerBase
         if (parent is null) return NotFound();
 
         // Only allow replying to top-level comments — not to replies
-        if (parent.ParentCommentId is not null)
+        if (!CommentGuard.IsTopLevel(parent))
             return BadRequest(new { error = "Cannot reply to a reply." });
 
         if (parent.Deck.Visibility == Visibility.Private && parent.Deck.OwnerId != UserId)

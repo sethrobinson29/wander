@@ -59,7 +59,7 @@ public class UserController(
         var isFollowing = requesterId != null && !isSelf &&
                           await db.Follows.AnyAsync(f => f.FollowerId == requesterId && f.FolloweeId == user.Id);
 
-        var followerCount  = await db.Follows.CountAsync(f => f.FolloweeId == user.Id);
+        var followerCount = await db.Follows.CountAsync(f => f.FolloweeId == user.Id);
         var followingCount = await db.Follows.CountAsync(f => f.FollowerId == user.Id);
 
         var publicDecks = await db.Decks
@@ -70,14 +70,14 @@ public class UserController(
 
         return Ok(new PublicProfileResponse(
             user.UserName!,
-            PrivacyService.IsVisible(user.FirstNamePrivacy, isFollowing)      ? user.FirstName       : null,
-            PrivacyService.IsVisible(user.LastNamePrivacy, isFollowing)        ? user.LastName        : null,
-            PrivacyService.IsVisible(user.PronounsPrivacy, isFollowing)        ? user.Pronouns        : null,
-            PrivacyService.IsVisible(user.BioPrivacy, isFollowing)             ? user.Bio             : null,
+            PrivacyService.IsVisible(user.FirstNamePrivacy, isFollowing) ? user.FirstName : null,
+            PrivacyService.IsVisible(user.LastNamePrivacy, isFollowing) ? user.LastName : null,
+            PrivacyService.IsVisible(user.PronounsPrivacy, isFollowing) ? user.Pronouns : null,
+            PrivacyService.IsVisible(user.BioPrivacy, isFollowing) ? user.Bio : null,
             user.AvatarId,
-            PrivacyService.IsVisible(user.EmailPrivacy, isFollowing)           ? user.Email           : null,
-            PrivacyService.IsVisible(user.FollowingCountPrivacy, isFollowing)  ? followingCount : null,
-            PrivacyService.IsVisible(user.FollowerCountPrivacy, isFollowing)   ? followerCount  : null,
+            PrivacyService.IsVisible(user.EmailPrivacy, isFollowing) ? user.Email : null,
+            PrivacyService.IsVisible(user.FollowingCountPrivacy, isFollowing) ? followingCount : null,
+            PrivacyService.IsVisible(user.FollowerCountPrivacy, isFollowing) ? followerCount : null,
             isFollowing,
             publicDecks.Select(d => new PublicDeckSummary(
                 d.Id,

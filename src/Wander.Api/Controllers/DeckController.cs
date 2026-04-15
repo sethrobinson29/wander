@@ -365,9 +365,9 @@ public class DeckController(WanderDbContext db, DeckValidationService validator)
 
     private async Task<(int LikeCount, bool IsLiked)> GetLikeInfoAsync(Guid deckId, CancellationToken ct)
     {
-        var userId    = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
         var likeCount = await db.DeckLikes.CountAsync(l => l.DeckId == deckId, ct);
-        var isLiked   = userId != null &&
+        var isLiked = userId != null &&
                         await db.DeckLikes.AnyAsync(l => l.DeckId == deckId && l.UserId == userId, ct);
         return (likeCount, isLiked);
     }

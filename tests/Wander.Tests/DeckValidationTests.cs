@@ -31,8 +31,8 @@ public class DeckValidationTests
     [Fact]
     public void TwoCommandersWithPartner_NoError()
     {
-        var a    = CardBuilder.Commander(CardBuilder.WithPartner("Kydele"));
-        var b    = CardBuilder.Commander(CardBuilder.WithPartner("Silas Renn"));
+        var a = CardBuilder.Commander(CardBuilder.WithPartner("Kydele"));
+        var b = CardBuilder.Commander(CardBuilder.WithPartner("Silas Renn"));
         var main = CardBuilder.DeckCard(CardBuilder.Card(), quantity: 98); // 98 + 2 commanders = 100
         var errors = _svc.GetStructuralErrors([a, b, main], Format.Commander);
         Assert.Empty(errors);
@@ -67,12 +67,12 @@ public class DeckValidationTests
 
     // name, typeLine, oracleText, quantity, expectError
     [Theory]
-    [InlineData("Plains",         "Basic Land — Plains",  null,                                                         20, false)]  // basic land — unlimited
-    [InlineData("Relentless Rats","Creature — Rat",       "A deck can have any number of cards named Relentless Rats.", 30, false)]  // any number — unlimited
-    [InlineData("Seven Dwarves",  "Creature — Dwarf",     null,                                                          7, false)]  // named limit — at limit
-    [InlineData("Seven Dwarves",  "Creature — Dwarf",     null,                                                          8, true)]   // named limit — over limit
-    [InlineData("The Nazgûl",     "Creature — Wraith",    null,                                                          9, false)]  // named limit — at limit
-    [InlineData("The Nazgûl",     "Creature — Wraith",    null,                                                         10, true)]   // named limit — over limit
+    [InlineData("Plains", "Basic Land — Plains", null, 20, false)]  // basic land — unlimited
+    [InlineData("Relentless Rats", "Creature — Rat", "A deck can have any number of cards named Relentless Rats.", 30, false)]  // any number — unlimited
+    [InlineData("Seven Dwarves", "Creature — Dwarf", null, 7, false)]  // named limit — at limit
+    [InlineData("Seven Dwarves", "Creature — Dwarf", null, 8, true)]   // named limit — over limit
+    [InlineData("The Nazgûl", "Creature — Wraith", null, 9, false)]  // named limit — at limit
+    [InlineData("The Nazgûl", "Creature — Wraith", null, 10, true)]   // named limit — over limit
     public void CommanderCopyLimits(string name, string typeLine, string? oracleText, int qty, bool expectError)
     {
         var card = CardBuilder.Card(name, typeLine, oracleText);
@@ -107,7 +107,7 @@ public class DeckValidationTests
     [InlineData(Format.Vintage)]
     public void Sideboard_MaximumFifteenCards(Format format)
     {
-        var main  = CardBuilder.DeckCard(CardBuilder.Card(), quantity: 60);
+        var main = CardBuilder.DeckCard(CardBuilder.Card(), quantity: 60);
         var side15 = CardBuilder.DeckCard(CardBuilder.Card(), quantity: 15, isSideboard: true);
         var side16 = CardBuilder.DeckCard(CardBuilder.Card(), quantity: 16, isSideboard: true);
 
@@ -130,8 +130,8 @@ public class DeckValidationTests
     public void Commander_NoSideboard()
     {
         var commander = CardBuilder.Commander(CardBuilder.Card());
-        var main      = CardBuilder.DeckCard(CardBuilder.Card(), quantity: 99);
-        var side      = CardBuilder.DeckCard(CardBuilder.Card(), quantity: 1, isSideboard: true);
+        var main = CardBuilder.DeckCard(CardBuilder.Card(), quantity: 99);
+        var side = CardBuilder.DeckCard(CardBuilder.Card(), quantity: 1, isSideboard: true);
 
         var errors = _svc.GetStructuralErrors([commander, main, side], Format.Commander);
         Assert.Contains(errors, e => e.Contains("do not use a sideboard"));

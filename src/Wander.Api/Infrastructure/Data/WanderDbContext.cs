@@ -113,5 +113,5 @@ public class WanderDbContext : IdentityDbContext<ApplicationUser>
                 .WithMany(c => c.Replies)
                 .HasForeignKey(c => c.ParentCommentId)
                 .OnDelete(DeleteBehavior.Restrict);
-                }
+    }
 }

@@ -9,21 +9,21 @@ public class DeckValidationService
     private static readonly Dictionary<Format, string> ScryfallFormatKeys = new()
     {
         [Format.Commander] = "commander",
-        [Format.Standard]  = "standard",
-        [Format.Pioneer]   = "pioneer",
-        [Format.Modern]    = "modern",
-        [Format.Legacy]    = "legacy",
-        [Format.Vintage]   = "vintage",
-        [Format.Pauper]    = "pauper",
-        [Format.Explorer]  = "explorer",
-        [Format.Historic]  = "historic",
-        [Format.Timeless]  = "timeless",
+        [Format.Standard] = "standard",
+        [Format.Pioneer] = "pioneer",
+        [Format.Modern] = "modern",
+        [Format.Legacy] = "legacy",
+        [Format.Vintage] = "vintage",
+        [Format.Pauper] = "pauper",
+        [Format.Explorer] = "explorer",
+        [Format.Historic] = "historic",
+        [Format.Timeless] = "timeless",
     };
 
     private static readonly Dictionary<string, int> NamedCopyLimits = new(StringComparer.OrdinalIgnoreCase)
     {
         ["Seven Dwarves"] = 7,
-        ["The Nazgûl"]    = 9,
+        ["The Nazgûl"] = 9,
     };
 
     // MinDeck is a minimum for non-exact formats, or the required exact total for Commander.
@@ -31,15 +31,15 @@ public class DeckValidationService
 
     private static readonly Dictionary<Format, FormatRules> DeckRules = new()
     {
-        [Format.Standard]  = new(60, 15),
-        [Format.Pioneer]   = new(60, 15),
-        [Format.Modern]    = new(60, 15),
-        [Format.Legacy]    = new(60, 15),
-        [Format.Vintage]   = new(60, 15),
-        [Format.Pauper]    = new(60, 15),
-        [Format.Explorer]  = new(60, 15),
-        [Format.Historic]  = new(60, 15),
-        [Format.Timeless]  = new(60, 15),
+        [Format.Standard] = new(60, 15),
+        [Format.Pioneer] = new(60, 15),
+        [Format.Modern] = new(60, 15),
+        [Format.Legacy] = new(60, 15),
+        [Format.Vintage] = new(60, 15),
+        [Format.Pauper] = new(60, 15),
+        [Format.Explorer] = new(60, 15),
+        [Format.Historic] = new(60, 15),
+        [Format.Timeless] = new(60, 15),
         [Format.Commander] = new(100, 0, Exact: true),
     };
 

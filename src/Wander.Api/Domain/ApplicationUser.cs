@@ -22,7 +22,7 @@ public class ApplicationUser : IdentityUser
     public Privacy FollowingCountPrivacy { get; set; } = Privacy.Public;
     public Privacy FollowerCountPrivacy { get; set; } = Privacy.Public;
     public ICollection<Deck> Decks { get; set; } = [];
-    public ICollection<UserFollow> Following { get; set; } = []; 
+    public ICollection<UserFollow> Following { get; set; } = [];
     public ICollection<UserFollow> Followers { get; set; } = [];
     public ICollection<DeckLike> LikedDecks { get; set; } = [];
 }

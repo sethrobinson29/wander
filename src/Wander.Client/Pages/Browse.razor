@@ -36,7 +36,8 @@ else
                         <MudText Typo="Typo.h6" Style="font-family:'Cinzel',serif;">@deck.Name</MudText>
                         <div class="d-flex align-center gap-2 mt-1">
                             <FormatBadge Format="@deck.Format" />
-                            <MudText Typo="Typo.caption" Style="color:#9e94c8;">by @deck.OwnerUsername</MudText>
+                            <MudLink Href="@($"/users/{deck.OwnerUsername}")" Typo="Typo.caption" Style="color:#9e94c8;"
+                                     @onclick:stopPropagation="true">by @deck.OwnerUsername</MudLink>
                             <MudText Typo="Typo.caption" Style="color:#9e94c8;">· @deck.CardCount cards</MudText>
                         </div>
                         @if (deck.Description != null)

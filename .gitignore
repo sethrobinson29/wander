@@ -11,6 +11,7 @@ docker-compose.override.yml
 # markdown
 *.md
 !README.md
+docs/
 
 # User-specific files
 *.rsuser

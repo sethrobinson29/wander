@@ -40,7 +40,7 @@
             <FormatBadge Format="@_deck.Format" />
             @if (!_isOwner)
             {
-                <MudText Typo="Typo.caption" Style="color:#9e94c8;">by @_deck.OwnerUsername</MudText>
+                <MudLink Href="@($"/users/{_deck.OwnerUsername}")" Typo="Typo.caption" Style="color:#9e94c8;">by @_deck.OwnerUsername</MudLink>
             }
             <MudText Typo="Typo.caption" Style="color:#9e94c8;">@TotalCards cards</MudText>
         </div>

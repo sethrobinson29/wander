@@ -6,6 +6,7 @@ using Wander.Api.Domain;
 using Wander.Api.Infrastructure.Data;
 using Wander.Api.Models.Decks;
 using Wander.Api.Services;
+using static Wander.Api.Services.DeckDisplayService;
 
 namespace Wander.Api.Controllers;
 
@@ -480,11 +481,4 @@ public class DeckController(WanderDbContext db, DeckValidationService validator)
             isLiked);
     }
 
-    private static string? ResolveCoverImage(Deck d)
-    {
-        if (d.CoverPrinting != null) return d.CoverPrinting.ImageUriArtCrop;
-        var commander = d.Cards.FirstOrDefault(c => c.IsCommander);
-        var printing = commander?.Printing ?? commander?.Card?.Printings.FirstOrDefault();
-        return printing?.ImageUriArtCrop;
-    }
 }

@@ -56,4 +56,15 @@ internal static class CardBuilder
 
     public static DeckCard Commander(Card card) =>
         DeckCard(card, quantity: 1, isCommander: true);
+
+    public static CardPrinting Printing(Card card, string? artCrop = "https://example.com/art.jpg") => new()
+    {
+        Id = Guid.NewGuid(),
+        ScryfallId = Guid.NewGuid().ToString(),
+        CardId = card.Id,
+        Card = card,
+        SetCode = "TST",
+        CollectorNumber = "1",
+        ImageUriArtCrop = artCrop,
+    };
 }

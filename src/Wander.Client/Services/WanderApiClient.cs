@@ -44,6 +44,13 @@ public class WanderApiClient(HttpClient http, LocalStorage localStorage)
         return await http.PutAsJsonAsync("users/me/privacy", req);
     }
 
+    public async Task<List<UserSearchResult>> SearchUsersAsync(string q)
+    {
+        await AttachTokenAsync();
+        return await http.GetFromJsonAsync<List<UserSearchResult>>(
+            $"users/search?q={Uri.EscapeDataString(q)}") ?? [];
+    }
+
     public async Task<PublicProfileResponse?> GetUserProfileAsync(string username)
     {
         await AttachTokenAsync();
@@ -132,6 +139,14 @@ public class WanderApiClient(HttpClient http, LocalStorage localStorage)
     {
         await AttachTokenAsync();
         return await http.DeleteAsync($"decks/{id}/like");
+    }
+
+    public async Task<List<DeckSummary>> SearchDecksAsync(string q, string type = "name", Format? format = null)
+    {
+        await AttachTokenAsync();
+        var url = $"decks/search?q={Uri.EscapeDataString(q)}&type={type}";
+        if (format.HasValue) url += $"&format={(int)format.Value}";
+        return await http.GetFromJsonAsync<List<DeckSummary>>(url) ?? [];
     }
 
     public async Task<List<CommentResponse>> GetCommentsAsync(Guid deckId)

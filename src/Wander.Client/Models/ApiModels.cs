@@ -41,6 +41,8 @@ public record UpdatePrivacyRequest(
     Privacy PronounsPrivacy, Privacy BioPrivacy,
     Privacy FollowingCountPrivacy, Privacy FollowerCountPrivacy);
 
+public record UserSearchResult(string Username, string? AvatarId, int DeckCount);
+
 // ── Cards ────────────────────────────────────────────────────────────────────
 
 public record CardSearchResult(

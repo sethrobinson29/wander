@@ -1,0 +1,24 @@
+﻿<div class="d-flex gap-1" style="max-width:480px;">
+    <MudSelect @bind-Value="_type" Dense="true" Variant="Variant.Outlined"
+               Style="width:140px; color:#e8e0f0;">
+        <MudSelectItem Value=@("name")>Deck Name</MudSelectItem>
+        <MudSelectItem Value=@("commander")>Commander</MudSelectItem>
+        <MudSelectItem Value=@("user")>User</MudSelectItem>
+    </MudSelect>
+    <MudTextField @bind-Value="_query" Placeholder="Search..." Variant="Variant.Outlined"
+                  Immediate="true" Style="flex:1; color:#e8e0f0;"
+                  OnKeyDown="OnKey" />
+    <MudIconButton Icon="@Icons.Material.Filled.Search" OnClick="Submit" />
+</div>
+
+@code {
+    [Inject] NavigationManager Nav { get; set; } = null!;
+    string _query = "", _type = "name";
+
+    void OnKey(KeyboardEventArgs e) { if (e.Key == "Enter") Submit(); }
+    void Submit()
+    {
+        if (string.IsNullOrWhiteSpace(_query)) return;
+        Nav.NavigateTo($"/search?q={Uri.EscapeDataString(_query.Trim())}&type={_type}");
+    }
+}

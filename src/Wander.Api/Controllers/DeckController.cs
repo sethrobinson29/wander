@@ -72,6 +72,34 @@ public class DeckController(WanderDbContext db, DeckValidationService validator)
         return Ok(ToDetail(deck, likeCount, isLiked));
     }
 
+    [HttpGet("search")]
+    public async Task<ActionResult<List<DeckSummaryResponse>>> Search(
+    [FromQuery] string q,
+    [FromQuery] string type = "name",
+    [FromQuery] Format? format = null,
+    CancellationToken ct = default)
+    {
+        if (string.IsNullOrWhiteSpace(q)) return Ok(new List<DeckSummaryResponse>());
+
+        IQueryable<Deck> query = db.Decks
+            .Where(d => d.Visibility == Visibility.Public)
+            .Include(d => d.Owner)
+            .Include(d => d.Cards).ThenInclude(dc => dc.Card)
+            .Include(d => d.CoverPrinting);
+
+        var lowerQ = q.ToLower();
+        query = type switch
+        {
+            "commander" => query.Where(d => d.Cards.Any(c => c.IsCommander && c.Card!.Name.ToLower().Contains(lowerQ))),
+            _ => query.Where(d => d.Name.ToLower().Contains(lowerQ))
+        };
+
+        if (format.HasValue) query = query.Where(d => d.Format == format.Value);
+
+        var decks = await query.OrderByDescending(d => d.UpdatedAt).Take(50).ToListAsync(ct);
+        return Ok(decks.Select(d => ToSummary(d)));
+    }
+
     // ── Mutations ────────────────────────────────────────────────────────────
 
     [HttpPost]

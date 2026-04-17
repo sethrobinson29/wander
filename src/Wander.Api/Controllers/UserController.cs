@@ -89,6 +89,26 @@ public class UserController(
             user.CreatedAt));
     }
 
+    public record UserSearchResult(string Username, string? AvatarId, int DeckCount);
+
+    [HttpGet("search")]
+    public async Task<ActionResult<List<UserSearchResult>>> Search([FromQuery] string q, CancellationToken ct)
+    {
+        if (string.IsNullOrWhiteSpace(q)) return Ok(new List<UserSearchResult>());
+
+        var lowerQ = q.ToLower();
+        var users = await db.Users
+            .Where(u => u.UserName!.ToLower().Contains(lowerQ))
+            .Select(u => new UserSearchResult(
+                u.UserName!,
+                u.AvatarId,
+                u.Decks.Count(d => d.Visibility == Visibility.Public)))
+            .Take(20)
+            .ToListAsync(ct);
+
+        return Ok(users);
+    }
+
     [HttpPost("{username}/follow")]
     [Authorize]
     public async Task<IActionResult> Follow(string username)

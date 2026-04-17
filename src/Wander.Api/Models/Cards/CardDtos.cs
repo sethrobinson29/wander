@@ -12,4 +12,5 @@ public record CardSearchResponse(
     Guid? DefaultPrintingId,
     string? ImageUriNormal,
     string? ImageUriSmall,
+    string? ImageUriArtCrop,
     Dictionary<string, string> Legalities);

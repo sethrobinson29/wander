@@ -29,6 +29,7 @@ else
             <MudItem xs="12" sm="6" md="4">
                 <MudCard Style="background:#241a35; border:1px solid #3d2d5e; cursor:pointer;"
                          @onclick='() => Nav.NavigateTo($"/decks/{deck.Id}")'>
+                    <div style="height:120px;border-radius:4px 4px 0 0;@ColorIdentityHelper.BannerStyle(deck.ColorIdentity)"></div>
                     <MudCardContent>
                         <MudText Typo="Typo.h6" Style="font-family:'Cinzel',serif;">@deck.Name</MudText>
                         <div class="d-flex align-center gap-2 mt-1">

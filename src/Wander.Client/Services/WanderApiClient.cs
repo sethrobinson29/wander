@@ -159,6 +159,12 @@ public class WanderApiClient(HttpClient http, LocalStorage localStorage)
         return await http.DeleteAsync($"comments/{commentId}");
     }
 
+    public async Task<HttpResponseMessage> SetDeckCoverAsync(Guid id, Guid? printingId)
+    {
+        await AttachTokenAsync();
+        return await http.PatchAsJsonAsync($"decks/{id}/cover", new { printingId });
+    }
+
     // ── Helpers ───────────────────────────────────────────────────────────────
 
     private async Task AttachTokenAsync()

@@ -55,6 +55,7 @@ public class CardController(WanderDbContext db) : ControllerBase
                 printing?.Id,
                 printing?.ImageUriNormal,
                 printing?.ImageUriSmall,
+                printing?.ImageUriArtCrop,
                 c.Legalities);
         }));
     }

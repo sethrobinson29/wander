@@ -73,6 +73,11 @@ public class WanderDbContext : IdentityDbContext<ApplicationUser>
                   .WithMany(u => u.Decks)
                   .HasForeignKey(d => d.OwnerId)
                   .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasOne(d => d.CoverPrinting)
+                    .WithMany()
+                    .HasForeignKey(d => d.CoverPrintingId)
+                    .OnDelete(DeleteBehavior.SetNull);
         });
 
         modelBuilder.Entity<DeckCard>(entity =>

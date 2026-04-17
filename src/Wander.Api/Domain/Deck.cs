@@ -15,4 +15,6 @@ public class Deck
     public DateTimeOffset UpdatedAt { get; set; }
     public ICollection<DeckLike> Likes { get; set; } = [];
     public ICollection<DeckComment> Comments { get; set; } = [];
+    public Guid? CoverPrintingId { get; set; }
+    public CardPrinting? CoverPrinting { get; set; }
 }

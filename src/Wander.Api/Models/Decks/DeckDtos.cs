@@ -28,6 +28,8 @@ public record DeckSummaryResponse(
     string Name,
     string? Description,
     Format Format,
+    string? CoverImageUri,
+    List<string> ColorIdentity,
     Visibility Visibility,
     string OwnerUsername,
     int CardCount,
@@ -40,6 +42,7 @@ public record DeckDetailResponse(
     string? Description,
     string? Primer,
     Format Format,
+    string? CoverImageUri,
     Visibility Visibility,
     string OwnerId,
     string OwnerUsername,
@@ -61,9 +64,13 @@ public record DeckCardResponse(
     List<string> ColorIdentity,
     string? ImageUriNormal,
     string? ImageUriSmall,
+    string? ImageUriArtCrop,
+    Guid? ImagePrintingId,
     int Quantity,
     bool IsCommander,
     bool IsSideboard,
     List<string> Errors);
 
 public record BulkImportRequest([Required][MaxLength(200_000)] string Decklist);
+
+public record SetCoverRequest(Guid? PrintingId);

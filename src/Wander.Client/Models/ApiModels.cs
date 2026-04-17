@@ -55,6 +55,7 @@ public record CardSearchResult(
     Guid? DefaultPrintingId,
     string? ImageUriNormal,
     string? ImageUriSmall,
+    string? ImageUriArtCrop,
     Dictionary<string, string> Legalities);
 
 // ── Decks ────────────────────────────────────────────────────────────────────
@@ -67,6 +68,8 @@ public record DeckSummary(
     string Name,
     string? Description,
     Format Format,
+    string? CoverImageUri,
+    List<string> ColorIdentity,
     Visibility Visibility,
     string OwnerUsername,
     int CardCount,
@@ -79,6 +82,7 @@ public record DeckDetail(
     string? Description,
     string? Primer,
     Format Format,
+    string? CoverImageUri,
     Visibility Visibility,
     string OwnerId,
     string OwnerUsername,
@@ -99,6 +103,8 @@ public record DeckCardDetail(
     List<string> ColorIdentity,
     string? ImageUriNormal,
     string? ImageUriSmall,
+    string? ImageUriArtCrop,
+    Guid? ImagePrintingId,
     int Quantity,
     bool IsCommander,
     bool IsSideboard,

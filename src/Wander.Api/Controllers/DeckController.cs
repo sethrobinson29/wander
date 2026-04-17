@@ -25,7 +25,7 @@ public class DeckController(WanderDbContext db, DeckValidationService validator)
         IQueryable<Deck> query = db.Decks
             .Where(d => d.Visibility == Visibility.Public)
             .Include(d => d.Owner)
-            .Include(d => d.Cards);
+            .Include(d => d.Cards).ThenInclude(dc => dc.Card);
 
         if (format.HasValue)
             query = query.Where(d => d.Format == format.Value);
@@ -41,7 +41,7 @@ public class DeckController(WanderDbContext db, DeckValidationService validator)
         var decks = await db.Decks
             .Where(d => d.OwnerId == UserId)
             .Include(d => d.Owner)
-            .Include(d => d.Cards)
+            .Include(d => d.Cards).ThenInclude(dc => dc.Card)
             .OrderByDescending(d => d.UpdatedAt)
             .ToListAsync(ct);
 
@@ -54,6 +54,7 @@ public class DeckController(WanderDbContext db, DeckValidationService validator)
     {
         var deck = await db.Decks
             .Include(d => d.Owner)
+            .Include(d => d.CoverPrinting)
             .Include(d => d.Cards).ThenInclude(dc => dc.Card).ThenInclude(c => c.Printings)
             .Include(d => d.Cards).ThenInclude(dc => dc.Printing)
             .FirstOrDefaultAsync(d => d.Id == id, ct);
@@ -109,6 +110,7 @@ public class DeckController(WanderDbContext db, DeckValidationService validator)
     {
         var deck = await db.Decks
             .Include(d => d.Owner)
+            .Include(d => d.CoverPrinting)
             .Include(d => d.Cards).ThenInclude(dc => dc.Card).ThenInclude(c => c.Printings)
             .Include(d => d.Cards).ThenInclude(dc => dc.Printing)
             .FirstOrDefaultAsync(d => d.Id == id, ct);
@@ -183,6 +185,30 @@ public class DeckController(WanderDbContext db, DeckValidationService validator)
         return NoContent();
     }
 
+    [HttpPatch("{id:guid}/cover")]
+    [Authorize]
+    public async Task<IActionResult> SetCover(Guid id, [FromBody] SetCoverRequest request, CancellationToken ct)
+    {
+        var deck = await db.Decks
+            .Include(d => d.Cards)
+            .FirstOrDefaultAsync(d => d.Id == id, ct);
+        if (deck is null) return NotFound();
+        if (deck.OwnerId != UserId) return Forbid();
+
+        if (request.PrintingId.HasValue)
+        {
+            // Validate that the printing belongs to a card currently in the deck
+            var deckCardIds = deck.Cards.Select(c => c.CardId).ToList();
+            var printing = await db.CardPrintings
+                .FirstOrDefaultAsync(p => p.Id == request.PrintingId.Value && deckCardIds.Contains(p.CardId), ct);
+            if (printing is null) return BadRequest(new { error = "Printing not found in this deck." });
+        }
+
+        deck.CoverPrintingId = request.PrintingId;
+        await db.SaveChangesAsync(ct);
+        return NoContent();
+    }
+
     // ── Card management ──────────────────────────────────────────────────────
 
     [HttpPut("{id:guid}/cards")]
@@ -194,6 +220,7 @@ public class DeckController(WanderDbContext db, DeckValidationService validator)
     {
         var deck = await db.Decks
             .Include(d => d.Owner)
+            .Include(d => d.CoverPrinting)
             .Include(d => d.Cards).ThenInclude(dc => dc.Card).ThenInclude(c => c.Printings)
             .Include(d => d.Cards).ThenInclude(dc => dc.Printing)
             .FirstOrDefaultAsync(d => d.Id == id, ct);
@@ -259,6 +286,7 @@ public class DeckController(WanderDbContext db, DeckValidationService validator)
     {
         var deck = await db.Decks
             .Include(d => d.Owner)
+            .Include(d => d.CoverPrinting)
             .Include(d => d.Cards).ThenInclude(dc => dc.Card).ThenInclude(c => c.Printings)
             .Include(d => d.Cards).ThenInclude(dc => dc.Printing)
             .FirstOrDefaultAsync(d => d.Id == id, ct);
@@ -357,6 +385,13 @@ public class DeckController(WanderDbContext db, DeckValidationService validator)
         d.Name,
         d.Description,
         d.Format,
+        ResolveCoverImage(d),
+        (d.Cards.Any(c => c.IsCommander)
+            ? d.Cards.Where(c => c.IsCommander).SelectMany(c => c.Card?.ColorIdentity ?? [])
+            : d.Cards.SelectMany(c => c.Card?.ColorIdentity ?? []))
+            .Distinct()
+            .OrderBy(c => "WUBRG".IndexOf(c, StringComparison.Ordinal))
+            .ToList(),
         d.Visibility,
         d.Owner.UserName!,
         d.Cards.Where(c => !c.IsSideboard).Sum(c => c.Quantity),
@@ -383,6 +418,7 @@ public class DeckController(WanderDbContext db, DeckValidationService validator)
             d.Description,
             d.Primer,
             d.Format,
+            ResolveCoverImage(d),
             d.Visibility,
             d.OwnerId,
             d.Owner?.UserName ?? "",
@@ -400,6 +436,8 @@ public class DeckController(WanderDbContext db, DeckValidationService validator)
                     dc.Card?.ColorIdentity ?? [],
                     printing?.ImageUriNormal,
                     printing?.ImageUriSmall,
+                    printing?.ImageUriArtCrop,
+                    printing?.Id,
                     dc.Quantity,
                     dc.IsCommander,
                     dc.IsSideboard,
@@ -412,5 +450,13 @@ public class DeckController(WanderDbContext db, DeckValidationService validator)
             d.UpdatedAt,
             likeCount,
             isLiked);
+    }
+
+    private static string? ResolveCoverImage(Deck d)
+    {
+        if (d.CoverPrinting != null) return d.CoverPrinting.ImageUriArtCrop;
+        var commander = d.Cards.FirstOrDefault(c => c.IsCommander);
+        var printing = commander?.Printing ?? commander?.Card?.Printings.FirstOrDefault();
+        return printing?.ImageUriArtCrop;
     }
 }

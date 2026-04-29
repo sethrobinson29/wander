@@ -58,6 +58,17 @@ public class DecklistParserTests
         Assert.Equal("Thrasios", result[0].Name);
     }
 
+    [Fact]
+    public void ParsesTwoCommanderMarkers()
+    {
+        var text = "1 Tymna the Weaver *CMDR*\n1 Kraum, Ludevic's Opus *CMDR*";
+        var result = DecklistParser.Parse(text);
+        Assert.Equal(2, result.Count);
+        Assert.All(result, r => Assert.True(r.IsCommander));
+        Assert.Equal("Tymna the Weaver", result[0].Name);
+        Assert.Equal("Kraum, Ludevic's Opus", result[1].Name);
+    }
+
     // ── SIDEBOARD section ────────────────────────────────────────────────────
 
     [Fact]

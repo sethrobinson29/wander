@@ -361,16 +361,26 @@ public class DeckController(WanderDbContext db, DeckValidationService validator,
         if (notFound.Count > 0)
             return BadRequest(new { errors = notFound.Select(n => $"Card not found: {n}") });
 
+        bool commandersCleared = false;
         foreach (var (name, qty, isCommander, isSideboard) in parsed)
         {
             if (!cards.TryGetValue(name, out var card)) continue;
 
             if (isCommander)
             {
-                // A deck has exactly one commander — replace all existing commanders with the imported one
-                var existingCommanders = deck.Cards.Where(c => c.IsCommander).ToList();
-                db.DeckCards.RemoveRange(existingCommanders);
-                foreach (var c in existingCommanders) deck.Cards.Remove(c);
+                // Clear existing commanders once so re-importing replaces the command zone cleanly.
+                if (!commandersCleared)
+                {
+                    var existingCommanders = deck.Cards.Where(c => c.IsCommander).ToList();
+                    db.DeckCards.RemoveRange(existingCommanders);
+                    foreach (var c in existingCommanders) deck.Cards.Remove(c);
+                    commandersCleared = true;
+                }
+
+                if (deck.Cards.Count(c => c.IsCommander) >= 2)
+                    return BadRequest(new { errors = new[] { "A deck cannot have more than two commanders." } });
+
+                if (deck.Cards.Any(c => c.CardId == card.Id && c.IsCommander)) continue;
 
                 db.DeckCards.Add(new DeckCard
                 {

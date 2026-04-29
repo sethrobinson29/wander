@@ -17,13 +17,10 @@ public record UpdateSecurityRequest(
     [MinLength(8)][MaxLength(100)] string? NewPassword);  // null = don't change
 
 public record UpdatePrivacyRequest(
-    Privacy EmailPrivacy,
-    Privacy FirstNamePrivacy,
-    Privacy LastNamePrivacy,
-    Privacy PronounsPrivacy,
-    Privacy BioPrivacy,
-    Privacy FollowingCountPrivacy,
-    Privacy FollowerCountPrivacy);
+    Privacy EmailPrivacy, Privacy FirstNamePrivacy, Privacy LastNamePrivacy,
+    Privacy PronounsPrivacy, Privacy BioPrivacy,
+    Privacy FollowingCountPrivacy, Privacy FollowerCountPrivacy,
+    Privacy ActivityPrivacy);
 
 // Full self-view — includes all profile fields + privacy settings
 public record MyProfileResponse(
@@ -32,6 +29,7 @@ public record MyProfileResponse(
     Privacy EmailPrivacy, Privacy FirstNamePrivacy, Privacy LastNamePrivacy,
     Privacy PronounsPrivacy, Privacy BioPrivacy,
     Privacy FollowingCountPrivacy, Privacy FollowerCountPrivacy,
+    Privacy ActivityPrivacy,
     DateTimeOffset CreatedAt);
 
 // Public-facing view — fields already filtered by privacy + viewer relationship
@@ -41,9 +39,13 @@ public record PublicProfileResponse(
     string? FirstName, string? LastName, string? Pronouns, string? Bio, string? AvatarId,
     string? Email, int? FollowingCount, int? FollowerCount,
     bool IsFollowing,
+    Privacy ActivityPrivacy,
     List<PublicDeckSummary> PublicDecks,
     DateTimeOffset CreatedAt);
 
 public record PublicDeckSummary(
     Guid Id, string Name, string? Description,
     string Format, int CardCount, DateTimeOffset UpdatedAt);
+
+public record ActivityItem(string Type, string? TargetId, string? TargetName, DateTimeOffset CreatedAt);
+public record ActivityPageResponse(List<ActivityItem> Items, int Total);

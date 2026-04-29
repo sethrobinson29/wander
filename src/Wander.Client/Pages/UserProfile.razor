@@ -87,42 +87,87 @@
     }
 
     <!-- Public decks -->
-    @if (_profile.PublicDecks.Count > 0)
-    {
-        <MudText Typo="Typo.h6" Class="mb-3" Style="font-family:'Cinzel',serif;">Public Decks</MudText>
-        <MudGrid>
-            @foreach (var deck in _profile.PublicDecks)
+    <MudTabs Elevation="0" Rounded="false" Style="background:transparent;">
+
+        <MudTabPanel Text="Decks" Class="pt-4">
+            @if (_profile.PublicDecks.Count > 0)
             {
-                <MudItem xs="12" sm="6" md="4">
-                    <MudCard Style="background:#241a35; border:1px solid #3d2d5e; cursor:pointer;" Class="deck-card"
-                             @onclick='() => Nav.NavigateTo($"/decks/{deck.Id}")'>
-                        <MudCardContent>
-                            <MudText Typo="Typo.h6" Style="font-family:'Cinzel',serif;">@deck.Name</MudText>
-                            <div class="d-flex align-center gap-2 mt-1">
-                                <MudText Typo="Typo.caption" Style="color:#9e94c8;">@deck.Format</MudText>
-                                <MudText Typo="Typo.caption" Style="color:#9e94c8;">· @deck.CardCount cards</MudText>
-                            </div>
-                            @if (deck.Description != null)
-                            {
-                                <MudText Typo="Typo.body2" Class="mt-2" Style="color:#9e94c8;">@deck.Description</MudText>
-                            }
-                        </MudCardContent>
-                    </MudCard>
-                </MudItem>
+                <MudText Typo="Typo.h6" Class="mb-3" Style="font-family:'Cinzel',serif;">Public Decks</MudText>
+                <MudGrid>
+                    @foreach (var deck in _profile.PublicDecks)
+                    {
+                        <MudItem xs="12" sm="6" md="4">
+                            <MudCard Style="background:#241a35; border:1px solid #3d2d5e; cursor:pointer;" Class="deck-card"
+                                     @onclick='() => Nav.NavigateTo($"/decks/{deck.Id}")'>
+                                <MudCardContent>
+                                    <MudText Typo="Typo.h6" Style="font-family:'Cinzel',serif;">@deck.Name</MudText>
+                                    <div class="d-flex align-center gap-2 mt-1">
+                                        <MudText Typo="Typo.caption" Style="color:#9e94c8;">@deck.Format</MudText>
+                                        <MudText Typo="Typo.caption" Style="color:#9e94c8;">· @deck.CardCount cards</MudText>
+                                    </div>
+                                    @if (deck.Description != null)
+                                    {
+                                        <MudText Typo="Typo.body2" Class="mt-2" Style="color:#9e94c8;">@deck.Description</MudText>
+                                    }
+                                </MudCardContent>
+                            </MudCard>
+                        </MudItem>
+                    }
+                </MudGrid>
             }
-        </MudGrid>
-    }
-    else
-    {
-        <MudText Style="color:#9e94c8;">No public decks.</MudText>
-    }
+            else
+            {
+                <MudText Style="color:#9e94c8;">No public decks.</MudText>
+            }
+        </MudTabPanel>
+
+        @if (_profile.ActivityPrivacy == Privacy.Public ||
+                       (_profile.ActivityPrivacy == Privacy.Restricted && _isFollowing))
+        {
+        <MudTabPanel Text="Activity" Class="pt-4" OnClick="LoadActivity">
+            @if (_activityLoading)
+            {
+                <MudProgressLinear Color="Color.Primary" Indeterminate="true" />
+            }
+            else if (_activity is null || _activity.Items.Count == 0)
+            {
+                <MudText Style="color:#9e94c8;">No public activity.</MudText>
+            }
+            else
+            {
+                @foreach (var item in _activity.Items)
+                {
+                    <div class="d-flex align-center gap-2 mb-3">
+                        <MudIcon Icon="@ActivityIcon(item.Type)"
+                                 Size="Size.Small" Style="color:#9e94c8;" />
+                        <MudText Typo="Typo.body2">
+                            @ActivitySentence(item)
+                        </MudText>
+                        <MudText Typo="Typo.caption" Style="color:#9e94c8; margin-left:auto;">
+                            @item.CreatedAt.ToString("MMM d")
+                        </MudText>
+                    </div>
+                }
+                @if (_activity.Total > _activity.Items.Count)
+                {
+                    <MudButton Variant="Variant.Text" OnClick="LoadMoreActivity"
+                               Style="color:#9e94c8;">
+                        Load more
+                    </MudButton>
+                }
+            }
+        </MudTabPanel>
+        }
+    </MudTabs>
 </MudContainer>
 
 @code {
     [Parameter] public string Username { get; set; } = "";
 
     PublicProfileResponse? _profile;
-    bool _loading = true, _isSelf, _isAuthenticated, _isFollowing, _followBusy;
+    bool _loading = true, _isSelf, _isAuthenticated, _isFollowing, _followBusy, _activityLoading;
+    ActivityPageResponse? _activity;
+    int _activityPage = 1;
 
     protected override async Task OnInitializedAsync()
     {
@@ -159,5 +204,45 @@
             Snackbar.Add(wasFollowing ? "Failed to unfollow." : "Failed to follow.", Severity.Error);
         }
         _followBusy = false;
+    }
+
+    async Task LoadActivity()
+    {
+        if (_activity is not null) return;  // already loaded
+        _activityLoading = true;
+        _activity = await Api.GetUserActivityAsync(_profile!.Username);
+        _activityLoading = false;
+    }
+
+    async Task LoadMoreActivity()
+    {
+        _activityPage++;
+        var more = await Api.GetUserActivityAsync(_profile!.Username, _activityPage);
+        if (more is not null)
+            _activity = new ActivityPageResponse(
+                [.. _activity!.Items, .. more.Items], more.Total);
+    }
+
+    static string ActivityIcon(string type) => type switch
+    {
+        "LikedDeck" => Icons.Material.Filled.Favorite,
+        "CommentedOnDeck" => Icons.Material.Filled.Comment,
+        "FollowedUser" => Icons.Material.Filled.PersonAdd,
+        "MadeDeckPublic" => Icons.Material.Filled.Public,
+        _ => Icons.Material.Filled.Circle
+    };
+
+    MarkupString ActivitySentence(ActivityItem item)
+    {
+        var name = System.Net.WebUtility.HtmlEncode(item.TargetName ?? "unknown");
+        string html = item.Type switch
+        {
+            "LikedDeck" => $"Liked <a href=\"/decks/{item.TargetId}\" style=\"color:#c9a84c;\">{name}</a>",
+            "CommentedOnDeck" => $"Commented on <a href=\"/decks/{item.TargetId}\" style=\"color:#c9a84c;\">{name}</a>",
+            "FollowedUser" => $"Followed <a href=\"/users/{item.TargetId}\" style=\"color:#c9a84c;\">{name}</a>",
+            "MadeDeckPublic" => $"Made <a href=\"/decks/{item.TargetId}\" style=\"color:#c9a84c;\">{name}</a> public",
+            _ => name
+        };
+        return new MarkupString(html);
     }
 }

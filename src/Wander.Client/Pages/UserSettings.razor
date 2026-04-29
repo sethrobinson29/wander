@@ -208,7 +208,7 @@
 
     // ── Privacy ───────────────────────────────────────────────────────────────
     Privacy _emailPrivacy, _firstNamePrivacy, _lastNamePrivacy, _pronounsPrivacy;
-    Privacy _bioPrivacy, _followingCountPrivacy, _followerCountPrivacy;
+    Privacy _bioPrivacy, _followingCountPrivacy, _followerCountPrivacy, _activityPrivacy;
 
     protected override async Task OnInitializedAsync()
     {
@@ -230,6 +230,7 @@
         _bioPrivacy = profile.BioPrivacy;
         _followingCountPrivacy = profile.FollowingCountPrivacy;
         _followerCountPrivacy = profile.FollowerCountPrivacy;
+        _activityPrivacy = profile.ActivityPrivacy;
 
         _loading = false;
     }
@@ -325,7 +326,7 @@
         _saving = true;
         var response = await Api.UpdatePrivacyAsync(new UpdatePrivacyRequest(
             _emailPrivacy, _firstNamePrivacy, _lastNamePrivacy, _pronounsPrivacy,
-            _bioPrivacy, _followingCountPrivacy, _followerCountPrivacy));
+            _bioPrivacy, _followingCountPrivacy, _followerCountPrivacy, _activityPrivacy));
 
         Snackbar.Add(response.IsSuccessStatusCode ? "Privacy settings saved." : "Failed to save privacy settings.",
                      response.IsSuccessStatusCode ? Severity.Success : Severity.Error);
@@ -342,5 +343,6 @@
         ("Bio",             () => _bioPrivacy,            v => _bioPrivacy = v),
         ("Following Count", () => _followingCountPrivacy, v => _followingCountPrivacy = v),
         ("Follower Count",  () => _followerCountPrivacy,  v => _followerCountPrivacy = v),
+        ("Activity Feed",   () => _activityPrivacy,    v => _activityPrivacy = v),
     ];
 }

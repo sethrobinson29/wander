@@ -1,0 +1,163 @@
+@implements IAsyncDisposable
+@inject WanderApiClient Api
+@inject LocalStorage LocalStorage
+@inject NavigationManager Nav
+@inject ISnackbar Snackbar
+@inject AuthenticationStateProvider AuthState
+@inject IConfiguration Configuration
+@using Microsoft.AspNetCore.Components.Authorization
+@using Microsoft.AspNetCore.SignalR.Client
+@using System.Net.Http.Json
+@using Wander.Client.Models
+@using Wander.Client.Services
+
+@if (!_isAuthenticated) { return; }
+
+<MudBadge Content="@(_unreadCount.ToString())" Color="Color.Error"
+          Overlap="true" Bordered="true" Visible="@(_unreadCount > 0)">
+    <MudIconButton Icon="@Icons.Material.Filled.Notifications"
+                   Color="Color.Inherit" @onclick="ToggleBell" />
+</MudBadge>
+
+@if (_bellOpen)
+{
+    <MudOverlay Visible="true" OnClick="CloseBell" Style="z-index:1399;" />
+    <div style="position:fixed; top:64px; right:16px; z-index:1400; width:320px; max-height:480px;
+                overflow-y:auto; background:#241a35; border:1px solid #3d2d5e;
+                border-radius:4px; box-shadow:0 4px 20px rgba(0,0,0,0.5);">
+        <div class="d-flex justify-space-between align-center px-3 py-2">
+            <MudText Typo="Typo.subtitle2" Style="color:#e8e0f0;">Notifications</MudText>
+            @if (_unreadCount > 0)
+            {
+                <MudButton Variant="Variant.Text" Size="Size.Small"
+                           Style="color:#c9a84c;" OnClick="MarkAllRead">
+                    Mark all read
+                </MudButton>
+            }
+        </div>
+
+        @if (_notifications.Count == 0)
+        {
+            <MudText Typo="Typo.body2" Style="color:#9e94c8; padding:8px 12px;">
+                No notifications yet.
+            </MudText>
+        }
+        else
+        {
+            @foreach (var n in _notifications)
+            {
+                <div class="d-flex align-center gap-2 px-3 py-2"
+                     style="@NotifRowStyle(n)"
+                     @onclick="() => HandleNotificationClick(n)">
+                    <MudIcon Icon="@NotifIcon(n.Type)" Size="Size.Small"
+                             Style="color:#9e94c8; flex-shrink:0;" />
+                    <MudText Typo="Typo.body2" Style="color:#e8e0f0; flex-grow:1;">
+                        @NotifText(n)
+                    </MudText>
+                    <MudText Typo="Typo.caption" Style="color:#9e94c8; flex-shrink:0;">
+                        @n.CreatedAt.ToString("MMM d")
+                    </MudText>
+                </div>
+            }
+        }
+    </div>
+}
+
+@code {
+    HubConnection? _hub;
+    List<NotificationItem> _notifications = [];
+    int _unreadCount;
+    bool _isAuthenticated;
+    bool _bellOpen;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var authState = await AuthState.GetAuthenticationStateAsync();
+        _isAuthenticated = authState.User.Identity?.IsAuthenticated == true;
+        if (!_isAuthenticated) return;
+
+        var result = await Api.GetNotificationsAsync();
+        if (result is not null)
+        {
+            _notifications = result.Items;
+            _unreadCount = result.UnreadCount;
+        }
+
+        var token = await LocalStorage.GetAsync("accessToken");
+        var apiBase = Configuration["ApiBaseUrl"] ?? "http://localhost:5156";
+        _hub = new HubConnectionBuilder()
+            .WithUrl($"{apiBase}/hubs/notifications", options =>
+            {
+                options.AccessTokenProvider = () => Task.FromResult<string?>(token);
+            })
+            .WithAutomaticReconnect()
+            .Build();
+
+        _hub.On<NotificationItem>("ReceiveNotification", notification =>
+        {
+            _notifications.Insert(0, notification);
+            _unreadCount++;
+            InvokeAsync(StateHasChanged);
+        });
+
+        try { await _hub.StartAsync(); }
+        catch { /* hub unavailable — bell still renders, no real-time push */ }
+    }
+
+    void ToggleBell() => _bellOpen = !_bellOpen;
+    void CloseBell() => _bellOpen = false;
+
+    async Task MarkAllRead()
+    {
+        await Api.MarkAllNotificationsReadAsync();
+        _notifications = _notifications.Select(n => n with { IsRead = true }).ToList();
+        _unreadCount = 0;
+    }
+
+    async Task HandleNotificationClick(NotificationItem n)
+    {
+        if (!n.IsRead)
+        {
+            await Api.MarkNotificationReadAsync(n.Id);
+            var idx = _notifications.IndexOf(n);
+            if (idx >= 0)
+                _notifications[idx] = n with { IsRead = true };
+            _unreadCount = Math.Max(0, _unreadCount - 1);
+        }
+        _bellOpen = false;
+
+        if (n.DeckId.HasValue)
+            Nav.NavigateTo($"/decks/{n.DeckId}");
+        else if (n.Type == "Followed")
+            Nav.NavigateTo($"/users/{n.ActorUsername}");
+    }
+
+    static string NotifRowStyle(NotificationItem n) =>
+        $"{(n.IsRead ? "" : "background:#2d2045;")} cursor:pointer; border-bottom:1px solid #2d2045;";
+
+    static string NotifIcon(string type) => type switch
+    {
+        "DeckLiked"     => Icons.Material.Filled.Favorite,
+        "DeckCommented" => Icons.Material.Filled.Comment,
+        "Followed"      => Icons.Material.Filled.PersonAdd,
+        _               => Icons.Material.Filled.Notifications
+    };
+
+    static string NotifText(NotificationItem n)
+    {
+        var actor = n.ActorUsername ?? "Someone";
+        return n.Type switch
+        {
+            "DeckLiked"     => $"{actor} liked your deck \"{n.DeckName}\"",
+            "DeckCommented" => $"{actor} commented on \"{n.DeckName}\"",
+            "Followed"      => $"{actor} followed you",
+            _               => "You have a new notification"
+        };
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        if (_hub is not null)
+            await _hub.DisposeAsync();
+    }
+}

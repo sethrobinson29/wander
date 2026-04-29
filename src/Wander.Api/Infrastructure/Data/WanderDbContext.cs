@@ -17,6 +17,8 @@ public class WanderDbContext : IdentityDbContext<ApplicationUser>
     public DbSet<UserFollow> Follows => Set<UserFollow>();
     public DbSet<DeckLike> DeckLikes => Set<DeckLike>();
     public DbSet<DeckComment> DeckComments => Set<DeckComment>();
+    public DbSet<UserActivity> UserActivities { get; set; } = null!;
+    public DbSet<Notification> Notifications { get; set; } = null!;
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -118,5 +120,18 @@ public class WanderDbContext : IdentityDbContext<ApplicationUser>
                 .WithMany(c => c.Replies)
                 .HasForeignKey(c => c.ParentCommentId)
                 .OnDelete(DeleteBehavior.Restrict);
+
+        modelBuilder.Entity<Notification>(entity =>
+        {
+            entity.HasOne(n => n.Recipient)
+                  .WithMany(u => u.ReceivedNotifications)
+                  .HasForeignKey(n => n.RecipientId)
+                  .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasOne(n => n.Actor)
+                  .WithMany()
+                  .HasForeignKey(n => n.ActorId)
+                  .OnDelete(DeleteBehavior.Cascade);
+        });
     }
 }

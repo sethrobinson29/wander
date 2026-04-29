@@ -12,7 +12,7 @@ namespace Wander.Api.Controllers;
 
 [ApiController]
 [Route("decks")]
-public class DeckController(WanderDbContext db, DeckValidationService validator) : ControllerBase
+public class DeckController(WanderDbContext db, DeckValidationService validator, ActivityService activity, NotificationService notifications) : ControllerBase
 {
     private string UserId => User.FindFirstValue(ClaimTypes.NameIdentifier)!;
 
@@ -153,6 +153,8 @@ public class DeckController(WanderDbContext db, DeckValidationService validator)
         var primerError = MarkdownValidator.ValidatePrimer(request.Primer);
         if (primerError != null) return BadRequest(new { error = primerError });
 
+        var previous = deck.Visibility;
+
         deck.Name = request.Name;
         deck.Description = request.Description;
         deck.Primer = request.Primer;
@@ -160,6 +162,8 @@ public class DeckController(WanderDbContext db, DeckValidationService validator)
         deck.Visibility = request.Visibility;
         deck.UpdatedAt = DateTimeOffset.UtcNow;
 
+        if (ActivityService.IsMadePublic(previous, request.Visibility))
+            activity.Record(deck.OwnerId, ActivityType.MadeDeckPublic, targetId: deck.Id.ToString(), targetName: deck.Name);
         await db.SaveChangesAsync(ct);
         var (likeCount, isLiked) = await GetLikeInfoAsync(id, ct);
         return Ok(ToDetail(deck, likeCount, isLiked));
@@ -196,8 +200,17 @@ public class DeckController(WanderDbContext db, DeckValidationService validator)
             UserId = UserId,
             DeckId = id,
             CreatedAt = DateTimeOffset.UtcNow
-        });
+        });;
+        activity.Record(UserId, ActivityType.LikedDeck, targetId: id.ToString(), targetName: deck.Name);
         await db.SaveChangesAsync();
+        await notifications.NotifyAsync(
+            recipientId: deck.OwnerId,
+            actorId: UserId,
+            type: NotificationType.DeckLiked,
+            deckId: deck.Id,
+            deckName: deck.Name,
+            actorUsername: User.Identity!.Name);
+
         return NoContent();
     }
 

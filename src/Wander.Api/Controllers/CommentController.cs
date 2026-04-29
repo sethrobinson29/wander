@@ -11,7 +11,7 @@ namespace Wander.Api.Controllers;
 
 [ApiController]
 [Route("")]
-public class CommentController(WanderDbContext db) : ControllerBase
+public class CommentController(WanderDbContext db, ActivityService activity, NotificationService notifications) : ControllerBase
 {
     private string? UserId => User.FindFirstValue(ClaimTypes.NameIdentifier);
 
@@ -56,7 +56,16 @@ public class CommentController(WanderDbContext db) : ControllerBase
             CreatedAt = DateTimeOffset.UtcNow
         };
         db.DeckComments.Add(comment);
+        activity.Record(UserId!, ActivityType.CommentedOnDeck, targetId: deckId.ToString(), targetName: deck.Name);
         await db.SaveChangesAsync();
+
+        await notifications.NotifyAsync(
+            recipientId: deck.OwnerId,
+            actorId: UserId!,
+            type: NotificationType.DeckCommented,
+            deckId: deck.Id,
+            deckName: deck.Name,
+            actorUsername: User.Identity!.Name);
 
         await db.Entry(comment).Reference(c => c.Author).LoadAsync();
         return CreatedAtAction(nameof(GetComments), new { deckId }, MapComment(comment));

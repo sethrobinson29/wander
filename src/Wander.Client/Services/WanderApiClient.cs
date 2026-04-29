@@ -69,6 +69,13 @@ public class WanderApiClient(HttpClient http, LocalStorage localStorage)
         return await http.DeleteAsync($"users/{Uri.EscapeDataString(username)}/follow");
     }
 
+    public async Task<ActivityPageResponse?> GetUserActivityAsync(string username, int page = 1)
+    {
+        await AttachTokenAsync();
+        return await http.GetFromJsonAsync<ActivityPageResponse>(
+            $"users/{Uri.EscapeDataString(username)}/activity?page={page}&pageSize=20");
+    }
+
     // ── Cards ─────────────────────────────────────────────────────────────────
 
     public async Task<List<CardSearchResult>> SearchCardsAsync(string q)
@@ -178,6 +185,26 @@ public class WanderApiClient(HttpClient http, LocalStorage localStorage)
     {
         await AttachTokenAsync();
         return await http.PatchAsJsonAsync($"decks/{id}/cover", new { printingId });
+    }
+
+    // ── Notifications ───────────────────────────────────────────────────────────────
+    public async Task<NotificationListResponse?> GetNotificationsAsync(int page = 1)
+    {
+        await AttachTokenAsync();
+        return await http.GetFromJsonAsync<NotificationListResponse>(
+            $"notifications?page={page}&pageSize=20");
+    }
+
+    public async Task<HttpResponseMessage> MarkNotificationReadAsync(Guid id)
+    {
+        await AttachTokenAsync();
+        return await http.PutAsync($"notifications/{id}/read", null);
+    }
+
+    public async Task<HttpResponseMessage> MarkAllNotificationsReadAsync()
+    {
+        await AttachTokenAsync();
+        return await http.PutAsync("notifications/read-all", null);
     }
 
     // ── Helpers ───────────────────────────────────────────────────────────────

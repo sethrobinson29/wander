@@ -1,5 +1,3 @@
-using System.Text;
-using System.Threading.RateLimiting;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.RateLimiting;
@@ -8,7 +6,10 @@ using Microsoft.IdentityModel.Tokens;
 using Npgsql;
 using Quartz;
 using Scalar.AspNetCore;
+using System.Text;
+using System.Threading.RateLimiting;
 using Wander.Api.Domain;
+using Wander.Api.Hubs;
 using Wander.Api.Infrastructure.Data;
 using Wander.Api.Infrastructure.Scryfall;
 using Wander.Api.Services;
@@ -72,6 +73,20 @@ builder.Services
                 Encoding.UTF8.GetBytes(builder.Configuration["Jwt:Key"]!)),
             ClockSkew = TimeSpan.Zero,  // no grace period — tokens expire exactly on time
         };
+
+        options.Events = new JwtBearerEvents
+        {
+            OnMessageReceived = ctx =>
+            {
+                var token = ctx.Request.Query["access_token"];
+                if (!string.IsNullOrEmpty(token) &&
+                    ctx.HttpContext.Request.Path.StartsWithSegments("/hubs"))
+                {
+                    ctx.Token = token;
+                }
+                return Task.CompletedTask;
+            }
+        };
     });
 
 builder.Services.AddAuthorization();
@@ -100,6 +115,10 @@ builder.Services.AddQuartz(q =>
 
 builder.Services.AddQuartzHostedService(q => q.WaitForJobsToComplete = true);
 builder.Services.AddScoped<DeckValidationService>();
+builder.Services.AddScoped<ActivityService>();
+
+builder.Services.AddSignalR();
+builder.Services.AddScoped<NotificationService>();
 
 builder.Services.AddRateLimiter(options =>
 {
@@ -132,5 +151,6 @@ app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();
+app.MapHub<NotificationHub>("/hubs/notifications");
 
 app.Run();

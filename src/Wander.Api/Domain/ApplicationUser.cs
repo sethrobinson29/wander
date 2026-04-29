@@ -25,4 +25,7 @@ public class ApplicationUser : IdentityUser
     public ICollection<UserFollow> Following { get; set; } = [];
     public ICollection<UserFollow> Followers { get; set; } = [];
     public ICollection<DeckLike> LikedDecks { get; set; } = [];
+    public Privacy ActivityPrivacy { get; set; } = Privacy.Public;
+    public ICollection<UserActivity> Activities { get; set; } = [];
+    public ICollection<Notification> ReceivedNotifications { get; set; } = [];
 }

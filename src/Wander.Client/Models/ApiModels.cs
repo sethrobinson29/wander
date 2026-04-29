@@ -16,6 +16,7 @@ public record MyProfileResponse(
     Privacy EmailPrivacy, Privacy FirstNamePrivacy, Privacy LastNamePrivacy,
     Privacy PronounsPrivacy, Privacy BioPrivacy,
     Privacy FollowingCountPrivacy, Privacy FollowerCountPrivacy,
+    Privacy ActivityPrivacy,
     DateTimeOffset CreatedAt);
 
 public record PublicProfileResponse(
@@ -23,6 +24,7 @@ public record PublicProfileResponse(
     string? Pronouns, string? Bio, string? AvatarId,
     string? Email, int? FollowingCount, int? FollowerCount,
     bool IsFollowing,
+    Privacy ActivityPrivacy,
     List<PublicDeckSummary> PublicDecks, DateTimeOffset CreatedAt);
 
 public record PublicDeckSummary(
@@ -39,7 +41,11 @@ public record UpdateSecurityRequest(
 public record UpdatePrivacyRequest(
     Privacy EmailPrivacy, Privacy FirstNamePrivacy, Privacy LastNamePrivacy,
     Privacy PronounsPrivacy, Privacy BioPrivacy,
-    Privacy FollowingCountPrivacy, Privacy FollowerCountPrivacy);
+    Privacy FollowingCountPrivacy, Privacy FollowerCountPrivacy,
+    Privacy ActivityPrivacy);
+
+public record ActivityItem(string Type, string? TargetId, string? TargetName, DateTimeOffset CreatedAt);
+public record ActivityPageResponse(List<ActivityItem> Items, int Total);
 
 public record UserSearchResult(string Username, string? AvatarId, int DeckCount);
 
@@ -134,3 +140,17 @@ public record UpdateDeckRequest(string Name, string? Description, string? Primer
 public record DeckCardRequest(Guid CardId, Guid? PrintingId, int Quantity, bool IsCommander, bool IsSideboard);
 
 public record BulkImportRequest(string Decklist);
+
+// ── Notifications ────────────────────────────────────────────────────────────
+
+public record NotificationItem(
+    Guid Id,
+    string Type,
+    string ActorId,
+    string? ActorUsername,
+    Guid? DeckId,
+    string? DeckName,
+    bool IsRead,
+    DateTimeOffset CreatedAt);
+
+public record NotificationListResponse(int UnreadCount, List<NotificationItem> Items);

@@ -3,6 +3,7 @@ using System;
 using System.Collections.Generic;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using NpgsqlTypes;
@@ -13,9 +14,11 @@ using Wander.Api.Infrastructure.Data;
 namespace Wander.Api.Infrastructure.Data.Migrations
 {
     [DbContext(typeof(WanderDbContext))]
-    partial class WanderDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260421181112_AddUserActivity")]
+    partial class AddUserActivity
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -154,46 +157,6 @@ namespace Wander.Api.Infrastructure.Data.Migrations
                     b.HasKey("UserId", "LoginProvider", "Name");
 
                     b.ToTable("AspNetUserTokens", (string)null);
-                });
-
-            modelBuilder.Entity("Notification", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
-
-                    b.Property<string>("ActorId")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<DateTimeOffset>("CreatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<Guid?>("DeckId")
-                        .HasColumnType("uuid");
-
-                    b.Property<string>("DeckName")
-                        .HasColumnType("text");
-
-                    b.Property<bool>("IsRead")
-                        .HasColumnType("boolean");
-
-                    b.Property<string>("RecipientId")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<int>("Type")
-                        .HasColumnType("integer");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("ActorId");
-
-                    b.HasIndex("DeckId");
-
-                    b.HasIndex("RecipientId");
-
-                    b.ToTable("Notifications");
                 });
 
             modelBuilder.Entity("Wander.Api.Domain.ApplicationUser", b =>
@@ -672,31 +635,6 @@ namespace Wander.Api.Infrastructure.Data.Migrations
                         .IsRequired();
                 });
 
-            modelBuilder.Entity("Notification", b =>
-                {
-                    b.HasOne("Wander.Api.Domain.ApplicationUser", "Actor")
-                        .WithMany()
-                        .HasForeignKey("ActorId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("Wander.Api.Domain.Deck", "Deck")
-                        .WithMany()
-                        .HasForeignKey("DeckId");
-
-                    b.HasOne("Wander.Api.Domain.ApplicationUser", "Recipient")
-                        .WithMany("ReceivedNotifications")
-                        .HasForeignKey("RecipientId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Actor");
-
-                    b.Navigation("Deck");
-
-                    b.Navigation("Recipient");
-                });
-
             modelBuilder.Entity("Wander.Api.Domain.CardPrinting", b =>
                 {
                     b.HasOne("Wander.Api.Domain.Card", "Card")
@@ -849,8 +787,6 @@ namespace Wander.Api.Infrastructure.Data.Migrations
                     b.Navigation("Following");
 
                     b.Navigation("LikedDecks");
-
-                    b.Navigation("ReceivedNotifications");
                 });
 
             modelBuilder.Entity("Wander.Api.Domain.Card", b =>

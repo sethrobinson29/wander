@@ -16,7 +16,9 @@ namespace Wander.Api.Controllers;
 public class UserController(
     UserManager<ApplicationUser> userManager,
     WanderDbContext db,
-    TokenService tokenService) : ControllerBase
+    TokenService tokenService,
+    ActivityService activity,
+    NotificationService notifications) : ControllerBase
 {
     private string UserId => User.FindFirstValue(ClaimTypes.NameIdentifier)!;
 
@@ -45,6 +47,7 @@ public class UserController(
             user.BioPrivacy,
             user.FollowingCountPrivacy,
             user.FollowerCountPrivacy,
+            user.ActivityPrivacy,
             user.CreatedAt));
     }
 
@@ -79,6 +82,7 @@ public class UserController(
             PrivacyService.IsVisible(user.FollowingCountPrivacy, isFollowing) ? followingCount : null,
             PrivacyService.IsVisible(user.FollowerCountPrivacy, isFollowing) ? followerCount : null,
             isFollowing,
+            user.ActivityPrivacy,
             publicDecks.Select(d => new PublicDeckSummary(
                 d.Id,
                 d.Name,
@@ -121,7 +125,14 @@ public class UserController(
         if (alreadyFollowing) return NoContent(); // idempotent — double-follow is not an error
 
         db.Follows.Add(new UserFollow { FollowerId = UserId, FolloweeId = target.Id, CreatedAt = DateTimeOffset.UtcNow });
+        activity.Record(UserId, ActivityType.FollowedUser, targetId: target.Id, targetName: target.UserName);
         await db.SaveChangesAsync();
+        await notifications.NotifyAsync(
+            recipientId: target.Id,
+            actorId: UserId,
+            type: NotificationType.Followed,
+            actorUsername: User.Identity!.Name);
+
         return NoContent();
     }
 
@@ -137,6 +148,35 @@ public class UserController(
             .Where(f => f.FollowerId == UserId && f.FolloweeId == target.Id)
             .ExecuteDeleteAsync();
         return NoContent();
+    }
+
+    [HttpGet("{username}/activity")]
+    public async Task<ActionResult<ActivityPageResponse>> GetActivity(
+    string username, [FromQuery] int page = 1, [FromQuery] int pageSize = 20)
+    {
+        var user = await userManager.FindByNameAsync(username);
+        if (user is null) return NotFound();
+
+        var requesterId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        var isSelf = requesterId == user.Id;
+        var isFollowing = requesterId != null && !isSelf &&
+                           await db.Follows.AnyAsync(f => f.FollowerId == requesterId && f.FolloweeId == user.Id);
+
+        if (!PrivacyService.IsVisible(user.ActivityPrivacy, isFollowing))
+            return Ok(new ActivityPageResponse([], 0));   // hidden — return empty, not 403
+
+        pageSize = Math.Clamp(pageSize, 1, 50);
+        var skip = (page - 1) * pageSize;
+
+        var total = await db.UserActivities.CountAsync(a => a.UserId == user.Id);
+        var items = await db.UserActivities
+            .Where(a => a.UserId == user.Id)
+            .OrderByDescending(a => a.CreatedAt)
+            .Skip(skip).Take(pageSize)
+            .Select(a => new ActivityItem(a.Type.ToString(), a.TargetId, a.TargetName, a.CreatedAt))
+            .ToListAsync();
+
+        return Ok(new ActivityPageResponse(items, total));
     }
 
     // ── Mutations ────────────────────────────────────────────────────────────
@@ -218,6 +258,7 @@ public class UserController(
         user.BioPrivacy = request.BioPrivacy;
         user.FollowingCountPrivacy = request.FollowingCountPrivacy;
         user.FollowerCountPrivacy = request.FollowerCountPrivacy;
+        user.ActivityPrivacy = request.ActivityPrivacy;
 
         await db.SaveChangesAsync();
         return NoContent();

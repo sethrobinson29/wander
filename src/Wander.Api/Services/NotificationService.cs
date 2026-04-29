@@ -1,4 +1,5 @@
 ﻿using Microsoft.AspNetCore.SignalR;
+using Microsoft.EntityFrameworkCore;
 using Wander.Api.Domain;
 using Wander.Api.Hubs;
 using Wander.Api.Infrastructure.Data;
@@ -40,6 +41,38 @@ public class NotificationService(WanderDbContext db, IHubContext<NotificationHub
                 deckId,
                 deckName,
                 notification.CreatedAt));
+    }
+
+    /// <summary>
+    /// Notifies all followers of actorId that a deck was made public.
+    /// Skips followers who already received this notification for the same deck within 24 hours
+    /// to avoid spam when visibility is toggled repeatedly.
+    /// </summary>
+    public async Task NotifyFollowersAsync(string actorId, string actorUsername,
+        Guid deckId, string deckName)
+    {
+        var followerIds = await db.Follows
+            .Where(f => f.FolloweeId == actorId)
+            .Select(f => f.FollowerId)
+            .ToListAsync();
+
+        if (followerIds.Count == 0) return;
+
+        var cutoff = DateTimeOffset.UtcNow.AddHours(-24);
+        var alreadyNotified = await db.Notifications
+            .Where(n => n.ActorId == actorId &&
+                        n.DeckId == deckId &&
+                        n.Type == NotificationType.DeckMadePublic &&
+                        n.CreatedAt >= cutoff)
+            .Select(n => n.RecipientId)
+            .ToHashSetAsync();
+
+        foreach (var followerId in followerIds)
+        {
+            if (alreadyNotified.Contains(followerId)) continue;
+            await NotifyAsync(followerId, actorId, NotificationType.DeckMadePublic,
+                deckId, deckName, actorUsername);
+        }
     }
 
     // Extracted for unit testing

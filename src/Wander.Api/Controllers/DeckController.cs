@@ -165,6 +165,10 @@ public class DeckController(WanderDbContext db, DeckValidationService validator,
         if (ActivityService.IsMadePublic(previous, request.Visibility))
             activity.Record(deck.OwnerId, ActivityType.MadeDeckPublic, targetId: deck.Id.ToString(), targetName: deck.Name);
         await db.SaveChangesAsync(ct);
+
+        if (ActivityService.IsMadePublic(previous, request.Visibility))
+            await notifications.NotifyFollowersAsync(deck.OwnerId, User.Identity!.Name!, deck.Id, deck.Name);
+
         var (likeCount, isLiked) = await GetLikeInfoAsync(id, ct);
         return Ok(ToDetail(deck, likeCount, isLiked));
     }

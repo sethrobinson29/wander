@@ -136,10 +136,11 @@
 
     static string NotifIcon(string type) => type switch
     {
-        "DeckLiked"     => Icons.Material.Filled.Favorite,
-        "DeckCommented" => Icons.Material.Filled.Comment,
-        "Followed"      => Icons.Material.Filled.PersonAdd,
-        _               => Icons.Material.Filled.Notifications
+        "DeckLiked"      => Icons.Material.Filled.Favorite,
+        "DeckCommented"  => Icons.Material.Filled.Comment,
+        "Followed"       => Icons.Material.Filled.PersonAdd,
+        "DeckMadePublic" => Icons.Material.Filled.Public,
+        _                => Icons.Material.Filled.Notifications
     };
 
     static string NotifText(NotificationItem n)
@@ -147,10 +148,11 @@
         var actor = n.ActorUsername ?? "Someone";
         return n.Type switch
         {
-            "DeckLiked"     => $"{actor} liked your deck \"{n.DeckName}\"",
-            "DeckCommented" => $"{actor} commented on \"{n.DeckName}\"",
-            "Followed"      => $"{actor} followed you",
-            _               => "You have a new notification"
+            "DeckLiked"      => $"{actor} liked your deck \"{n.DeckName}\"",
+            "DeckCommented"  => $"{actor} commented on \"{n.DeckName}\"",
+            "Followed"       => $"{actor} followed you",
+            "DeckMadePublic" => $"{actor} made \"{n.DeckName}\" public",
+            _                => "You have a new notification"
         };
     }
 

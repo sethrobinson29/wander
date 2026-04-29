@@ -1,3 +1,3 @@
 ﻿namespace Wander.Api.Domain;
 
-public enum NotificationType { Followed, DeckLiked, DeckCommented }
+public enum NotificationType { Followed, DeckLiked, DeckCommented, DeckMadePublic }

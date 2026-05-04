@@ -43,9 +43,12 @@
 @if (Context != CardContext.None)
 {
     <CardContextMenu Context="@Context" Card="@Card"
-                     OnSetCommander="OnSetCommander"
+                     OnMakeCommander="OnMakeCommander"
                      OnMoveToSideboard="OnMoveToSideboard"
                      OnMoveToMain="OnMoveToMain"
+                     OnIncrement="OnIncrement"
+                     OnDecrement="OnDecrement"
+                     OnAddMore="OnAddMore"
                      OnRemove="OnRemove"
                      OnOpenScryfall="OnOpenScryfall">
         @rowContent
@@ -64,7 +67,8 @@ else
     [Parameter] public EventCallback<DeckCardDetail> OnIncrement { get; set; }
     [Parameter] public EventCallback<DeckCardDetail> OnDecrement { get; set; }
     [Parameter] public EventCallback<DeckCardDetail> OnRemove { get; set; }
-    [Parameter] public EventCallback<DeckCardDetail> OnSetCommander { get; set; }
+    [Parameter] public EventCallback<DeckCardDetail> OnMakeCommander { get; set; }
+    [Parameter] public EventCallback<DeckCardDetail> OnAddMore { get; set; }
     [Parameter] public EventCallback<DeckCardDetail> OnMoveToSideboard { get; set; }
     [Parameter] public EventCallback<DeckCardDetail> OnMoveToMain { get; set; }
     [Parameter] public EventCallback OnOpenScryfall { get; set; }

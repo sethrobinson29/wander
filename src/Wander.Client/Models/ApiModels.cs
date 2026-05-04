@@ -108,6 +108,7 @@ public record DeckCardDetail(
     string? ManaCost,
     decimal Cmc,
     string TypeLine,
+    string? OracleText,
     List<string> ColorIdentity,
     string? ImageUriNormal,
     string? ImageUriSmall,

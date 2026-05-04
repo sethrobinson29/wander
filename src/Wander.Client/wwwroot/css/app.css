@@ -78,8 +78,16 @@ html, body {
 ::-webkit-scrollbar-thumb { background: #3d2d5e; border-radius: 3px; }
 ::-webkit-scrollbar-thumb:hover { background: #5a4a8a; }
 
-/* Context menu sits above card hover preview images (z-index: 1000) */
-.wander-context-menu { z-index: 1200 !important; }
+/* Context menu — sits above card hover preview images (z-index: 1000) */
+.wander-context-menu {
+    background: #241a35;
+    border: 1px solid #3d2d5e;
+    border-radius: 4px;
+    padding: 4px 0;
+    min-width: 180px;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.6);
+    z-index: 1200;
+}
 
 /* Prevent text highlight flash on right-click */
 .card-row-activator { user-select: none; -webkit-user-select: none; }
@@ -91,6 +99,7 @@ html, body {
     gap: 8px;
     width: 100%;
     cursor: pointer;
-    padding: 2px 0;
+    padding: 6px 12px;
 }
+.wander-ctx-item:hover { background: #3d2d5e; }
 .wander-ctx-item-danger { color: var(--mud-palette-error); }

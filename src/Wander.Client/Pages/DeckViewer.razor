@@ -158,49 +158,52 @@
                             {
                                 <MudListItem T="CardSearchResult" OnClick="() => AddCard(card)"
                                              Style="border-bottom:1px solid #2a1d40; cursor:pointer;">
-                                    <MudMenu PositionAtCursor="true" Dense="true"
-                                             PopoverClass="wander-context-menu">
-                                        <ActivatorContent Context="menuCtx">
-                                            <div @oncontextmenu="e => menuCtx.OpenAsync(e)"
-                                                 @oncontextmenu:preventDefault="true"
-                                                 @oncontextmenu:stopPropagation="true"
-                                                 class="card-row-activator">
-                                                <div class="d-flex justify-space-between align-center">
-                                                    <MudText Typo="Typo.body2">@card.Name</MudText>
-                                                    <ManaCost Cost="@card.ManaCost" />
-                                                </div>
-                                                <MudText Typo="Typo.caption" Style="color:#9e94c8;">@card.TypeLine</MudText>
-                                            </div>
-                                        </ActivatorContent>
-                                        <ChildContent>
-                                            <MudMenuItem OnClick="() => AddCard(card)">
-                                                <div class="wander-ctx-item">
-                                                    <MudIcon Icon="@Icons.Material.Filled.Add" Size="Size.Small" />
-                                                    Add to Deck
-                                                </div>
-                                            </MudMenuItem>
-                                            <MudMenuItem OnClick="() => AddToSideboard(card)">
-                                                <div class="wander-ctx-item">
-                                                    <MudIcon Icon="@Icons.Material.Filled.SwapHoriz" Size="Size.Small" />
-                                                    Add to Sideboard
-                                                </div>
-                                            </MudMenuItem>
-                                            @if (card.TypeLine.Contains("Legendary", StringComparison.OrdinalIgnoreCase))
-                                            {
-                                                <MudMenuItem OnClick="() => AddAsCommander(card)">
-                                                    <div class="wander-ctx-item">
-                                                        <MudIcon Icon="@Icons.Material.Filled.Star" Size="Size.Small" Style="color:#c9a84c;" />
-                                                        Add as Commander
-                                                    </div>
-                                                </MudMenuItem>
-                                            }
-                                        </ChildContent>
-                                    </MudMenu>
+                                    <div @oncontextmenu="e => OpenSearchCtx(e, card)"
+                                         @oncontextmenu:preventDefault="true"
+                                         class="card-row-activator">
+                                        <div class="d-flex justify-space-between align-center">
+                                            <MudText Typo="Typo.body2">@card.Name</MudText>
+                                            <ManaCost Cost="@card.ManaCost" />
+                                        </div>
+                                        <MudText Typo="Typo.caption" Style="color:#9e94c8;">@card.TypeLine</MudText>
+                                    </div>
                                 </MudListItem>
                             }
                         </MudList>
                     }
                     </div>
+                    @if (_ctxOpen && _ctxCard != null)
+                    {
+                        <div style="position:fixed;inset:0;z-index:1199"
+                             @onclick="CloseSearchCtx"
+                             @oncontextmenu="CloseSearchCtx"
+                             @oncontextmenu:preventDefault="true" />
+                        <div class="wander-context-menu" style="position:fixed;left:@_ctxX;top:@_ctxY;">
+                            <div class="wander-ctx-item"
+                                 @onclick="() => { AddCard(_ctxCard!); CloseSearchCtx(); }">
+                                <MudIcon Icon="@Icons.Material.Filled.Add" Size="Size.Small" />
+                                Add to Deck
+                            </div>
+                            <div class="wander-ctx-item"
+                                 @onclick="() => { AddToSideboard(_ctxCard!); CloseSearchCtx(); }">
+                                <MudIcon Icon="@Icons.Material.Filled.SwapHoriz" Size="Size.Small" />
+                                Add to Sideboard
+                            </div>
+                            @if (_ctxCard!.TypeLine.Contains("Legendary", StringComparison.OrdinalIgnoreCase))
+                            {
+                                <div class="wander-ctx-item"
+                                     @onclick="() => { AddAsCommander(_ctxCard!); CloseSearchCtx(); }">
+                                    <MudIcon Icon="@Icons.Material.Filled.Star" Size="Size.Small" Style="color:#c9a84c;" />
+                                    Add as Commander
+                                </div>
+                            }
+                        <div class="wander-ctx-item"
+                             @onclick='async () => { CloseSearchCtx(); await JS.InvokeVoidAsync("copyToClipboard", _ctxCard!.Name); }'>
+                            <MudIcon Icon="@Icons.Material.Filled.ContentCopy" Size="Size.Small" />
+                            Copy Card Name
+                        </div>
+                        </div>
+                    }
                 </MudCardContent>
             </MudCard>
         </MudItem>
@@ -218,7 +221,7 @@
                         @if (commanders.Count == 0)
                         {
                             <MudText Typo="Typo.body2" Style="color:#9e94c8; font-style:italic;">
-                                Search for a legendary creature and right-click to set as commander.
+                                Right-click any card and select Make Commander.
                             </MudText>
                         }
                         @foreach (var card in commanders)
@@ -227,6 +230,14 @@
                                      Context="CardContext.BuilderCommander"
                                      OnRemove="RemoveCard"
                                      OnMoveToMain="DemoteCommander" />
+                            @if (!IsLegalCommander(card))
+                            {
+                                <div class="d-flex align-center gap-1 px-2"
+                                     style="color:#f6a823; font-size:0.75rem; margin-top:-4px; margin-bottom:4px;">
+                                    <MudIcon Icon="@Icons.Material.Filled.Warning" Size="Size.Small" />
+                                    Not a legal commander
+                                </div>
+                            }
                         }
                     </MudCardContent>
                 </MudCard>
@@ -247,8 +258,16 @@
                             <CardRow Card="@card" ShowQuantityControl="true" ShowRemove="true"
                                      Context="CardContext.BuilderMain"
                                      OnIncrement="IncrementCard" OnDecrement="DecrementCard"
-                                     OnRemove="RemoveCard" OnSetCommander="SetAsCommander"
+                                     OnRemove="RemoveCard" OnMakeCommander="MakeCommander" OnAddMore="AddMore"
                                      OnMoveToSideboard="MoveToSideboard" OnMoveToMain="MoveToMain" />
+                            @if (IsOutsideColorIdentity(card))
+                            {
+                                <div class="d-flex align-center gap-1 px-2"
+                                     style="color:#f6a823; font-size:0.75rem; margin-top:-4px; margin-bottom:4px;">
+                                    <MudIcon Icon="@Icons.Material.Filled.Warning" Size="Size.Small" />
+                                    Outside commander's color identity
+                                </div>
+                            }
                         }
                     </MudCardContent>
                 </MudCard>
@@ -272,7 +291,16 @@
                             <CardRow Card="@card" ShowQuantityControl="true" ShowRemove="true"
                                      Context="CardContext.BuilderMain"
                                      OnIncrement="IncrementCard" OnDecrement="DecrementCard"
-                                     OnRemove="RemoveCard" OnMoveToMain="MoveToMain" />
+                                     OnRemove="RemoveCard" OnMakeCommander="MakeCommander" OnAddMore="AddMore"
+                                     OnMoveToMain="MoveToMain" />
+                            @if (IsOutsideColorIdentity(card))
+                            {
+                                <div class="d-flex align-center gap-1 px-2"
+                                     style="color:#f6a823; font-size:0.75rem; margin-top:-4px; margin-bottom:4px;">
+                                    <MudIcon Icon="@Icons.Material.Filled.Warning" Size="Size.Small" />
+                                    Outside commander's color identity
+                                </div>
+                            }
                         }
                     </MudCardContent>
                 </MudCard>
@@ -300,6 +328,14 @@ else
                             {
                                 <CardRow Card="@card" Context="CardContext.Viewer"
                                          OnOpenScryfall="() => OpenScryfall(card)" />
+                                @if (!IsLegalCommander(card))
+                                {
+                                    <div class="d-flex align-center gap-1 px-2"
+                                         style="color:#f6a823; font-size:0.75rem; margin-top:-4px; margin-bottom:4px;">
+                                        <MudIcon Icon="@Icons.Material.Filled.Warning" Size="Size.Small" />
+                                        Not a legal commander
+                                    </div>
+                                }
                             }
                         </MudCardContent>
                     </MudCard>
@@ -320,6 +356,14 @@ else
                         {
                             <CardRow Card="@card" Context="CardContext.Viewer"
                                      OnOpenScryfall="() => OpenScryfall(card)" />
+                            @if (IsOutsideColorIdentity(card))
+                            {
+                                <div class="d-flex align-center gap-1 px-2"
+                                     style="color:#f6a823; font-size:0.75rem; margin-top:-4px; margin-bottom:4px;">
+                                    <MudIcon Icon="@Icons.Material.Filled.Warning" Size="Size.Small" />
+                                    Outside commander's color identity
+                                </div>
+                            }
                         }
                     </MudCardContent>
                 </MudCard>
@@ -342,6 +386,14 @@ else
                         {
                             <CardRow Card="@card" Context="CardContext.Viewer"
                                      OnOpenScryfall="() => OpenScryfall(card)" />
+                            @if (IsOutsideColorIdentity(card))
+                            {
+                                <div class="d-flex align-center gap-1 px-2"
+                                     style="color:#f6a823; font-size:0.75rem; margin-top:-4px; margin-bottom:4px;">
+                                    <MudIcon Icon="@Icons.Material.Filled.Warning" Size="Size.Small" />
+                                    Outside commander's color identity
+                                </div>
+                            }
                         }
                     </MudCardContent>
                 </MudCard>
@@ -376,6 +428,10 @@ else
     bool _saving, _isOwner, _isLiked, _likeBusy, _isAuthenticated;
     int _likeCount;
     string _ownerId = "";
+
+    CardSearchResult? _ctxCard;
+    string _ctxX = "0px", _ctxY = "0px";
+    bool _ctxOpen;
 
     string _pendingName = "", _pendingDescription = "";
     bool _editingName, _editingDescription, _savingMeta;
@@ -547,10 +603,20 @@ else
         _searchResults = await Api.SearchCardsAsync(q);
     }
 
+    void OpenSearchCtx(MouseEventArgs e, CardSearchResult card)
+    {
+        _ctxCard = card;
+        _ctxX = $"{e.ClientX}px";
+        _ctxY = $"{e.ClientY}px";
+        _ctxOpen = true;
+    }
+
+    void CloseSearchCtx() => _ctxOpen = false;
+
     async Task OnSearchFocusOut()
     {
-        // Small delay so a click on a result registers before the list is cleared.
-        await Task.Delay(50);
+        // Delay lets click on result or context menu item register before list clears.
+        await Task.Delay(300);
         _searchResults = [];
         _searchQuery = "";
     }
@@ -567,7 +633,7 @@ else
                 ? c with { Quantity = c.Quantity + 1 } : c).ToList();
         else
             _localCards.Add(new DeckCardDetail(Guid.NewGuid(), card.Id, card.DefaultPrintingId, card.Name, card.ManaCost,
-                card.Cmc, card.TypeLine, card.ColorIdentity, card.ImageUriNormal, card.ImageUriSmall, card.ImageUriArtCrop, card.DefaultPrintingId,
+                card.Cmc, card.TypeLine, card.OracleText, card.ColorIdentity, card.ImageUriNormal, card.ImageUriSmall, card.ImageUriArtCrop, card.DefaultPrintingId,
                 1, false, false, []));
     }
 
@@ -581,7 +647,7 @@ else
                 ? c with { Quantity = c.Quantity + 1 } : c).ToList();
         else
             _localCards.Add(new DeckCardDetail(Guid.NewGuid(), card.Id, card.DefaultPrintingId, card.Name, card.ManaCost,
-                card.Cmc, card.TypeLine, card.ColorIdentity, card.ImageUriNormal, card.ImageUriSmall, card.ImageUriArtCrop, card.DefaultPrintingId,
+                card.Cmc, card.TypeLine, card.OracleText, card.ColorIdentity, card.ImageUriNormal, card.ImageUriSmall, card.ImageUriArtCrop, card.DefaultPrintingId,
                 1, false, true, []));
     }
 
@@ -591,15 +657,49 @@ else
         _searchQuery = "";
         if (_localCards.Any(c => c.CardId == card.Id && c.IsCommander)) return;
         _localCards.Add(new DeckCardDetail(Guid.NewGuid(), card.Id, card.DefaultPrintingId, card.Name, card.ManaCost,
-            card.Cmc, card.TypeLine, card.ColorIdentity, card.ImageUriNormal, card.ImageUriSmall, card.ImageUriArtCrop, card.DefaultPrintingId,
+            card.Cmc, card.TypeLine, card.OracleText, card.ColorIdentity, card.ImageUriNormal, card.ImageUriSmall, card.ImageUriArtCrop, card.DefaultPrintingId,
             1, true, false, []));
     }
 
-    void SetAsCommander(DeckCardDetail card)
+    void MakeCommander(DeckCardDetail card)
     {
         if (_localCards.Any(c => c.CardId == card.CardId && c.IsCommander)) return;
+        var commanders = _localCards.Where(c => c.IsCommander).ToList();
+        _localCards.Remove(card);
+        if (commanders.Count == 1 && HasPartner(commanders[0]) && HasPartner(card))
+        {
+            _localCards.Add(card with { Id = Guid.NewGuid(), IsCommander = true, Quantity = 1 });
+            return;
+        }
+        _localCards = _localCards.Where(c => !c.IsCommander).ToList();
         _localCards.Add(card with { Id = Guid.NewGuid(), IsCommander = true, Quantity = 1 });
     }
+
+    async Task AddMore(DeckCardDetail card)
+    {
+        var input = await JS.InvokeAsync<string?>("prompt", "How many copies to add?", "1");
+        if (int.TryParse(input, out var count) && count > 0)
+            _localCards = _localCards.Select(c => c == card ? c with { Quantity = c.Quantity + count } : c).ToList();
+    }
+
+    bool IsOutsideColorIdentity(DeckCardDetail card)
+    {
+        var commanders = _localCards.Where(c => c.IsCommander).ToList();
+        if (commanders.Count == 0) return false;
+        var commanderColors = commanders.SelectMany(c => c.ColorIdentity).ToHashSet();
+        return card.ColorIdentity.Any(color => !commanderColors.Contains(color));
+    }
+
+    static bool IsLegalCommander(DeckCardDetail card) =>
+        card.TypeLine.Contains("Legendary", StringComparison.OrdinalIgnoreCase) ||
+        card.OracleText?.Contains("can be your commander", StringComparison.OrdinalIgnoreCase) == true;
+
+    static bool HasPartner(DeckCardDetail card) =>
+        card.OracleText != null &&
+        (card.OracleText.Contains("Partner with", StringComparison.OrdinalIgnoreCase) ||
+         card.OracleText.Contains("\nPartner\n", StringComparison.OrdinalIgnoreCase) ||
+         card.OracleText.EndsWith("\nPartner", StringComparison.OrdinalIgnoreCase) ||
+         card.OracleText.EndsWith("Partner", StringComparison.OrdinalIgnoreCase));
 
     void MoveToSideboard(DeckCardDetail card) =>
         _localCards = _localCards.Select(c => c == card ? c with { IsSideboard = true } : c).ToList();

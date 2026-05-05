@@ -251,6 +251,41 @@ public class DeckController(WanderDbContext db, DeckValidationService validator,
         }
 
         deck.CoverPrintingId = request.PrintingId;
+        deck.CoverCropLeft = request.CropLeft;
+        deck.CoverCropTop = request.CropTop;
+        deck.CoverCropWidth = request.CropWidth;
+        deck.CoverCropHeight = request.CropHeight;
+        await db.SaveChangesAsync(ct);
+        return NoContent();
+    }
+
+    [HttpPatch("cards/{deckCardId:guid}/printing"), Authorize]
+    public async Task<IActionResult> UpdateCardPrinting(
+    Guid deckCardId,
+    [FromBody] UpdateCardPrintingRequest request,
+    CancellationToken ct)
+    {
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier)!;
+
+        var deckCard = await db.DeckCards
+            .Include(dc => dc.Deck)
+            .Include(dc => dc.Card).ThenInclude(c => c!.Printings)
+            .FirstOrDefaultAsync(dc => dc.Id == deckCardId, ct);
+
+        if (deckCard == null) return NotFound();
+        if (deckCard.Deck.OwnerId != userId) return Forbid();
+
+        if (request.PrintingId.HasValue)
+        {
+            var valid = deckCard.Card?.Printings.Any(p => p.Id == request.PrintingId.Value) ?? false;
+            if (!valid) return BadRequest("Printing does not belong to this card.");
+            deckCard.PrintingId = request.PrintingId.Value;
+        }
+        else
+        {
+            deckCard.PrintingId = null;
+        }
+
         await db.SaveChangesAsync(ct);
         return NoContent();
     }
@@ -437,22 +472,26 @@ public class DeckController(WanderDbContext db, DeckValidationService validator,
     // ── Helpers ──────────────────────────────────────────────────────────────
 
     private static DeckSummaryResponse ToSummary(Deck d) => new(
-        d.Id,
-        d.Name,
-        d.Description,
-        d.Format,
-        ResolveCoverImage(d),
-        (d.Cards.Any(c => c.IsCommander)
-            ? d.Cards.Where(c => c.IsCommander).SelectMany(c => c.Card?.ColorIdentity ?? [])
-            : d.Cards.SelectMany(c => c.Card?.ColorIdentity ?? []))
-            .Distinct()
-            .OrderBy(c => "WUBRG".IndexOf(c, StringComparison.Ordinal))
-            .ToList(),
-        d.Visibility,
-        d.Owner.UserName!,
-        d.Cards.Where(c => !c.IsSideboard).Sum(c => c.Quantity),
-        d.CreatedAt,
-        d.UpdatedAt);
+    d.Id,
+    d.Name,
+    d.Description,
+    d.Format,
+    ResolveCoverImage(d),
+    d.CoverCropLeft,
+    d.CoverCropTop,
+    d.CoverCropWidth,
+    d.CoverCropHeight,
+    (d.Cards.Any(c => c.IsCommander)
+        ? d.Cards.Where(c => c.IsCommander).SelectMany(c => c.Card?.ColorIdentity ?? [])
+        : d.Cards.SelectMany(c => c.Card?.ColorIdentity ?? []))
+        .Distinct()
+        .OrderBy(c => "WUBRG".IndexOf(c, StringComparison.Ordinal))
+        .ToList(),
+    d.Visibility,
+    d.Owner.UserName!,
+    d.Cards.Where(c => !c.IsSideboard).Sum(c => c.Quantity),
+    d.CreatedAt,
+    d.UpdatedAt);
 
     private async Task<(int LikeCount, bool IsLiked)> GetLikeInfoAsync(Guid deckId, CancellationToken ct)
     {
@@ -475,6 +514,10 @@ public class DeckController(WanderDbContext db, DeckValidationService validator,
             d.Primer,
             d.Format,
             ResolveCoverImage(d),
+            d.CoverCropLeft,
+            d.CoverCropTop,
+            d.CoverCropWidth,
+            d.CoverCropHeight,
             d.Visibility,
             d.OwnerId,
             d.Owner?.UserName ?? "",
@@ -490,6 +533,8 @@ public class DeckController(WanderDbContext db, DeckValidationService validator,
                     dc.Card?.Cmc ?? 0,
                     dc.Card?.TypeLine ?? "",
                     dc.Card?.OracleText,
+                    printing?.FlavorText,
+                    dc.Card?.Legalities ?? new Dictionary<string, string>(),
                     dc.Card?.ColorIdentity ?? [],
                     printing?.ImageUriNormal,
                     printing?.ImageUriSmall,

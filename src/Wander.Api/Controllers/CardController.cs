@@ -59,4 +59,19 @@ public class CardController(WanderDbContext db) : ControllerBase
                 c.Legalities);
         }));
     }
+
+    [HttpGet("{id:guid}/printings")]
+    public async Task<IActionResult> GetPrintings(Guid id, CancellationToken ct)
+    {
+        var printings = await db.CardPrintings
+            .Where(p => p.CardId == id)
+            .OrderBy(p => p.SetCode)
+            .ThenBy(p => p.CollectorNumber)
+            .Select(p => new CardPrintingResponse(
+                p.Id, p.SetCode, p.CollectorNumber,
+                p.ImageUriNormal, p.ImageUriSmall, p.ImageUriArtCrop))
+            .ToListAsync(ct);
+
+        return Ok(printings);
+    }
 }

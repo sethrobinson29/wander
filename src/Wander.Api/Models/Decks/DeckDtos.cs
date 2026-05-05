@@ -29,6 +29,10 @@ public record DeckSummaryResponse(
     string? Description,
     Format Format,
     string? CoverImageUri,
+    double? CoverCropLeft,
+    double? CoverCropTop,
+    double? CoverCropWidth,
+    double? CoverCropHeight,
     List<string> ColorIdentity,
     Visibility Visibility,
     string OwnerUsername,
@@ -43,6 +47,10 @@ public record DeckDetailResponse(
     string? Primer,
     Format Format,
     string? CoverImageUri,
+    double? CoverCropLeft,
+    double? CoverCropTop,
+    double? CoverCropWidth,
+    double? CoverCropHeight,
     Visibility Visibility,
     string OwnerId,
     string OwnerUsername,
@@ -62,6 +70,8 @@ public record DeckCardResponse(
     decimal Cmc,
     string TypeLine,
     string? OracleText,
+    string? FlavorText,
+    Dictionary<string, string> Legalities,
     List<string> ColorIdentity,
     string? ImageUriNormal,
     string? ImageUriSmall,
@@ -74,4 +84,11 @@ public record DeckCardResponse(
 
 public record BulkImportRequest([Required][MaxLength(200_000)] string Decklist);
 
-public record SetCoverRequest(Guid? PrintingId);
+public record SetCoverRequest(
+    Guid? PrintingId,
+    double? CropLeft,
+    double? CropTop,
+    double? CropWidth,
+    double? CropHeight);
+
+public record UpdateCardPrintingRequest(Guid? PrintingId);

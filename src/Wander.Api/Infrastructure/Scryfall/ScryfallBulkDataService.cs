@@ -57,7 +57,7 @@ public class ScryfallBulkDataService(
     {
         var response = await httpClient.GetFromJsonAsync<BulkDataResponse>(BulkDataUrl, ct);
         return response?.Data
-            .FirstOrDefault(e => e.Type == "oracle_cards")
+            .FirstOrDefault(e => e.Type == "default_cards")
             ?.DownloadUri;
     }
 
@@ -72,6 +72,7 @@ public class ScryfallBulkDataService(
             stream, options, ct))
         {
             if (card is not null
+                && card.OracleId is not null
                 && card.EffectiveImageUris is not null
                 && !ExcludedLayouts.Contains(card.Layout)
                 && !IsPlaceholderTypeLine(card.TypeLine))
@@ -88,18 +89,19 @@ public class ScryfallBulkDataService(
 
     private void UpsertCard(
         ScryfallCard src,
-        Dictionary<string, Guid> existingCards,
-        Dictionary<string, Guid> existingPrintings)
+        Dictionary<string, Guid> existingCards,      // keyed on oracle_id
+        Dictionary<string, Guid> existingPrintings)  // keyed on printing scryfall id (unchanged)
     {
         Guid cardId;
+        var oracleId = src.OracleId!;
 
-        if (!existingCards.TryGetValue(src.Id, out var existingCardId))
+        if (!existingCards.TryGetValue(oracleId, out var existingCardId))
         {
             cardId = Guid.NewGuid();
             db.Cards.Add(new Card
             {
                 Id = cardId,
-                ScryfallId = src.Id,
+                ScryfallId = oracleId,          // now stores oracle_id, not printing id
                 Name = src.Name,
                 ManaCost = src.ManaCost,
                 Cmc = src.Cmc,
@@ -110,7 +112,7 @@ public class ScryfallBulkDataService(
                 Legalities = src.Legalities,
                 UpdatedAt = DateTimeOffset.UtcNow,
             });
-            existingCards[src.Id] = cardId;
+            existingCards[oracleId] = cardId;
         }
         else
         {
@@ -127,6 +129,7 @@ public class ScryfallBulkDataService(
             tracked.UpdatedAt = DateTimeOffset.UtcNow;
         }
 
+        // Printing keyed on printing scryfall id (src.Id), unchanged
         if (!existingPrintings.TryGetValue(src.Id, out var existingPrintingId))
         {
             db.CardPrintings.Add(new CardPrinting
@@ -139,6 +142,7 @@ public class ScryfallBulkDataService(
                 ImageUriSmall = src.EffectiveImageUris?.Small,
                 ImageUriNormal = src.EffectiveImageUris?.Normal,
                 ImageUriArtCrop = src.EffectiveImageUris?.ArtCrop,
+                FlavorText = src.EffectiveFlavorText,   // new
                 UpdatedAt = DateTimeOffset.UtcNow,
             });
         }
@@ -150,6 +154,7 @@ public class ScryfallBulkDataService(
             tracked.ImageUriSmall = src.EffectiveImageUris?.Small;
             tracked.ImageUriNormal = src.EffectiveImageUris?.Normal;
             tracked.ImageUriArtCrop = src.EffectiveImageUris?.ArtCrop;
+            tracked.FlavorText = src.EffectiveFlavorText;  // new
             tracked.UpdatedAt = DateTimeOffset.UtcNow;
         }
     }

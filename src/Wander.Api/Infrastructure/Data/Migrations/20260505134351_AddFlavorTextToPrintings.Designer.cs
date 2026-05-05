@@ -3,6 +3,7 @@ using System;
 using System.Collections.Generic;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using NpgsqlTypes;
@@ -13,9 +14,11 @@ using Wander.Api.Infrastructure.Data;
 namespace Wander.Api.Infrastructure.Data.Migrations
 {
     [DbContext(typeof(WanderDbContext))]
-    partial class WanderDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260505134351_AddFlavorTextToPrintings")]
+    partial class AddFlavorTextToPrintings
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -415,18 +418,6 @@ namespace Wander.Api.Infrastructure.Data.Migrations
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
-
-                    b.Property<double?>("CoverCropHeight")
-                        .HasColumnType("double precision");
-
-                    b.Property<double?>("CoverCropLeft")
-                        .HasColumnType("double precision");
-
-                    b.Property<double?>("CoverCropTop")
-                        .HasColumnType("double precision");
-
-                    b.Property<double?>("CoverCropWidth")
-                        .HasColumnType("double precision");
 
                     b.Property<Guid?>("CoverPrintingId")
                         .HasColumnType("uuid");

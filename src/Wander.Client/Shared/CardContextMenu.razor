@@ -51,9 +51,40 @@
                 <MudIcon Icon="@Icons.Material.Filled.Close" Size="Size.Small" />
                 Remove All
             </div>
+            <MudDivider Style="border-color:#3d2d5e; margin:4px 0;" />
+            <div class="wander-ctx-item"
+                 @onclick="async () => { Close(); await OnViewDetails.InvokeAsync(Card); }">
+                <MudIcon Icon="@Icons.Material.Outlined.Info" Size="Size.Small" />
+                View Details
+            </div>
+            <div class="wander-ctx-item"
+                 @onclick="async () => { Close(); await OnSwitchPrinting.InvokeAsync(Card); }">
+                <MudIcon Icon="@Icons.Material.Filled.Layers" Size="Size.Small" />
+                Switch Printing
+            </div>
+            <div class="wander-ctx-item"
+                 @onclick="async () => { Close(); await OnSetAsImage.InvokeAsync(Card); }">
+                <MudIcon Icon="@Icons.Material.Filled.Wallpaper" Size="Size.Small" />
+                Set as Deck Image
+            </div>
         }
         else if (Context == CardContext.BuilderCommander)
         {
+            <div class="wander-ctx-item"
+                 @onclick="async () => { Close(); await OnViewDetails.InvokeAsync(Card); }">
+                <MudIcon Icon="@Icons.Material.Outlined.Info" Size="Size.Small" />
+                View Details
+            </div>
+            <div class="wander-ctx-item"
+                 @onclick="async () => { Close(); await OnSwitchPrinting.InvokeAsync(Card); }">
+                <MudIcon Icon="@Icons.Material.Filled.Layers" Size="Size.Small" />
+                Switch Printing
+            </div>
+            <div class="wander-ctx-item"
+                 @onclick="async () => { Close(); await OnSetAsImage.InvokeAsync(Card); }">
+                <MudIcon Icon="@Icons.Material.Filled.Wallpaper" Size="Size.Small" />
+                Set as Deck Image
+            </div>
             <div class="wander-ctx-item wander-ctx-item-danger"
                  @onclick="async () => { Close(); await OnRemove.InvokeAsync(Card); }">
                 <MudIcon Icon="@Icons.Material.Filled.Close" Size="Size.Small" />
@@ -87,6 +118,11 @@
                  @onclick="async () => { Close(); await OnOpenScryfall.InvokeAsync(); }">
                 <MudIcon Icon="@Icons.Material.Filled.OpenInNew" Size="Size.Small" />
                 Open on Scryfall
+            </div>
+            <div class="wander-ctx-item"
+                 @onclick="async () => { Close(); await OnViewDetails.InvokeAsync(Card); }">
+                <MudIcon Icon="@Icons.Material.Outlined.Info" Size="Size.Small" />
+                View Details
             </div>
         }
         <div class="wander-ctx-item" @onclick="CopyName">
@@ -136,4 +172,7 @@
     [Parameter] public EventCallback OnAddToSideboard { get; set; }
     [Parameter] public EventCallback OnAddAsCommander { get; set; }
     [Parameter] public EventCallback OnOpenScryfall { get; set; }
+    [Parameter] public EventCallback<DeckCardDetail> OnViewDetails    { get; set; }
+    [Parameter] public EventCallback<DeckCardDetail> OnSwitchPrinting { get; set; }
+    [Parameter] public EventCallback<DeckCardDetail> OnSetAsImage     { get; set; }
 }

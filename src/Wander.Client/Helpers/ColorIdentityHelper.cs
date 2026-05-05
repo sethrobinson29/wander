@@ -11,22 +11,39 @@ public static class ColorIdentityHelper
         ["G"] = (20,  75,  35),
     };
 
-    // Returns a full inline style string for a banner div.
-    // Edge stops use higher opacity; interior stops dip lower to let the art show through.
-    public static string BannerStyle(IEnumerable<string> colors, string? imageUri = null)
+    public static string BannerStyle(
+    IEnumerable<string> colors,
+    string? imageUri = null,
+    double? cropLeft = null,
+    double? cropTop = null,
+    double? cropWidth = null,
+    double? cropHeight = null)
     {
         var list = colors.OrderBy(c => "WUBRG".IndexOf(c, StringComparison.Ordinal)).ToList();
 
-        // With image: dramatic dip so art shows in the center.
-        // Without image: subtle gradient variation for visual interest.
         var high = imageUri != null ? "0.82" : "0.90";
-        var low  = imageUri != null ? "0.52" : "0.78";
+        var low = imageUri != null ? "0.52" : "0.78";
 
         var gradient = BuildGradient(list, high, low);
 
-        return imageUri != null
-            ? $"background-image:{gradient},url('{imageUri}');background-size:cover,cover;background-position:center,center;"
-            : $"background-image:{gradient};";
+        if (imageUri == null)
+            return $"background-image:{gradient};";
+
+        if (cropLeft.HasValue && cropTop.HasValue && cropWidth.HasValue && cropHeight.HasValue)
+        {
+            var w = Math.Clamp(cropWidth.Value, 0.01, 0.99);
+            var h = Math.Clamp(cropHeight.Value, 0.01, 0.99);
+            var l = Math.Clamp(cropLeft.Value, 0, 1 - w);
+            var t = Math.Clamp(cropTop.Value, 0, 1 - h);
+
+            var size = (100.0 / w).ToString("F2", System.Globalization.CultureInfo.InvariantCulture);
+            var posX = (l / (1.0 - w) * 100.0).ToString("F2", System.Globalization.CultureInfo.InvariantCulture);
+            var posY = (t / (1.0 - h) * 100.0).ToString("F2", System.Globalization.CultureInfo.InvariantCulture);
+
+            return $"background-image:{gradient},url('{imageUri}');background-size:cover,{size}% auto;background-position:center,{posX}% {posY}%;";
+        }
+
+        return $"background-image:{gradient},url('{imageUri}');background-size:cover,cover;background-position:center,center;";
     }
 
     private static string BuildGradient(List<string> colors, string high, string low)

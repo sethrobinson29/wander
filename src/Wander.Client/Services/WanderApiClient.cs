@@ -85,6 +85,18 @@ public class WanderApiClient(HttpClient http, LocalStorage localStorage)
                ?? [];
     }
 
+    public async Task<List<CardPrintingInfo>?> GetCardPrintingsAsync(Guid cardId)
+    {
+        await AttachTokenAsync();
+        return await http.GetFromJsonAsync<List<CardPrintingInfo>>($"cards/{cardId}/printings");
+    }
+
+    public async Task<HttpResponseMessage> UpdateCardPrintingAsync(Guid deckCardId, Guid? printingId)
+    {
+        await AttachTokenAsync();
+        return await http.PatchAsJsonAsync($"decks/cards/{deckCardId}/printing", new { printingId });
+    }
+
     // ── Decks ─────────────────────────────────────────────────────────────────
 
     public async Task<List<DeckSummary>> GetPublicDecksAsync(Format? format = null)
@@ -181,10 +193,14 @@ public class WanderApiClient(HttpClient http, LocalStorage localStorage)
         return await http.DeleteAsync($"comments/{commentId}");
     }
 
-    public async Task<HttpResponseMessage> SetDeckCoverAsync(Guid id, Guid? printingId)
+    public async Task<HttpResponseMessage> SetDeckCoverAsync(
+    Guid id, Guid? printingId,
+    double? cropLeft = null, double? cropTop = null,
+    double? cropWidth = null, double? cropHeight = null)
     {
         await AttachTokenAsync();
-        return await http.PatchAsJsonAsync($"decks/{id}/cover", new { printingId });
+        return await http.PatchAsJsonAsync($"decks/{id}/cover",
+            new { printingId, cropLeft, cropTop, cropWidth, cropHeight });
     }
 
     // ── Notifications ───────────────────────────────────────────────────────────────

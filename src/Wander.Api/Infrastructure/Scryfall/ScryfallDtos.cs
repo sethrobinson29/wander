@@ -16,11 +16,13 @@ public record BulkDataEntry(
 // One card entry from the bulk JSON
 public record ScryfallCard(
     [property: JsonPropertyName("id")] string Id,
+    [property: JsonPropertyName("oracle_id")] string? OracleId,
     [property: JsonPropertyName("name")] string Name,
     [property: JsonPropertyName("mana_cost")] string? ManaCost,
     [property: JsonPropertyName("cmc")] decimal Cmc,
     [property: JsonPropertyName("type_line")] string TypeLine,
     [property: JsonPropertyName("oracle_text")] string? OracleText,
+    [property: JsonPropertyName("flavor_text")] string? FlavorText,
     [property: JsonPropertyName("colors")] List<string>? Colors,
     [property: JsonPropertyName("color_identity")] List<string> ColorIdentity,
     [property: JsonPropertyName("image_uris")] ScryfallImageUris? ImageUris,
@@ -33,11 +35,13 @@ public record ScryfallCard(
 {
     // For double-faced cards, image_uris is null and images live on the first card face.
     public ScryfallImageUris? EffectiveImageUris => ImageUris ?? CardFaces?.FirstOrDefault()?.ImageUris;
+    public string? EffectiveFlavorText => FlavorText ?? CardFaces?.FirstOrDefault()?.FlavorText;
 }
 
 public record ScryfallCardFace(
     [property: JsonPropertyName("name")] string Name,
-    [property: JsonPropertyName("image_uris")] ScryfallImageUris? ImageUris
+    [property: JsonPropertyName("image_uris")] ScryfallImageUris? ImageUris,
+    [property: JsonPropertyName("flavor_text")] string? FlavorText
 );
 
 public record ScryfallImageUris(

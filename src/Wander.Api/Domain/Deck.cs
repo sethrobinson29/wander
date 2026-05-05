@@ -5,7 +5,7 @@ public class Deck
     public Guid Id { get; set; }
     public required string Name { get; set; }
     public string? Description { get; set; }
-    public string? Primer { get; set; }          // Markdown string
+    public string? Primer { get; set; }
     public Format Format { get; set; }
     public Visibility Visibility { get; set; }
     public required string OwnerId { get; set; }
@@ -17,4 +17,8 @@ public class Deck
     public ICollection<DeckComment> Comments { get; set; } = [];
     public Guid? CoverPrintingId { get; set; }
     public CardPrinting? CoverPrinting { get; set; }
+    public double? CoverCropLeft { get; set; }
+    public double? CoverCropTop { get; set; }
+    public double? CoverCropWidth { get; set; }
+    public double? CoverCropHeight { get; set; }
 }

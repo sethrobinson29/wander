@@ -50,7 +50,10 @@
                      OnDecrement="OnDecrement"
                      OnAddMore="OnAddMore"
                      OnRemove="OnRemove"
-                     OnOpenScryfall="OnOpenScryfall">
+                     OnOpenScryfall="OnOpenScryfall"
+                     OnViewDetails="OnViewDetails"
+                     OnSwitchPrinting="OnSwitchPrinting"
+                     OnSetAsImage="OnSetAsImage">
         @rowContent
     </CardContextMenu>
 }
@@ -72,4 +75,7 @@ else
     [Parameter] public EventCallback<DeckCardDetail> OnMoveToSideboard { get; set; }
     [Parameter] public EventCallback<DeckCardDetail> OnMoveToMain { get; set; }
     [Parameter] public EventCallback OnOpenScryfall { get; set; }
+    [Parameter] public EventCallback<DeckCardDetail> OnViewDetails    { get; set; }
+    [Parameter] public EventCallback<DeckCardDetail> OnSwitchPrinting { get; set; }
+    [Parameter] public EventCallback<DeckCardDetail> OnSetAsImage     { get; set; }
 }

@@ -14,3 +14,11 @@ public record CardSearchResponse(
     string? ImageUriSmall,
     string? ImageUriArtCrop,
     Dictionary<string, string> Legalities);
+
+public record CardPrintingResponse(
+    Guid Id,
+    string SetCode,
+    string CollectorNumber,
+    string? ImageUriNormal,
+    string? ImageUriSmall,
+    string? ImageUriArtCrop);

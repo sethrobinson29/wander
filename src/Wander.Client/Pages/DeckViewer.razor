@@ -15,7 +15,11 @@
     return;
 }
 <!-- Cover Banner -->
-<div style="height:140px;border-radius:8px;margin-bottom:16px;position:relative;@ColorIdentityHelper.BannerStyle(CommanderColors, _deck.Format == Format.Commander ? _deck.CoverImageUri : null)">
+<div style="height:140px;border-radius:8px;margin-bottom:16px;position:relative;@ColorIdentityHelper.BannerStyle(
+             CommanderColors,
+             _deck.Format == Format.Commander ? _deck.CoverImageUri : null,
+             _deck.CoverCropLeft, _deck.CoverCropTop,
+             _deck.CoverCropWidth, _deck.CoverCropHeight)">
     @if (_isOwner && _deck.Format == Format.Commander)
     {
         <MudIconButton Icon="@Icons.Material.Filled.Image" Size="Size.Small"
@@ -202,6 +206,11 @@
                             <MudIcon Icon="@Icons.Material.Filled.ContentCopy" Size="Size.Small" />
                             Copy Card Name
                         </div>
+                        <div class="wander-ctx-item"
+                             @onclick="async () => { CloseSearchCtx(); await OpenViewDetailsFromSearch(_ctxCard!); }">
+                            <MudIcon Icon="@Icons.Material.Outlined.Info" Size="Size.Small" />
+                            View Details
+                        </div>
                         </div>
                     }
                 </MudCardContent>
@@ -229,7 +238,10 @@
                             <CardRow Card="@card" ShowRemove="true"
                                      Context="CardContext.BuilderCommander"
                                      OnRemove="RemoveCard"
-                                     OnMoveToMain="DemoteCommander" />
+                                     OnMoveToMain="DemoteCommander"
+                                     OnViewDetails="OpenViewDetails"
+                                     OnSwitchPrinting="OpenSwitchPrinting"
+                                     OnSetAsImage="OpenSetAsImage" />
                             @if (!IsLegalCommander(card))
                             {
                                 <div class="d-flex align-center gap-1 px-2"
@@ -259,7 +271,10 @@
                                      Context="CardContext.BuilderMain"
                                      OnIncrement="IncrementCard" OnDecrement="DecrementCard"
                                      OnRemove="RemoveCard" OnMakeCommander="MakeCommander" OnAddMore="AddMore"
-                                     OnMoveToSideboard="MoveToSideboard" OnMoveToMain="MoveToMain" />
+                                     OnMoveToSideboard="MoveToSideboard" OnMoveToMain="MoveToMain"
+                                     OnViewDetails="OpenViewDetails"
+                                     OnSwitchPrinting="OpenSwitchPrinting"
+                                     OnSetAsImage="OpenSetAsImage" />
                             @if (IsOutsideColorIdentity(card))
                             {
                                 <div class="d-flex align-center gap-1 px-2"
@@ -292,7 +307,10 @@
                                      Context="CardContext.BuilderMain"
                                      OnIncrement="IncrementCard" OnDecrement="DecrementCard"
                                      OnRemove="RemoveCard" OnMakeCommander="MakeCommander" OnAddMore="AddMore"
-                                     OnMoveToMain="MoveToMain" />
+                                     OnMoveToMain="MoveToMain"
+                                     OnViewDetails="OpenViewDetails"
+                                     OnSwitchPrinting="OpenSwitchPrinting"
+                                     OnSetAsImage="OpenSetAsImage" />
                             @if (IsOutsideColorIdentity(card))
                             {
                                 <div class="d-flex align-center gap-1 px-2"
@@ -327,7 +345,8 @@ else
                             @foreach (var card in commanders)
                             {
                                 <CardRow Card="@card" Context="CardContext.Viewer"
-                                         OnOpenScryfall="() => OpenScryfall(card)" />
+                                         OnOpenScryfall="() => OpenScryfall(card)"
+                                         OnViewDetails="OpenViewDetails" />
                                 @if (!IsLegalCommander(card))
                                 {
                                     <div class="d-flex align-center gap-1 px-2"
@@ -355,7 +374,8 @@ else
                         @foreach (var card in group.OrderBy(c => c.Cmc).ThenBy(c => c.CardName))
                         {
                             <CardRow Card="@card" Context="CardContext.Viewer"
-                                     OnOpenScryfall="() => OpenScryfall(card)" />
+                                     OnOpenScryfall="() => OpenScryfall(card)"
+                                     OnViewDetails="OpenViewDetails" />
                             @if (IsOutsideColorIdentity(card))
                             {
                                 <div class="d-flex align-center gap-1 px-2"
@@ -385,7 +405,8 @@ else
                         @foreach (var card in sideboardCards.OrderBy(c => c.Cmc).ThenBy(c => c.CardName))
                         {
                             <CardRow Card="@card" Context="CardContext.Viewer"
-                                     OnOpenScryfall="() => OpenScryfall(card)" />
+                                     OnOpenScryfall="() => OpenScryfall(card)"
+                                     OnViewDetails="OpenViewDetails" />
                             @if (IsOutsideColorIdentity(card))
                             {
                                 <div class="d-flex align-center gap-1 px-2"
@@ -594,6 +615,53 @@ else
         }
     }
 
+    async Task OpenViewDetails(DeckCardDetail card)
+    {
+        var parameters = new DialogParameters<Dialogs.ViewCardDetailsDialog> { { x => x.Card, card } };
+        await Dialogs.ShowAsync<Dialogs.ViewCardDetailsDialog>(
+            "", parameters, new DialogOptions { MaxWidth = MaxWidth.Medium, FullWidth = true });
+    }
+
+    async Task OpenViewDetailsFromSearch(CardSearchResult card)
+    {
+        var parameters = new DialogParameters<Dialogs.ViewCardDetailsDialog> { { x => x.SearchCard, card } };
+        await Dialogs.ShowAsync<Dialogs.ViewCardDetailsDialog>(
+            "", parameters, new DialogOptions { MaxWidth = MaxWidth.Medium, FullWidth = true });
+    }
+
+    async Task OpenSwitchPrinting(DeckCardDetail card)
+    {
+        var parameters = new DialogParameters<Dialogs.SwitchPrintingDialog> { { x => x.Card, card } };
+        var dialog = await Dialogs.ShowAsync<Dialogs.SwitchPrintingDialog>(
+            "", parameters, new DialogOptions { MaxWidth = MaxWidth.Large, FullWidth = true });
+        var result = await dialog.Result;
+
+        if (result is { Canceled: false })
+        {
+            _deck = await Api.GetDeckAsync(_deck!.Id) ?? _deck;
+            _localCards = _deck.Cards.ToList();
+            StateHasChanged();
+        }
+    }
+
+    async Task OpenSetAsImage(DeckCardDetail card)
+    {
+        var parameters = new DialogParameters<Dialogs.DeckImageCropperDialog>
+    {
+        { x => x.Card,   card    },
+        { x => x.DeckId, _deck.Id }
+    };
+        var dialog = await Dialogs.ShowAsync<Dialogs.DeckImageCropperDialog>(
+            "", parameters, new DialogOptions { MaxWidth = MaxWidth.Large, FullWidth = true });
+        var result = await dialog.Result;
+
+        if (result is { Canceled: false })
+        {
+            _deck = await Api.GetDeckAsync(_deck.Id) ?? _deck;
+            StateHasChanged();
+        }
+    }
+
     // ── Card search ───────────────────────────────────────────────────────────
 
     async Task OnSearchInput(string q)
@@ -633,8 +701,8 @@ else
                 ? c with { Quantity = c.Quantity + 1 } : c).ToList();
         else
             _localCards.Add(new DeckCardDetail(Guid.NewGuid(), card.Id, card.DefaultPrintingId, card.Name, card.ManaCost,
-                card.Cmc, card.TypeLine, card.OracleText, card.ColorIdentity, card.ImageUriNormal, card.ImageUriSmall, card.ImageUriArtCrop, card.DefaultPrintingId,
-                1, false, false, []));
+                card.Cmc, card.TypeLine, card.OracleText, null, card.Legalities, card.ColorIdentity, card.ImageUriNormal,
+                card.ImageUriSmall, card.ImageUriArtCrop, card.DefaultPrintingId, 1, false, false, []));
     }
 
     void AddToSideboard(CardSearchResult card)
@@ -647,8 +715,8 @@ else
                 ? c with { Quantity = c.Quantity + 1 } : c).ToList();
         else
             _localCards.Add(new DeckCardDetail(Guid.NewGuid(), card.Id, card.DefaultPrintingId, card.Name, card.ManaCost,
-                card.Cmc, card.TypeLine, card.OracleText, card.ColorIdentity, card.ImageUriNormal, card.ImageUriSmall, card.ImageUriArtCrop, card.DefaultPrintingId,
-                1, false, true, []));
+                card.Cmc, card.TypeLine, card.OracleText, null, card.Legalities, card.ColorIdentity, card.ImageUriNormal,
+                card.ImageUriSmall, card.ImageUriArtCrop, card.DefaultPrintingId, 1, false, true, []));
     }
 
     void AddAsCommander(CardSearchResult card)
@@ -657,8 +725,8 @@ else
         _searchQuery = "";
         if (_localCards.Any(c => c.CardId == card.Id && c.IsCommander)) return;
         _localCards.Add(new DeckCardDetail(Guid.NewGuid(), card.Id, card.DefaultPrintingId, card.Name, card.ManaCost,
-            card.Cmc, card.TypeLine, card.OracleText, card.ColorIdentity, card.ImageUriNormal, card.ImageUriSmall, card.ImageUriArtCrop, card.DefaultPrintingId,
-            1, true, false, []));
+            card.Cmc, card.TypeLine, card.OracleText, null, card.Legalities, card.ColorIdentity, card.ImageUriNormal,
+            card.ImageUriSmall, card.ImageUriArtCrop, card.DefaultPrintingId, 1, true, false, []));
     }
 
     void MakeCommander(DeckCardDetail card)

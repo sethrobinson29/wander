@@ -1,0 +1,79 @@
+﻿@using Wander.Client.Models
+@inject WanderApiClient Api
+@inject ISnackbar Snackbar
+
+<MudDialog>
+    <TitleContent>
+        <MudText Typo="Typo.h6" Style="font-family:'Cinzel',serif; color:#c9a84c;">
+            Switch Printing — @Card.CardName
+        </MudText>
+    </TitleContent>
+    <DialogContent>
+        @if (_loading)
+        {
+            <div class="d-flex justify-center pa-8">
+                <MudProgressCircular Indeterminate="true" Color="Color.Primary" />
+            </div>
+        }
+        else if (_printings.Count == 0)
+        {
+            <MudText Style="color:#9e94c8;">No printings found for this card.</MudText>
+        }
+        else
+        {
+            <div style="display:grid; grid-template-columns:repeat(auto-fill,minmax(140px,1fr));
+                gap:8px; max-height:60vh; overflow-y:auto;">
+                @foreach (var p in _printings)
+                {
+                    var selected = p.Id == _selectedId;
+                    <div style="cursor:pointer; border-radius:6px;
+                        border:2px solid @(selected ? "#c9a84c" : "transparent");
+                        overflow:hidden; background:#1c1228;"
+                         @onclick="() => _selectedId = p.Id">
+                        @if (p.ImageUriNormal != null)
+                        {
+                            <img src="@p.ImageUriNormal" style="width:100%; display:block;"
+                                 alt="@p.SetCode" />
+                        }
+                        <div style="padding:4px; font-size:0.7rem; color:#9e94c8; text-align:center;">
+                            @p.SetCode.ToUpperInvariant() · #@p.CollectorNumber
+                        </div>
+                    </div>
+                }
+            </div>
+        }
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="() => MudDialog.Cancel()">Cancel</MudButton>
+        <MudButton Color="Color.Primary" Variant="Variant.Filled"
+                   Disabled="_loading"
+                   OnClick="Save">
+            Select
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] IMudDialogInstance MudDialog { get; set; } = null!;
+    [Parameter] public DeckCardDetail Card { get; set; } = null!;
+
+    List<CardPrintingInfo> _printings = [];
+    bool _loading = true;
+    Guid? _selectedId;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _selectedId = Card.ImagePrintingId;
+        _printings = await Api.GetCardPrintingsAsync(Card.CardId) ?? [];
+        _loading = false;
+    }
+
+    async Task Save()
+    {
+        var response = await Api.UpdateCardPrintingAsync(Card.Id, _selectedId);
+        if (response.IsSuccessStatusCode)
+            MudDialog.Close(DialogResult.Ok(_selectedId));
+        else
+            Snackbar.Add("Failed to update printing.", Severity.Error);
+    }
+}

@@ -66,39 +66,36 @@ public record CardSearchResult(
     string? ImageUriArtCrop,
     Dictionary<string, string> Legalities);
 
+public record CardPrintingInfo(
+    Guid Id,
+    string SetCode,
+    string CollectorNumber,
+    string? ImageUriNormal,
+    string? ImageUriSmall,
+    string? ImageUriArtCrop);
+
 // ── Decks ────────────────────────────────────────────────────────────────────
 
 public enum Format { Standard, Pioneer, Modern, Legacy, Vintage, Commander, Pauper, Explorer, Historic, Timeless }
 public enum Visibility { Public, Private, Unlisted }
 
 public record DeckSummary(
-    Guid Id,
-    string Name,
-    string? Description,
-    Format Format,
+    Guid Id, string Name, string? Description, Format Format,
     string? CoverImageUri,
-    List<string> ColorIdentity,
-    Visibility Visibility,
-    string OwnerUsername,
-    int CardCount,
-    DateTimeOffset CreatedAt,
-    DateTimeOffset UpdatedAt);
+    double? CoverCropLeft, double? CoverCropTop,
+    double? CoverCropWidth, double? CoverCropHeight,
+    List<string> ColorIdentity, Visibility Visibility,
+    string OwnerUsername, int CardCount,
+    DateTimeOffset CreatedAt, DateTimeOffset UpdatedAt);
 
 public record DeckDetail(
-    Guid Id,
-    string Name,
-    string? Description,
-    string? Primer,
-    Format Format,
-    string? CoverImageUri,
-    Visibility Visibility,
-    string OwnerId,
-    string OwnerUsername,
-    List<DeckCardDetail> Cards,
-    int LikeCount,
-    bool IsLikedByCurrentUser,
-    DateTimeOffset CreatedAt,
-    DateTimeOffset UpdatedAt);
+    Guid Id, string Name, string? Description, string? Primer,
+    Format Format, string? CoverImageUri,
+    double? CoverCropLeft, double? CoverCropTop,
+    double? CoverCropWidth, double? CoverCropHeight,
+    Visibility Visibility, string OwnerId, string OwnerUsername,
+    List<DeckCardDetail> Cards, int LikeCount, bool IsLikedByCurrentUser,
+    DateTimeOffset CreatedAt, DateTimeOffset UpdatedAt);
 
 public record DeckCardDetail(
     Guid Id,
@@ -109,6 +106,8 @@ public record DeckCardDetail(
     decimal Cmc,
     string TypeLine,
     string? OracleText,
+    string? FlavorText,
+    Dictionary<string, string> Legalities,
     List<string> ColorIdentity,
     string? ImageUriNormal,
     string? ImageUriSmall,

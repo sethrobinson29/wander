@@ -15,7 +15,7 @@
     return;
 }
 <!-- Cover Banner -->
-<div style="height:140px;border-radius:8px;margin-bottom:16px;position:relative;@ColorIdentityHelper.BannerStyle(
+<div @ref="_bannerRef" style="height:200px;border-radius:8px;margin-bottom:16px;position:relative;@ColorIdentityHelper.BannerStyle(
              CommanderColors,
              _deck.Format == Format.Commander ? _deck.CoverImageUri : null,
              _deck.CoverCropLeft, _deck.CoverCropTop,
@@ -450,6 +450,9 @@ else
     int _likeCount;
     string _ownerId = "";
 
+    ElementReference _bannerRef;
+    record BannerRect(double Left, double Top, double Width, double Height);
+
     CardSearchResult? _ctxCard;
     string _ctxX = "0px", _ctxY = "0px";
     bool _ctxOpen;
@@ -646,11 +649,14 @@ else
 
     async Task OpenSetAsImage(DeckCardDetail card)
     {
+        var rect = await JS.InvokeAsync<BannerRect>("getElementRect", _bannerRef);
         var parameters = new DialogParameters<Dialogs.DeckImageCropperDialog>
-    {
-        { x => x.Card,   card    },
-        { x => x.DeckId, _deck.Id }
-    };
+        {
+            { x => x.Card,         card        },
+            { x => x.DeckId,       _deck.Id    },
+            { x => x.BannerWidth,  rect.Width  },
+            { x => x.BannerHeight, rect.Height }
+        };
         var dialog = await Dialogs.ShowAsync<Dialogs.DeckImageCropperDialog>(
             "", parameters, new DialogOptions { MaxWidth = MaxWidth.Large, FullWidth = true });
         var result = await dialog.Result;

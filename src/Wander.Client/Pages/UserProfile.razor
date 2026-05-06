@@ -20,71 +20,71 @@
     return;
 }
 
-<MudContainer MaxWidth="MaxWidth.Large" Class="mt-8">
+<MudContainer MaxWidth="MaxWidth.Medium" Class="mt-8 pa-6" Style="max-width:900px;">
     @if (_isSelf)
     {
-        <MudAlert Severity="Severity.Info" Class="mb-4">
+        <MudAlert Severity="Severity.Info" Class="mb-6">
             This is how your profile appears to others.
             <MudLink Href="/settings" Color="Color.Primary" Class="ml-1">Edit your profile</MudLink>
         </MudAlert>
     }
 
-    <!-- Profile header -->
-    <div class="d-flex align-center gap-4 mb-6">
-        <AvatarDisplay Username="@_profile.Username" AvatarId="@_profile.AvatarId" Size="80" />
-        <div class="flex-grow-1">
-            <MudText Typo="Typo.h4" Style="font-family:'Cinzel',serif; color:#c4a35f;">
-                @_profile.Username
-            </MudText>
-            @if (_profile.FirstName != null || _profile.LastName != null)
-            {
-                <MudText Typo="Typo.h6" Style="color:#e8e0f0;">
-                    @string.Join(" ", new[] { _profile.FirstName, _profile.LastName }.Where(s => s != null))
-                </MudText>
-            }
-            @if (_profile.Pronouns != null)
-            {
-                <MudText Typo="Typo.caption" Style="color:#948aa8;">@_profile.Pronouns</MudText>
-            }
+    <!-- Centered profile header -->
+    <div class="d-flex flex-column align-center mb-8" style="text-align:center;">
+        <div class="mb-4">
+            <AvatarDisplay Username="@_profile.Username" AvatarId="@_profile.AvatarId" Size="96" />
         </div>
+        <p class="wander-label mb-1">Wanderer</p>
+        <MudText Typo="Typo.h3" Style="color:#c4a35f;">@_profile.Username</MudText>
+        @if (_profile.FirstName != null || _profile.LastName != null)
+        {
+            <MudText Typo="Typo.h6" Class="mt-1">
+                @string.Join(" ", new[] { _profile.FirstName, _profile.LastName }.Where(s => s != null))
+            </MudText>
+        }
+        @if (_profile.Pronouns != null)
+        {
+            <MudText Typo="Typo.caption" Style="color:#948aa8;">@_profile.Pronouns</MudText>
+        }
+        @if (_profile.Bio != null)
+        {
+            <MudText Typo="Typo.body2" Class="mt-3" Style="color:#948aa8; max-width:480px;">@_profile.Bio</MudText>
+        }
         @if (_isAuthenticated && !_isSelf)
         {
-            <MudButton Variant="@(_isFollowing ? Variant.Outlined : Variant.Filled)"
-                       Color="Color.Primary"
-                       OnClick="ToggleFollow"
-                       Disabled="_followBusy">
-                @(_isFollowing ? "Unfollow" : "Follow")
-            </MudButton>
+            <div class="mt-4">
+                <MudButton Variant="@(_isFollowing ? Variant.Outlined : Variant.Filled)"
+                           Color="Color.Primary"
+                           OnClick="ToggleFollow"
+                           Disabled="_followBusy">
+                    @(_isFollowing ? "Unfollow" : "Follow")
+                </MudButton>
+            </div>
         }
     </div>
 
-    @if (_profile.Bio != null)
-    {
-        <MudCard Style="border:1px solid #352d47;" Class="mb-4">
-            <MudCardContent>
-                <MudText Typo="Typo.body1">@_profile.Bio</MudText>
-            </MudCardContent>
-        </MudCard>
-    }
-
-    <!-- null means hidden by privacy, not "no followers" — only render when the value is visible -->
-    @if (_profile.FollowerCount != null || _profile.FollowingCount != null)
-    {
-        <div class="d-flex gap-4 mb-6">
-            @if (_profile.FollowerCount != null)
-            {
-                <MudText Typo="Typo.body2" Style="color:#948aa8;">
-                    <strong style="color:#e8e0f0;">@_profile.FollowerCount</strong> followers
-                </MudText>
-            }
-            @if (_profile.FollowingCount != null)
-            {
-                <MudText Typo="Typo.body2" Style="color:#948aa8;">
-                    <strong style="color:#e8e0f0;">@_profile.FollowingCount</strong> following
-                </MudText>
-            }
-        </div>
-    }
+    <!-- Stat strip -->
+    <MudGrid Spacing="0" Class="mb-8"
+             Style="border-top:1px solid #352d47;border-bottom:1px solid #352d47;">
+        <MudItem xs="4" Style="padding:24px 16px;text-align:center;border-right:1px solid #352d47;">
+            <div class="wander-display wander-tnum" style="font-size:28px;font-weight:400;color:#ebe4d0;">
+                @_profile.PublicDecks.Count
+            </div>
+            <p class="wander-label mt-1">Decks</p>
+        </MudItem>
+        <MudItem xs="4" Style="padding:24px 16px;text-align:center;border-right:1px solid #352d47;">
+            <div class="wander-display wander-tnum" style="font-size:28px;font-weight:400;color:#ebe4d0;">
+                @(_profile.FollowerCount?.ToString() ?? "—")
+            </div>
+            <p class="wander-label mt-1">Followers</p>
+        </MudItem>
+        <MudItem xs="4" Style="padding:24px 16px;text-align:center;">
+            <div class="wander-display wander-tnum" style="font-size:28px;font-weight:400;color:#ebe4d0;">
+                @(_profile.FollowingCount?.ToString() ?? "—")
+            </div>
+            <p class="wander-label mt-1">Following</p>
+        </MudItem>
+    </MudGrid>
 
     <!-- Public decks -->
     <MudTabs Elevation="0" Rounded="false" Style="background:transparent;">

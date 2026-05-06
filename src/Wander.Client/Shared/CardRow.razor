@@ -1,6 +1,6 @@
 @{
     RenderFragment rowContent =
-        @<div class="d-flex align-center py-1" style="border-bottom: 1px solid #251f31;">
+        @<div class="d-flex align-center py-1 px-3" style="border-bottom: 1px solid #251f31;">
             @if (ShowQuantityControl)
             {
                 <MudIconButton Icon="@Icons.Material.Filled.Remove" Size="Size.Small"
@@ -15,21 +15,21 @@
             }
 
             <div class="card-preview-anchor flex-grow-1 ml-2">
-                <MudText Style="cursor:default;">
+                <div style="cursor:default; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">
                     @if (Card.IsCommander)
                     {
                         <MudIcon Icon="@Icons.Material.Filled.Star" Size="Size.Small"
                                  Style="color:#c4a35f; vertical-align:middle;" />
                     }
                     @Card.CardName
-                </MudText>
+                    <span style="color:#948aa8; font-size:0.75rem; margin-left:6px;">@Card.TypeLine</span>
+                </div>
                 @if (Card.ImageUriNormal != null)
                 {
                     <img class="card-preview-image" src="@Card.ImageUriNormal" alt="@Card.CardName" />
                 }
             </div>
 
-            <MudText Typo="Typo.caption" Style="color:#948aa8; margin-right:8px;">@Card.TypeLine</MudText>
             <ManaCost Cost="@Card.ManaCost" />
 
             @if (ShowRemove)

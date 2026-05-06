@@ -37,10 +37,10 @@ h1, h2, h3,
 
 .card-preview-image {
     display: none;
-    position: absolute;
-    z-index: 1000;
-    top: 0;
-    left: calc(100% + 12px);
+    position: fixed;
+    z-index: 2000;
+    left: calc(var(--cursor-x, 0px) + 20px);
+    top: calc(var(--cursor-y, 0px) - 60px);
     width: 200px;
     border-radius: 8px;
     box-shadow: 0 8px 32px rgba(0, 0, 0, 0.8);
@@ -101,3 +101,26 @@ h1, h2, h3,
 }
 .wander-ctx-item:hover { background: #251f31; }
 .wander-ctx-item-danger { color: var(--mud-palette-error); }
+
+/* Layout utility classes */
+.wander-label {
+    font-size: 0.6875rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: #948aa8;
+    margin: 0;
+}
+
+.wander-display { font-family: 'Cinzel', serif; }
+
+.wander-tnum { font-variant-numeric: tabular-nums; }
+
+/* Sidebar layout — left panel with hairline border */
+.wander-sidebar {
+    border-right: 1px solid #352d47;
+    min-height: calc(100vh - 64px);
+}
+
+/* Format filter list */
+.wander-format-list .mud-list-item { padding: 6px 12px; border-left: 2px solid transparent; font-size: 13px; }
+.wander-format-list .wander-format-active { background: #251f31; border-left-color: #c4a35f; color: #ebe4d0; }

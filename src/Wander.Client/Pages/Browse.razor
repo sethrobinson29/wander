@@ -2,73 +2,96 @@
 @inject WanderApiClient Api
 @inject NavigationManager Nav
 
-<MudText Typo="Typo.h4" Class="page-title">Browse Decks</MudText>
+<MudContainer MaxWidth="MaxWidth.False" Class="pa-0">
+    <MudGrid Spacing="0">
 
-<div class="d-flex align-center gap-3 mb-4">
-    <MudText Typo="Typo.body2" Style="color:#948aa8;">Filter by format:</MudText>
-    <MudChip T="string" Variant="Variant.Outlined" Color="@(_format == null ? Color.Primary : Color.Default)"
-             OnClick="() => SetFormat(null)">All</MudChip>
-    @foreach (Format f in Enum.GetValues<Format>())
-    {
-        <MudChip T="string" Variant="Variant.Outlined"
-                 Color="@(_format == f ? Color.Primary : Color.Default)"
-                 OnClick="() => SetFormat(f)">@f.ToString()</MudChip>
-    }
-</div>
-
-@if (_loading)
-{
-    <MudProgressLinear Color="Color.Primary" Indeterminate="true" />
-}
-else if (_decks.Count == 0)
-{
-    <MudText Style="color:#948aa8;">No public decks found.</MudText>
-}
-else
-{
-    <MudGrid>
-        @foreach (var deck in _decks)
-        {
-            <MudItem xs="12" sm="6" md="4">
-                <MudCard Style="border:1px solid #352d47; cursor:pointer;" Class="deck-card"
-                         @onclick='() => Nav.NavigateTo($"/decks/{deck.Id}")'>
-                    <div style="height:120px;border-radius:4px 4px 0 0;@ColorIdentityHelper.BannerStyle(deck.ColorIdentity)"></div>
-                    <MudCardContent>
-                        <MudText Typo="Typo.h6" Style="font-family:'Cinzel',serif;">@deck.Name</MudText>
-                        <div class="d-flex align-center gap-2 mt-1">
-                            <FormatBadge Format="@deck.Format" />
-                            <MudLink Href="@($"/users/{deck.OwnerUsername}")" Typo="Typo.caption" Style="color:#948aa8;"
-                                     @onclick:stopPropagation="true">by @deck.OwnerUsername</MudLink>
-                            <MudText Typo="Typo.caption" Style="color:#948aa8;">· @deck.CardCount cards</MudText>
+        <!-- Sidebar: format filter -->
+        <MudItem xs="12" md="2" Class="wander-sidebar">
+            <div class="pa-5">
+                <p class="wander-label mb-3">Format</p>
+                <MudList T="string" Dense Class="wander-format-list">
+                    <MudListItem T="string" OnClick="@(() => SetFormat(null))"
+                                 Class="@(_format == null ? "wander-format-active" : "")">
+                        <div class="d-flex justify-space-between align-center">
+                            <span>All</span>
+                            <span class="wander-tnum" style="color:#645a76;font-size:11px;">@_allDecks.Count</span>
                         </div>
-                        @if (deck.Description != null)
+                    </MudListItem>
+                    @foreach (Format f in Enum.GetValues<Format>())
+                    {
+                        var fmt = f;
+                        <MudListItem T="string" OnClick="@(() => SetFormat(fmt))"
+                                     Class="@(_format == fmt ? "wander-format-active" : "")">
+                            <div class="d-flex justify-space-between align-center">
+                                <span>@f.ToString()</span>
+                                <span class="wander-tnum" style="color:#645a76;font-size:11px;">@FormatCount(f)</span>
+                            </div>
+                        </MudListItem>
+                    }
+                </MudList>
+            </div>
+        </MudItem>
+
+        <!-- Main content -->
+        <MudItem xs="12" md="10">
+            <div class="pa-6">
+                <MudText Typo="Typo.h4" Class="page-title">Browse Decks</MudText>
+
+                @if (_loading)
+                {
+                    <MudProgressLinear Color="Color.Primary" Indeterminate="true" />
+                }
+                else if (FilteredDecks.Count == 0)
+                {
+                    <MudText Style="color:#948aa8;">No public decks found.</MudText>
+                }
+                else
+                {
+                    <MudGrid>
+                        @foreach (var deck in FilteredDecks)
                         {
-                            <MudText Typo="Typo.body2" Class="mt-2" Style="color:#948aa8;">@deck.Description</MudText>
+                            <MudItem xs="12" sm="6" md="4">
+                                <MudCard Style="border:1px solid #352d47; cursor:pointer;" Class="deck-card"
+                                         @onclick='() => Nav.NavigateTo($"/decks/{deck.Id}")'>
+                                    <div style="height:100px;border-radius:8px 8px 0 0;@ColorIdentityHelper.BannerStyle(deck.ColorIdentity)"></div>
+                                    <MudCardContent>
+                                        <MudText Typo="Typo.h6" Style="font-family:'Cinzel',serif;">@deck.Name</MudText>
+                                        <div class="d-flex align-center gap-2 mt-1">
+                                            <FormatBadge Format="@deck.Format" />
+                                            <MudLink Href="@($"/users/{deck.OwnerUsername}")" Typo="Typo.caption" Style="color:#948aa8;"
+                                                     @onclick:stopPropagation="true">by @deck.OwnerUsername</MudLink>
+                                            <MudText Typo="Typo.caption" Style="color:#948aa8;">· @deck.CardCount cards</MudText>
+                                        </div>
+                                        @if (deck.Description != null)
+                                        {
+                                            <MudText Typo="Typo.body2" Class="mt-2" Style="color:#948aa8;">@deck.Description</MudText>
+                                        }
+                                    </MudCardContent>
+                                </MudCard>
+                            </MudItem>
                         }
-                    </MudCardContent>
-                </MudCard>
-            </MudItem>
-        }
+                    </MudGrid>
+                }
+            </div>
+        </MudItem>
     </MudGrid>
-}
+</MudContainer>
 
 @code {
-    List<DeckSummary> _decks = [];
+    List<DeckSummary> _allDecks = [];
     bool _loading = true;
     Format? _format;
 
-    protected override async Task OnInitializedAsync() => await LoadDecks();
+    List<DeckSummary> FilteredDecks =>
+        _format == null ? _allDecks : _allDecks.Where(d => d.Format == _format).ToList();
 
-    async Task SetFormat(Format? f)
-    {
-        _format = f;
-        await LoadDecks();
-    }
+    int FormatCount(Format f) => _allDecks.Count(d => d.Format == f);
 
-    async Task LoadDecks()
+    protected override async Task OnInitializedAsync()
     {
-        _loading = true;
-        _decks = await Api.GetPublicDecksAsync(_format);
+        _allDecks = await Api.GetPublicDecksAsync(null);
         _loading = false;
     }
+
+    void SetFormat(Format? f) => _format = f;
 }

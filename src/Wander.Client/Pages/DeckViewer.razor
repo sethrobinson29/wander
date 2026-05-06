@@ -88,6 +88,8 @@
                        OnClick="ToggleLike">
                 @_likeCount
             </MudButton>
+            <MudButton Variant="Variant.Outlined" Style="color:#9e94c8; border-color:#3d2d5e;"
+                       OnClick="OpenBulkExport">Export</MudButton>
         }
         else
         {
@@ -123,6 +125,7 @@
                     </MudMenuItem>
                 }
             </MudMenu>
+            <MudButton Variant="Variant.Outlined" OnClick="OpenBulkExport">Export</MudButton>
             <MudButton Variant="Variant.Outlined" OnClick="OpenBulkImport">Bulk Import</MudButton>
             <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="SaveCards"
                        Disabled="_saving">
@@ -814,6 +817,37 @@ else
             Snackbar.Add("Deck saved.", Severity.Success);
         }
         _saving = false;
+    }
+
+    async Task OpenBulkExport()
+    {
+        var options = new DialogOptions { MaxWidth = MaxWidth.Medium, FullWidth = true, CloseButton = true };
+        var parameters = new DialogParameters<Dialogs.BulkExportDialog>
+        {
+            { d => d.Decklist, BuildDecklist() }
+        };
+        await Dialogs.ShowAsync<Dialogs.BulkExportDialog>("Export Decklist", parameters, options);
+    }
+
+    string BuildDecklist()
+    {
+        var sb = new System.Text.StringBuilder();
+
+        foreach (var card in _localCards.Where(c => c.IsCommander))
+            sb.AppendLine($"{card.Quantity} {card.CardName} *CMDR*");
+
+        foreach (var card in _localCards.Where(c => !c.IsCommander && !c.IsSideboard))
+            sb.AppendLine($"{card.Quantity} {card.CardName}");
+
+        var sideboard = _localCards.Where(c => c.IsSideboard).ToList();
+        if (sideboard.Count > 0)
+        {
+            sb.AppendLine("SIDEBOARD:");
+            foreach (var card in sideboard)
+                sb.AppendLine($"{card.Quantity} {card.CardName}");
+        }
+
+        return sb.ToString().TrimEnd();
     }
 
     async Task OpenBulkImport()

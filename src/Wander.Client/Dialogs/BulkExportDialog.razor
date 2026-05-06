@@ -1,0 +1,30 @@
+@inject IJSRuntime JS
+@inject ISnackbar Snackbar
+@using Microsoft.JSInterop
+
+<MudDialog Style="min-width:500px;">
+    <TitleContent>
+        <MudText Typo="Typo.h6" Style="font-family:'Cinzel',serif;">Export Decklist</MudText>
+    </TitleContent>
+    <DialogContent>
+        <MudTextField Value="@Decklist" Variant="Variant.Outlined" Lines="14"
+                      FullWidth="true" ReadOnly="true" />
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="() => MudDialog.Cancel()">Close</MudButton>
+        <MudButton Color="Color.Primary" Variant="Variant.Filled" OnClick="CopyToClipboard">
+            Copy to Clipboard
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] IMudDialogInstance MudDialog { get; set; } = null!;
+    [Parameter] public string Decklist { get; set; } = "";
+
+    async Task CopyToClipboard()
+    {
+        await JS.InvokeVoidAsync("copyToClipboard", Decklist);
+        Snackbar.Add("Decklist copied.", Severity.Success);
+    }
+}

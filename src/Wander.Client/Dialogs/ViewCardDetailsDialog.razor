@@ -2,7 +2,7 @@
 
 <MudDialog Style="max-height:90vh; overflow:hidden;">
     <TitleContent>
-        <MudText Typo="Typo.h6" Style="font-family:'Cinzel',serif; color:#c9a84c;">Card Details</MudText>
+        <MudText Typo="Typo.h6" Style="font-family:'Cinzel',serif; color:#c4a35f;">Card Details</MudText>
     </TitleContent>
     <DialogContent>
         <div class="d-flex gap-4 flex-wrap" style="overflow-y:auto; max-height:calc(90vh - 130px);">
@@ -13,12 +13,12 @@
             <div class="flex-grow-1" style="min-width:200px;">
                 <!-- Name + mana cost -->
                 <div class="d-flex align-center gap-2 flex-wrap mb-1">
-                    <MudText Typo="Typo.h5" Style="font-family:'Cinzel',serif; color:#c9a84c;">@CardName</MudText>
+                    <MudText Typo="Typo.h5" Style="font-family:'Cinzel',serif; color:#c4a35f;">@CardName</MudText>
                     <ManaCost Cost="@ManaCost" />
                 </div>
 
                 <!-- Type line -->
-                <MudText Typo="Typo.caption" Style="color:#9e94c8; display:block; margin-bottom:12px;">@TypeLine</MudText>
+                <MudText Typo="Typo.caption" Style="color:#948aa8; display:block; margin-bottom:12px;">@TypeLine</MudText>
 
                 <!-- Oracle text -->
                 @if (!string.IsNullOrWhiteSpace(OracleText))
@@ -29,14 +29,14 @@
                 <!-- Flavor text -->
                 @if (!string.IsNullOrWhiteSpace(FlavorText))
                 {
-                    <MudDivider Style="margin:8px 0; border-color:#3d2d5e;" />
-                    <MudText Style="font-style:italic; color:#9e94c8; white-space:pre-wrap; line-height:1.5;">@FlavorText</MudText>
+                    <MudDivider Style="margin:8px 0; border-color:#352d47;" />
+                    <MudText Style="font-style:italic; color:#948aa8; white-space:pre-wrap; line-height:1.5;">@FlavorText</MudText>
                 }
 
                 <!-- Legalities -->
                 @if (Legalities.Count > 0)
                 {
-                    <MudDivider Style="margin:16px 0 8px; border-color:#3d2d5e;" />
+                    <MudDivider Style="margin:16px 0 8px; border-color:#352d47;" />
                     <MudText Typo="Typo.subtitle2" Style="margin-bottom:8px;">Format Legality</MudText>
                     <div class="d-flex flex-wrap gap-1">
                         @foreach (var (format, status) in Legalities.OrderBy(l => l.Key))

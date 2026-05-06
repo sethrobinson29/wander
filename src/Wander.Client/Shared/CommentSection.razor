@@ -28,14 +28,14 @@
     }
     else
     {
-        <MudText Typo="Typo.body2" Style="color:#9e94c8;" Class="mb-4">
-            <MudLink Href="/login" Style="color:#c9a84c;">Log in</MudLink> to leave a comment.
+        <MudText Typo="Typo.body2" Style="color:#948aa8;" Class="mb-4">
+            <MudLink Href="/login" Style="color:#c4a35f;">Log in</MudLink> to leave a comment.
         </MudText>
     }
 
     @foreach (var comment in _comments)
     {
-        <MudCard Style="background:#1a1228; border:1px solid #3d2d5e;" Class="mb-3">
+        <MudCard Style="background:#1a1228; border:1px solid #352d47;" Class="mb-3">
             <MudCardContent Class="pa-3">
 
                 @* Top-level comment *@
@@ -48,19 +48,19 @@
                                      Style="font-weight:600; color:#e8e0f0;">
                                 @comment.AuthorUsername
                             </MudText>
-                            <MudText Typo="Typo.caption" Style="color:#9e94c8;">
+                            <MudText Typo="Typo.caption" Style="color:#948aa8;">
                                 @comment.CreatedAt.ToString("MMM d, yyyy")
                             </MudText>
                             @if (comment.UpdatedAt.HasValue && !comment.IsDeleted)
                             {
                                 <MudText Typo="Typo.caption"
-                                         Style="color:#9e94c8; font-style:italic;">
+                                         Style="color:#948aa8; font-style:italic;">
                                     (edited)
                                 </MudText>
                             }
                         </div>
                         <MudText Typo="Typo.body2"
-                                 Style="@(comment.IsDeleted ? "color:#9e94c8; font-style:italic;" : "color:#e8e0f0;")">
+                                 Style="@(comment.IsDeleted ? "color:#948aa8; font-style:italic;" : "color:#e8e0f0;")">
                             @comment.Body
                         </MudText>
 
@@ -71,7 +71,7 @@
                                 @if (_isAuthenticated)
                                 {
                                     <MudButton Variant="Variant.Text" Size="Size.Small"
-                                               Style="color:#9e94c8; min-width:0; padding:0 8px;"
+                                               Style="color:#948aa8; min-width:0; padding:0 8px;"
                                                OnClick="() => ToggleReplyBox(comment.Id)">
                                         Reply
                                     </MudButton>
@@ -97,7 +97,7 @@
                         <MudTextField @bind-Value="_replyBody"
                                       Placeholder="Write a reply..."
                                       Variant="Variant.Outlined" FullWidth="true" Lines="2"
-                                      Style="background:#241a35;" />
+                                      Style="" />
                         <div class="d-flex flex-column gap-1 mt-1">
                             <MudButton Variant="Variant.Filled" Color="Color.Primary"
                                        Size="Size.Small"
@@ -126,19 +126,19 @@
                                              Style="font-weight:600; color:#e8e0f0;">
                                         @reply.AuthorUsername
                                     </MudText>
-                                    <MudText Typo="Typo.caption" Style="color:#9e94c8;">
+                                    <MudText Typo="Typo.caption" Style="color:#948aa8;">
                                         @reply.CreatedAt.ToString("MMM d, yyyy")
                                     </MudText>
                                     @if (reply.UpdatedAt.HasValue && !reply.IsDeleted)
                                     {
                                         <MudText Typo="Typo.caption"
-                                                 Style="color:#9e94c8; font-style:italic;">
+                                                 Style="color:#948aa8; font-style:italic;">
                                             (edited)
                                         </MudText>
                                     }
                                 </div>
                                 <MudText Typo="Typo.body2"
-                                         Style="@(reply.IsDeleted ? "color:#9e94c8; font-style:italic;" : "color:#e8e0f0;")">
+                                         Style="@(reply.IsDeleted ? "color:#948aa8; font-style:italic;" : "color:#e8e0f0;")">
                                     @reply.Body
                                 </MudText>
                                 @if (!reply.IsDeleted && (_currentUserId == reply.AuthorId || _isOwner))

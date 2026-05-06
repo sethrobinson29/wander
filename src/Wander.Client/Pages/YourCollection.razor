@@ -17,7 +17,7 @@
 }
 else if (_decks.Count == 0)
 {
-    <MudText Typo="Typo.body1" Style="color:#9e94c8;">
+    <MudText Typo="Typo.body1" Style="color:#948aa8;">
         Your grimoire is empty. Create your first deck.
     </MudText>
 }
@@ -27,18 +27,18 @@ else
         @foreach (var deck in _decks)
         {
             <MudItem xs="12" sm="6" md="4">
-                <MudCard Style="background:#241a35; border:1px solid #3d2d5e; cursor:pointer;"
+                <MudCard Style="border:1px solid #352d47; cursor:pointer;"
                          @onclick='() => Nav.NavigateTo($"/decks/{deck.Id}")'>
                     <div style="height:120px;border-radius:4px 4px 0 0;@ColorIdentityHelper.BannerStyle(deck.ColorIdentity)"></div>
                     <MudCardContent>
                         <MudText Typo="Typo.h6" Style="font-family:'Cinzel',serif;">@deck.Name</MudText>
                         <div class="d-flex align-center gap-2 mt-1">
                             <FormatBadge Format="@deck.Format" />
-                            <MudText Typo="Typo.caption" Style="color:#9e94c8;">@deck.CardCount cards</MudText>
+                            <MudText Typo="Typo.caption" Style="color:#948aa8;">@deck.CardCount cards</MudText>
                         </div>
                         @if (deck.Description != null)
                         {
-                            <MudText Typo="Typo.body2" Class="mt-2" Style="color:#9e94c8;">
+                            <MudText Typo="Typo.body2" Class="mt-2" Style="color:#948aa8;">
                                 @deck.Description
                             </MudText>
                         }

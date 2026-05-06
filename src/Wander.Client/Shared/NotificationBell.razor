@@ -22,14 +22,14 @@
 @if (_bellOpen)
 {
     <div style="position:fixed; top:64px; right:16px; z-index:1400; width:320px; max-height:480px;
-                overflow-y:auto; background:#241a35; border:1px solid #3d2d5e;
+                overflow-y:auto; border:1px solid #352d47;
                 border-radius:4px; box-shadow:0 4px 20px rgba(0,0,0,0.5);">
         <div class="d-flex justify-space-between align-center px-3 py-2">
             <MudText Typo="Typo.subtitle2" Style="color:#e8e0f0;">Notifications</MudText>
             @if (_unreadCount > 0)
             {
                 <MudButton Variant="Variant.Text" Size="Size.Small"
-                           Style="color:#c9a84c;" OnClick="MarkAllRead">
+                           Style="color:#c4a35f;" OnClick="MarkAllRead">
                     Mark all read
                 </MudButton>
             }
@@ -37,7 +37,7 @@
 
         @if (_notifications.Count == 0)
         {
-            <MudText Typo="Typo.body2" Style="color:#9e94c8; padding:8px 12px;">
+            <MudText Typo="Typo.body2" Style="color:#948aa8; padding:8px 12px;">
                 No notifications yet.
             </MudText>
         }
@@ -49,11 +49,11 @@
                      style="@NotifRowStyle(n)"
                      @onclick="() => HandleNotificationClick(n)">
                     <MudIcon Icon="@NotifIcon(n.Type)" Size="Size.Small"
-                             Style="color:#9e94c8; flex-shrink:0;" />
+                             Style="color:#948aa8; flex-shrink:0;" />
                     <MudText Typo="Typo.body2" Style="color:#e8e0f0; flex-grow:1;">
                         @NotifText(n)
                     </MudText>
-                    <MudText Typo="Typo.caption" Style="color:#9e94c8; flex-shrink:0;">
+                    <MudText Typo="Typo.caption" Style="color:#948aa8; flex-shrink:0;">
                         @n.CreatedAt.ToString("MMM d")
                     </MudText>
                 </div>

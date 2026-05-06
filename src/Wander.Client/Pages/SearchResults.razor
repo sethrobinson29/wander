@@ -12,7 +12,7 @@ else if (_type == "user")
 {
     @if (_users.Count == 0)
     {
-        <MudText Style="color:#9e94c8;">No users found for "@Q".</MudText>
+        <MudText Style="color:#948aa8;">No users found for "@Q".</MudText>
     }
     else
     {
@@ -20,7 +20,7 @@ else if (_type == "user")
             @foreach (var user in _users)
             {
                 <MudItem xs="12" sm="6" md="4">
-                    <MudCard Style="background:#241a35; border:1px solid #3d2d5e; cursor:pointer;" Class="deck-card"
+                    <MudCard Style="border:1px solid #352d47; cursor:pointer;" Class="deck-card"
                              @onclick='() => Nav.NavigateTo($"/users/{user.Username}")'>
                         <MudCardContent>
                             <div class="d-flex align-center gap-3">
@@ -29,7 +29,7 @@ else if (_type == "user")
                                     <MudLink Href="@($"/users/{user.Username}")" Typo="Typo.h6"
                                              Style="font-family:'Cinzel',serif; color:#e8e0f0;"
                                              @onclick:stopPropagation="true">@user.Username</MudLink>
-                                    <MudText Typo="Typo.body2" Style="color:#9e94c8;">@user.DeckCount public deck@(user.DeckCount == 1 ? "" : "s")</MudText>
+                                    <MudText Typo="Typo.body2" Style="color:#948aa8;">@user.DeckCount public deck@(user.DeckCount == 1 ? "" : "s")</MudText>
                                 </div>
                             </div>
                         </MudCardContent>
@@ -43,7 +43,7 @@ else
 {
     @if (_decks.Count == 0)
     {
-        <MudText Style="color:#9e94c8;">No decks found for "@Q".</MudText>
+        <MudText Style="color:#948aa8;">No decks found for "@Q".</MudText>
     }
     else
     {
@@ -51,20 +51,20 @@ else
             @foreach (var deck in _decks)
             {
                 <MudItem xs="12" sm="6" md="4">
-                    <MudCard Style="background:#241a35; border:1px solid #3d2d5e; cursor:pointer;" Class="deck-card"
+                    <MudCard Style="border:1px solid #352d47; cursor:pointer;" Class="deck-card"
                              @onclick='() => Nav.NavigateTo($"/decks/{deck.Id}")'>
                         <div style="height:120px;border-radius:4px 4px 0 0;@ColorIdentityHelper.BannerStyle(deck.ColorIdentity)"></div>
                         <MudCardContent>
                             <MudText Typo="Typo.h6" Style="font-family:'Cinzel',serif;">@deck.Name</MudText>
                             <div class="d-flex align-center gap-2 mt-1">
                                 <FormatBadge Format="@deck.Format" />
-                                <MudLink Href="@($"/users/{deck.OwnerUsername}")" Typo="Typo.caption" Style="color:#9e94c8;"
+                                <MudLink Href="@($"/users/{deck.OwnerUsername}")" Typo="Typo.caption" Style="color:#948aa8;"
                                          @onclick:stopPropagation="true">by @deck.OwnerUsername</MudLink>
-                                <MudText Typo="Typo.caption" Style="color:#9e94c8;">· @deck.CardCount cards</MudText>
+                                <MudText Typo="Typo.caption" Style="color:#948aa8;">· @deck.CardCount cards</MudText>
                             </div>
                             @if (deck.Description != null)
                             {
-                                <MudText Typo="Typo.body2" Class="mt-2" Style="color:#9e94c8;">@deck.Description</MudText>
+                                <MudText Typo="Typo.body2" Class="mt-2" Style="color:#948aa8;">@deck.Description</MudText>
                             }
                         </MudCardContent>
                     </MudCard>

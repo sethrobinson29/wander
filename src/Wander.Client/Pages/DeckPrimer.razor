@@ -23,12 +23,12 @@
             <div class="d-flex align-center gap-2">
                 <MudIconButton Icon="@Icons.Material.Filled.ArrowBack"
                                OnClick='() => Nav.NavigateTo($"/decks/{Id}")'
-                               Style="color:#9e94c8;" />
+                               Style="color:#948aa8;" />
                 <div>
-                    <MudText Typo="Typo.h4" Style="font-family:'Cinzel',serif; color:#c9a84c;">
+                    <MudText Typo="Typo.h4" Style="font-family:'Cinzel',serif; color:#c4a35f;">
                         @_deck.Name
                     </MudText>
-                    <MudText Typo="Typo.caption" Style="color:#9e94c8;">Primer</MudText>
+                    <MudText Typo="Typo.caption" Style="color:#948aa8;">Primer</MudText>
                 </div>
             </div>
             @if (isOwner)
@@ -47,25 +47,25 @@
                 <MudTabPanel Text="Write" PanelClass="pt-3">
                     <div class="d-flex gap-1 mb-2" style="flex-wrap:wrap;">
                         <MudButton Size="Size.Small" Variant="Variant.Outlined"
-                                   Style="min-width:36px; font-weight:700; color:#e8e0ff; border-color:#3d2d5e;"
+                                   Style="min-width:36px; font-weight:700; color:#ebe4d0; border-color:#352d47;"
                                    OnClick='() => InsertFormat("**", "**", "bold text")'>B</MudButton>
                         <MudButton Size="Size.Small" Variant="Variant.Outlined"
-                                   Style="min-width:36px; font-style:italic; color:#e8e0ff; border-color:#3d2d5e;"
+                                   Style="min-width:36px; font-style:italic; color:#ebe4d0; border-color:#352d47;"
                                    OnClick='() => InsertFormat("_", "_", "italic text")'>I</MudButton>
                         <MudButton Size="Size.Small" Variant="Variant.Outlined"
-                                   Style="min-width:44px; font-family:'Cinzel',serif; font-size:0.75rem; color:#c9a84c; border-color:#3d2d5e;"
+                                   Style="min-width:44px; font-family:'Cinzel',serif; font-size:0.75rem; color:#c4a35f; border-color:#352d47;"
                                    OnClick='() => InsertFormat("# ", "", "Heading 1")'>H1</MudButton>
                         <MudButton Size="Size.Small" Variant="Variant.Outlined"
-                                   Style="min-width:44px; font-family:'Cinzel',serif; font-size:0.75rem; color:#c9a84c; border-color:#3d2d5e;"
+                                   Style="min-width:44px; font-family:'Cinzel',serif; font-size:0.75rem; color:#c4a35f; border-color:#352d47;"
                                    OnClick='() => InsertFormat("## ", "", "Heading 2")'>H2</MudButton>
                         <MudButton Size="Size.Small" Variant="Variant.Outlined"
-                                   Style="min-width:36px; color:#e8e0ff; border-color:#3d2d5e;"
+                                   Style="min-width:36px; color:#ebe4d0; border-color:#352d47;"
                                    title="Bullet list"
                                    OnClick='() => InsertFormat("- ", "", "list item")'>
                             <MudIcon Icon="@Icons.Material.Filled.FormatListBulleted" Size="Size.Small" />
                         </MudButton>
                         <MudButton Size="Size.Small" Variant="Variant.Outlined"
-                                   Style="min-width:36px; color:#e8e0ff; border-color:#3d2d5e;"
+                                   Style="min-width:36px; color:#ebe4d0; border-color:#352d47;"
                                    title="Numbered list"
                                    OnClick='() => InsertFormat("1. ", "", "list item")'>
                             <MudIcon Icon="@Icons.Material.Filled.FormatListNumbered" Size="Size.Small" />
@@ -78,8 +78,8 @@
                               rows="28"
                               placeholder="Write your deck primer here... Markdown is supported."
                               style="width:100%; resize:vertical; padding:12px 16px;
-                                     background:#241a35; color:#e8e0ff;
-                                     border:1px solid #3d2d5e; border-radius:4px;
+                                     color:#ebe4d0;
+                                     border:1px solid #352d47; border-radius:4px;
                                      font-family:'Inter',sans-serif; font-size:0.95rem;
                                      line-height:1.6; outline:none; box-sizing:border-box;">
                     </textarea>
@@ -88,13 +88,13 @@
                 <MudTabPanel Text="Preview" PanelClass="pt-3">
                     @if (string.IsNullOrWhiteSpace(_primerText))
                     {
-                        <MudText Style="color:#9e94c8; font-style:italic;">
+                        <MudText Style="color:#948aa8; font-style:italic;">
                             Nothing to preview yet. Switch to Write and add some content.
                         </MudText>
                     }
                     else
                     {
-                        <div class="primer-content" style="color:#e8e0ff; line-height:1.7;">
+                        <div class="primer-content" style="color:#ebe4d0; line-height:1.7;">
                             @RenderMarkdown(_primerText)
                         </div>
                     }
@@ -111,12 +111,12 @@
         <div class="d-flex align-center gap-2 mb-4">
             <MudIconButton Icon="@Icons.Material.Filled.ArrowBack"
                            OnClick='() => Nav.NavigateTo($"/decks/{Id}")'
-                           Style="color:#9e94c8;" />
+                           Style="color:#948aa8;" />
             <div>
-                <MudText Typo="Typo.h4" Style="font-family:'Cinzel',serif; color:#c9a84c;">
+                <MudText Typo="Typo.h4" Style="font-family:'Cinzel',serif; color:#c4a35f;">
                     @_deck.Name
                 </MudText>
-                <MudText Typo="Typo.caption" Style="color:#9e94c8;">Primer</MudText>
+                <MudText Typo="Typo.caption" Style="color:#948aa8;">Primer</MudText>
             </div>
         </div>
         @ReadOnlyView(_deck.Primer)
@@ -144,9 +144,9 @@
     RenderFragment ReadOnlyView(string? primer) => @<text>
         @if (string.IsNullOrWhiteSpace(primer))
         {
-            <MudCard Style="background:#241a35; border:1px solid #3d2d5e;">
+            <MudCard Style="border:1px solid #352d47;">
                 <MudCardContent>
-                    <MudText Style="color:#9e94c8; font-style:italic;">
+                    <MudText Style="color:#948aa8; font-style:italic;">
                         No primer has been written for this deck yet.
                     </MudText>
                 </MudCardContent>
@@ -154,9 +154,9 @@
         }
         else
         {
-            <MudCard Style="background:#241a35; border:1px solid #3d2d5e;">
+            <MudCard Style="border:1px solid #352d47;">
                 <MudCardContent>
-                    <div class="primer-content" style="color:#e8e0ff; line-height:1.7;">
+                    <div class="primer-content" style="color:#ebe4d0; line-height:1.7;">
                         @RenderMarkdown(primer)
                     </div>
                 </MudCardContent>

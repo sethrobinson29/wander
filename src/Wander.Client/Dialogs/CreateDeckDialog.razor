@@ -30,16 +30,16 @@
         @if (_format == Format.Commander)
         {
             <MudDivider Class="mb-3" />
-            <MudText Typo="Typo.body2" Class="mb-2" Style="color:#9e94c8;">
+            <MudText Typo="Typo.body2" Class="mb-2" Style="color:#948aa8;">
                 Commander (optional — can be set later in the deck builder)
             </MudText>
 
             @if (_selectedCommander != null)
             {
                 <div class="d-flex align-center gap-2 mb-2 pa-2"
-                     style="background:#1c1228; border:1px solid #c9a84c44; border-radius:4px;">
+                     style="background:#14101e; border:1px solid #c4a35f44; border-radius:4px;">
                     <MudIcon Icon="@Icons.Material.Filled.Star" Size="Size.Small"
-                             Style="color:#c9a84c;" />
+                             Style="color:#c4a35f;" />
                     <MudText Typo="Typo.body2" Class="flex-grow-1">@_selectedCommander.Name</MudText>
                     <ManaCost Cost="@_selectedCommander.ManaCost" />
                     <MudIconButton Icon="@Icons.Material.Filled.Close" Size="Size.Small"
@@ -59,17 +59,17 @@
                     {
                         <MudList T="CardSearchResult"
                                  Style="position:absolute; top:100%; left:0; right:0; z-index:9999;
-                                        background:#1c1228; border:1px solid #3d2d5e; border-radius:4px;
+                                        background:#14101e; border:1px solid #352d47; border-radius:4px;
                                         max-height:200px; overflow-y:auto;">
                             @foreach (var card in _commanderResults)
                             {
                                 <MudListItem T="CardSearchResult" OnClick="() => SelectCommander(card)"
-                                             Style="border-bottom:1px solid #2a1d40; cursor:pointer;">
+                                             Style="border-bottom:1px solid #251f31; cursor:pointer;">
                                     <div class="d-flex justify-space-between align-center">
                                         <MudText Typo="Typo.body2">@card.Name</MudText>
                                         <ManaCost Cost="@card.ManaCost" />
                                     </div>
-                                    <MudText Typo="Typo.caption" Style="color:#9e94c8;">@card.TypeLine</MudText>
+                                    <MudText Typo="Typo.caption" Style="color:#948aa8;">@card.TypeLine</MudText>
                                 </MudListItem>
                             }
                         </MudList>

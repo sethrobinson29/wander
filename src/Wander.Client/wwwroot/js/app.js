@@ -37,3 +37,19 @@ window.getElementRect = (element) => {
     const rect = element.getBoundingClientRect();
     return { left: rect.left, top: rect.top, width: rect.width, height: rect.height };
 };
+
+const _enterSubmitAttached = new WeakSet();
+
+window.attachEnterSubmit = (wrapperId, dotNetRef, methodName) => {
+    const wrapper = document.getElementById(wrapperId);
+    if (!wrapper) return;
+    const textarea = wrapper.querySelector('textarea');
+    if (!textarea || _enterSubmitAttached.has(textarea)) return;
+    _enterSubmitAttached.add(textarea);
+    textarea.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' && !e.shiftKey) {
+            e.preventDefault();
+            dotNetRef.invokeMethodAsync(methodName);
+        }
+    });
+};

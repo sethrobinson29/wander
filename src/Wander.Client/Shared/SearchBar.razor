@@ -18,6 +18,7 @@
     void OnKey(KeyboardEventArgs e) { if (e.Key == "Enter") Submit(); }
     void Submit()
     {
+        _query = _query.Replace("\r", "").Replace("\n", "");
         if (string.IsNullOrWhiteSpace(_query)) return;
         Nav.NavigateTo($"/search?q={Uri.EscapeDataString(_query.Trim())}&type={_type}");
     }

@@ -22,7 +22,7 @@
 @if (_bellOpen)
 {
     <div style="position:fixed; top:64px; right:16px; z-index:1400; width:320px; max-height:480px;
-                overflow-y:auto; border:1px solid #352d47;
+                overflow-y:auto; background:#1c1726; border:1px solid #352d47;
                 border-radius:4px; box-shadow:0 4px 20px rgba(0,0,0,0.5);">
         <div class="d-flex justify-space-between align-center px-3 py-2">
             <MudText Typo="Typo.subtitle2" Style="color:#e8e0f0;">Notifications</MudText>
@@ -132,7 +132,7 @@
     }
 
     static string NotifRowStyle(NotificationItem n) =>
-        $"{(n.IsRead ? "" : "background:#2d2045;")} cursor:pointer; border-bottom:1px solid #2d2045;";
+        $"background:{(n.IsRead ? "#1c1726" : "#2d2045")}; cursor:pointer; border-bottom:1px solid #2d2045;";
 
     static string NotifIcon(string type) => type switch
     {

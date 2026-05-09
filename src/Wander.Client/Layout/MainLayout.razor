@@ -42,6 +42,18 @@
             @Body
         </MudContainer>
     </MudMainContent>
+
+    <footer style="border-top:1px solid #352d47; padding:16px 24px; display:flex; align-items:center; justify-content:space-between;">
+        <MudText Typo="Typo.caption" Style="color:#645a76;">Wander © 2025</MudText>
+        <div class="d-flex align-center gap-2">
+            <MudLink Href="https://sethrobinson29.com" Target="_blank"
+                     Style="color:#645a76; font-size:0.75rem;">sethrobinson29.com</MudLink>
+            <span style="color:#352d47;">|</span>
+            <MudIconButton Icon="@Icons.Custom.Brands.GitHub" Color="Color.Inherit"
+                           Href="https://github.com/sethrobinson29" Target="_blank"
+                           Style="color:#645a76;" Size="Size.Small" />
+        </div>
+    </footer>
 </MudLayout>
 
 @code {

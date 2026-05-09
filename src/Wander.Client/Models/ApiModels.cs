@@ -29,7 +29,7 @@ public record PublicProfileResponse(
 
 public record PublicDeckSummary(
     Guid Id, string Name, string? Description,
-    string Format, int CardCount, DateTimeOffset UpdatedAt);
+    string Format, int CardCount, List<string> ColorIdentity, DateTimeOffset UpdatedAt);
 
 public record UpdateProfileRequest(
     string? FirstName, string? LastName, string? Pronouns, string? Bio, string? AvatarId);

@@ -99,6 +99,7 @@
                         <MudItem xs="12" sm="6" md="4">
                             <MudCard Style="border:1px solid #352d47; cursor:pointer;" Class="deck-card"
                                      @onclick='() => Nav.NavigateTo($"/decks/{deck.Id}")'>
+                                <div style="height:100px;border-radius:8px 8px 0 0;@ColorIdentityHelper.BannerStyle(deck.ColorIdentity)"></div>
                                 <MudCardContent>
                                     <MudText Typo="Typo.h6" Style="font-family:'Cinzel',serif;">@deck.Name</MudText>
                                     <div class="d-flex align-center gap-2 mt-1">

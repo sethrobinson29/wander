@@ -67,7 +67,7 @@ public class UserController(
 
         var publicDecks = await db.Decks
             .Where(d => d.OwnerId == user.Id && d.Visibility == Visibility.Public)
-            .Include(d => d.Cards)
+            .Include(d => d.Cards).ThenInclude(c => c.Card)
             .OrderByDescending(d => d.UpdatedAt)
             .ToListAsync();
 
@@ -89,6 +89,12 @@ public class UserController(
                 d.Description,
                 d.Format.ToString(),
                 d.Cards.Where(c => !c.IsSideboard).Sum(c => c.Quantity),
+                (d.Cards.Any(c => c.IsCommander)
+                    ? d.Cards.Where(c => c.IsCommander).SelectMany(c => c.Card?.ColorIdentity ?? [])
+                    : d.Cards.SelectMany(c => c.Card?.ColorIdentity ?? []))
+                    .Distinct()
+                    .OrderBy(c => "WUBRG".IndexOf(c, StringComparison.Ordinal))
+                    .ToList(),
                 d.UpdatedAt)).ToList(),
             user.CreatedAt));
     }

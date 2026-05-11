@@ -64,7 +64,11 @@ public record CardSearchResult(
     string? ImageUriNormal,
     string? ImageUriSmall,
     string? ImageUriArtCrop,
-    Dictionary<string, string> Legalities);
+    Dictionary<string, string> Legalities,
+    string? BackFaceManaCost,
+    string? BackFaceTypeLine,
+    string? BackFaceOracleText,
+    string? BackImageUriNormal);
 
 public record CardPrintingInfo(
     Guid Id,
@@ -118,7 +122,11 @@ public record DeckCardDetail(
     int Quantity,
     bool IsCommander,
     bool IsSideboard,
-    List<string> Errors);
+    List<string> Errors,
+    string? BackFaceManaCost,
+    string? BackFaceTypeLine,
+    string? BackFaceOracleText,
+    string? BackImageUriNormal);
 
 public record CommentResponse(
     Guid Id,

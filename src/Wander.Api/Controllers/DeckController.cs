@@ -545,7 +545,11 @@ public class DeckController(WanderDbContext db, DeckValidationService validator,
                     dc.IsSideboard,
                     dc.Card != null
                         ? validator.GetCardErrors(dc, d.Format, commanderColorIdentity)
-                        : []);
+                        : [],
+                    dc.Card?.BackFaceManaCost,
+                    dc.Card?.BackFaceTypeLine,
+                    dc.Card?.BackFaceOracleText,
+                    printing?.BackImageUriNormal);
             }).ToList(),
             deckErrors,
             d.CreatedAt,

@@ -22,7 +22,7 @@
                                  Style="color:#c4a35f; vertical-align:middle;" />
                     }
                     @Card.CardName
-                    <span style="color:#948aa8; font-size:0.75rem; margin-left:6px;">@Card.TypeLine</span>
+                    <span style="color:#948aa8; font-size:0.75rem; margin-left:6px;">@Card.TypeLine.Split(" // ")[0]</span>
                 </div>
                 @if (Card.ImageUriNormal != null)
                 {

@@ -40,6 +40,9 @@ public record ScryfallCard(
 
 public record ScryfallCardFace(
     [property: JsonPropertyName("name")] string Name,
+    [property: JsonPropertyName("mana_cost")] string? ManaCost,
+    [property: JsonPropertyName("type_line")] string? TypeLine,
+    [property: JsonPropertyName("oracle_text")] string? OracleText,
     [property: JsonPropertyName("image_uris")] ScryfallImageUris? ImageUris,
     [property: JsonPropertyName("flavor_text")] string? FlavorText
 );

@@ -727,7 +727,8 @@ else
         else
             _localCards.Add(new DeckCardDetail(Guid.NewGuid(), card.Id, card.DefaultPrintingId, card.Name, card.ManaCost,
                 card.Cmc, card.TypeLine, card.OracleText, null, card.Legalities, card.ColorIdentity, card.ImageUriNormal,
-                card.ImageUriSmall, card.ImageUriArtCrop, card.DefaultPrintingId, 1, false, false, []));
+                card.ImageUriSmall, card.ImageUriArtCrop, card.DefaultPrintingId, 1, false, false, [],
+                card.BackFaceManaCost, card.BackFaceTypeLine, card.BackFaceOracleText, card.BackImageUriNormal));
     }
 
     void AddToSideboard(CardSearchResult card)
@@ -741,7 +742,8 @@ else
         else
             _localCards.Add(new DeckCardDetail(Guid.NewGuid(), card.Id, card.DefaultPrintingId, card.Name, card.ManaCost,
                 card.Cmc, card.TypeLine, card.OracleText, null, card.Legalities, card.ColorIdentity, card.ImageUriNormal,
-                card.ImageUriSmall, card.ImageUriArtCrop, card.DefaultPrintingId, 1, false, true, []));
+                card.ImageUriSmall, card.ImageUriArtCrop, card.DefaultPrintingId, 1, false, true, [],
+                card.BackFaceManaCost, card.BackFaceTypeLine, card.BackFaceOracleText, card.BackImageUriNormal));
     }
 
     void AddAsCommander(CardSearchResult card)
@@ -751,7 +753,8 @@ else
         if (_localCards.Any(c => c.CardId == card.Id && c.IsCommander)) return;
         _localCards.Add(new DeckCardDetail(Guid.NewGuid(), card.Id, card.DefaultPrintingId, card.Name, card.ManaCost,
             card.Cmc, card.TypeLine, card.OracleText, null, card.Legalities, card.ColorIdentity, card.ImageUriNormal,
-            card.ImageUriSmall, card.ImageUriArtCrop, card.DefaultPrintingId, 1, true, false, []));
+            card.ImageUriSmall, card.ImageUriArtCrop, card.DefaultPrintingId, 1, true, false, [],
+            card.BackFaceManaCost, card.BackFaceTypeLine, card.BackFaceOracleText, card.BackImageUriNormal));
     }
 
     void MakeCommander(DeckCardDetail card)

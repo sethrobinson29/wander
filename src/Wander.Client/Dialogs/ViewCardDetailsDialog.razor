@@ -1,28 +1,39 @@
-﻿@using Wander.Client.Models
+@using Wander.Client.Models
 
 <MudDialog Style="min-width:560px; max-height:90vh; overflow:hidden;">
     <TitleContent>
-        <MudText Typo="Typo.h6" Style="font-family:'Cinzel',serif; color:#c4a35f;">Card Details</MudText>
+        <div class="d-flex align-center gap-2">
+            <MudText Typo="Typo.h6" Style="font-family:'Cinzel',serif; color:#c4a35f;">Card Details</MudText>
+            @if (IsmdFc)
+            {
+                <MudButton Variant="Variant.Outlined" Size="Size.Small"
+                           StartIcon="@Icons.Material.Filled.Autorenew"
+                           Style="color:#948aa8; border-color:#352d47;"
+                           OnClick="() => _showingBack = !_showingBack">
+                    @(_showingBack ? "Front Face" : "Flip Card")
+                </MudButton>
+            }
+        </div>
     </TitleContent>
     <DialogContent>
         <div style="overflow-y:auto; max-height:calc(90vh - 130px);">
             <!-- Top: image + card info -->
             <div class="d-flex gap-4 mb-4">
-                @if (ImageUri != null)
+                @if (ActiveImageUri != null)
                 {
-                    <img src="@ImageUri" style="width:220px; border-radius:8px; flex-shrink:0; align-self:flex-start;" alt="@CardName" />
+                    <img src="@ActiveImageUri" style="width:220px; border-radius:8px; flex-shrink:0; align-self:flex-start;" alt="@ActiveName" />
                 }
                 <div class="flex-grow-1" style="min-width:200px;">
                     <div class="d-flex align-center gap-2 flex-wrap mb-1">
-                        <MudText Typo="Typo.h5" Style="font-family:'Cinzel',serif; color:#c4a35f;">@CardName</MudText>
-                        <ManaCost Cost="@ManaCost" />
+                        <MudText Typo="Typo.h5" Style="font-family:'Cinzel',serif; color:#c4a35f;">@ActiveName</MudText>
+                        <ManaCost Cost="@ActiveManaCost" />
                     </div>
-                    <MudText Typo="Typo.caption" Style="color:#948aa8; display:block; margin-bottom:12px;">@TypeLine</MudText>
-                    @if (!string.IsNullOrWhiteSpace(OracleText))
+                    <MudText Typo="Typo.caption" Style="color:#948aa8; display:block; margin-bottom:12px;">@ActiveTypeLine</MudText>
+                    @if (!string.IsNullOrWhiteSpace(ActiveOracleText))
                     {
-                        <MudText Style="white-space:pre-wrap; margin-bottom:8px; line-height:1.5;">@OracleText</MudText>
+                        <MudText Style="white-space:pre-wrap; margin-bottom:8px; line-height:1.5;">@ActiveOracleText</MudText>
                     }
-                    @if (!string.IsNullOrWhiteSpace(FlavorText))
+                    @if (!_showingBack && !string.IsNullOrWhiteSpace(FlavorText))
                     {
                         <MudDivider Style="margin:8px 0; border-color:#352d47;" />
                         <MudText Style="font-style:italic; color:#948aa8; white-space:pre-wrap; line-height:1.5;">@FlavorText</MudText>
@@ -30,7 +41,7 @@
                 </div>
             </div>
 
-            <!-- Bottom: legalities -->
+            <!-- Bottom: legalities (same for both faces) -->
             @if (Legalities.Count > 0)
             {
                 <MudDivider Style="margin-bottom:12px; border-color:#352d47;" />
@@ -61,32 +72,52 @@
 @code {
     [CascadingParameter] IMudDialogInstance MudDialog { get; set; } = null!;
 
-    // Pass one of these; the dialog reads from whichever is non-null
     [Parameter] public DeckCardDetail? Card { get; set; }
     [Parameter] public CardSearchResult? SearchCard { get; set; }
 
-    string CardName => Card?.CardName ?? SearchCard?.Name ?? "";
-    string? ManaCost => Card?.ManaCost ?? SearchCard?.ManaCost;
-    string TypeLine => Card?.TypeLine ?? SearchCard?.TypeLine ?? "";
-    string? OracleText => Card?.OracleText ?? SearchCard?.OracleText;
-    string? FlavorText => Card?.FlavorText;   // not available on CardSearchResult
-    string? ImageUri => Card?.ImageUriNormal ?? SearchCard?.ImageUriNormal;
+    bool _showingBack;
+
+    // Raw source properties
+    string FullName      => Card?.CardName ?? SearchCard?.Name ?? "";
+    string? FrontManaCost => Card?.ManaCost ?? SearchCard?.ManaCost;
+    string FullTypeLine  => Card?.TypeLine ?? SearchCard?.TypeLine ?? "";
+    string? FrontOracleText => Card?.OracleText ?? SearchCard?.OracleText;
+    string? FlavorText   => Card?.FlavorText;
+    string? FrontImageUri => Card?.ImageUriNormal ?? SearchCard?.ImageUriNormal;
+
+    string? BackFaceManaCost  => Card?.BackFaceManaCost  ?? SearchCard?.BackFaceManaCost;
+    string? BackFaceTypeLine  => Card?.BackFaceTypeLine  ?? SearchCard?.BackFaceTypeLine;
+    string? BackFaceOracleText => Card?.BackFaceOracleText ?? SearchCard?.BackFaceOracleText;
+    string? BackImageUri      => Card?.BackImageUriNormal ?? SearchCard?.BackImageUriNormal;
+
+    bool IsmdFc => FullName.Contains(" // ");
+
+    // Face-aware display properties
+    string ActiveName => _showingBack
+        ? (FullName.Contains(" // ") ? FullName[(FullName.IndexOf(" // ") + 4)..] : FullName)
+        : (FullName.Contains(" // ") ? FullName[..FullName.IndexOf(" // ")] : FullName);
+
+    string? ActiveManaCost   => _showingBack ? BackFaceManaCost   : FrontManaCost;
+    string  ActiveTypeLine   => _showingBack ? (BackFaceTypeLine ?? FullTypeLine) : FullTypeLine.Split(" // ")[0];
+    string? ActiveOracleText => _showingBack ? BackFaceOracleText : FrontOracleText;
+    string? ActiveImageUri   => _showingBack ? BackImageUri       : FrontImageUri;
+
     Dictionary<string, string> Legalities =>
         Card?.Legalities ?? SearchCard?.Legalities ?? new Dictionary<string, string>();
 
     static string FormatName(string key) =>
         key switch
         {
-            "standard" => "Standard",
-            "pioneer" => "Pioneer",
-            "modern" => "Modern",
-            "legacy" => "Legacy",
-            "vintage" => "Vintage",
+            "standard"  => "Standard",
+            "pioneer"   => "Pioneer",
+            "modern"    => "Modern",
+            "legacy"    => "Legacy",
+            "vintage"   => "Vintage",
             "commander" => "Commander",
-            "pauper" => "Pauper",
-            "explorer" => "Explorer",
-            "historic" => "Historic",
-            "timeless" => "Timeless",
-            _ => key
+            "pauper"    => "Pauper",
+            "explorer"  => "Explorer",
+            "historic"  => "Historic",
+            "timeless"  => "Timeless",
+            _           => key
         };
 }

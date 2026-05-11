@@ -1,60 +1,56 @@
 ﻿@using Wander.Client.Models
 
-<MudDialog Style="max-height:90vh; overflow:hidden;">
+<MudDialog Style="min-width:560px; max-height:90vh; overflow:hidden;">
     <TitleContent>
         <MudText Typo="Typo.h6" Style="font-family:'Cinzel',serif; color:#c4a35f;">Card Details</MudText>
     </TitleContent>
     <DialogContent>
-        <div class="d-flex gap-4 flex-wrap" style="overflow-y:auto; max-height:calc(90vh - 130px);">
-            @if (ImageUri != null)
-            {
-                <img src="@ImageUri" style="width:220px; border-radius:8px; flex-shrink:0; align-self:flex-start;" alt="@CardName" />
-            }
-            <div class="flex-grow-1" style="min-width:200px;">
-                <!-- Name + mana cost -->
-                <div class="d-flex align-center gap-2 flex-wrap mb-1">
-                    <MudText Typo="Typo.h5" Style="font-family:'Cinzel',serif; color:#c4a35f;">@CardName</MudText>
-                    <ManaCost Cost="@ManaCost" />
-                </div>
-
-                <!-- Type line -->
-                <MudText Typo="Typo.caption" Style="color:#948aa8; display:block; margin-bottom:12px;">@TypeLine</MudText>
-
-                <!-- Oracle text -->
-                @if (!string.IsNullOrWhiteSpace(OracleText))
+        <div style="overflow-y:auto; max-height:calc(90vh - 130px);">
+            <!-- Top: image + card info -->
+            <div class="d-flex gap-4 mb-4">
+                @if (ImageUri != null)
                 {
-                    <MudText Style="white-space:pre-wrap; margin-bottom:8px; line-height:1.5;">@OracleText</MudText>
+                    <img src="@ImageUri" style="width:220px; border-radius:8px; flex-shrink:0; align-self:flex-start;" alt="@CardName" />
                 }
-
-                <!-- Flavor text -->
-                @if (!string.IsNullOrWhiteSpace(FlavorText))
-                {
-                    <MudDivider Style="margin:8px 0; border-color:#352d47;" />
-                    <MudText Style="font-style:italic; color:#948aa8; white-space:pre-wrap; line-height:1.5;">@FlavorText</MudText>
-                }
-
-                <!-- Legalities -->
-                @if (Legalities.Count > 0)
-                {
-                    <MudDivider Style="margin:16px 0 8px; border-color:#352d47;" />
-                    <MudText Typo="Typo.subtitle2" Style="margin-bottom:8px;">Format Legality</MudText>
-                    <div class="d-flex flex-wrap gap-1">
-                        @foreach (var (format, status) in Legalities.OrderBy(l => l.Key))
-                        {
-                            var (bg, fg) = status switch
-                            {
-                                "legal" => ("#4caf5022", "#4caf50"),
-                                "restricted" => ("#ff980022", "#ff9800"),
-                                "banned" => ("#f4433622", "#f44336"),
-                                _ => ("#ffffff11", "#666")
-                            };
-                            <div style="background:@bg; color:@fg; border:1px solid @fg; border-radius:4px; padding:2px 8px; font-size:0.7rem; white-space:nowrap;">
-                                @FormatName(format): @status
-                            </div>
-                        }
+                <div class="flex-grow-1" style="min-width:200px;">
+                    <div class="d-flex align-center gap-2 flex-wrap mb-1">
+                        <MudText Typo="Typo.h5" Style="font-family:'Cinzel',serif; color:#c4a35f;">@CardName</MudText>
+                        <ManaCost Cost="@ManaCost" />
                     </div>
-                }
+                    <MudText Typo="Typo.caption" Style="color:#948aa8; display:block; margin-bottom:12px;">@TypeLine</MudText>
+                    @if (!string.IsNullOrWhiteSpace(OracleText))
+                    {
+                        <MudText Style="white-space:pre-wrap; margin-bottom:8px; line-height:1.5;">@OracleText</MudText>
+                    }
+                    @if (!string.IsNullOrWhiteSpace(FlavorText))
+                    {
+                        <MudDivider Style="margin:8px 0; border-color:#352d47;" />
+                        <MudText Style="font-style:italic; color:#948aa8; white-space:pre-wrap; line-height:1.5;">@FlavorText</MudText>
+                    }
+                </div>
             </div>
+
+            <!-- Bottom: legalities -->
+            @if (Legalities.Count > 0)
+            {
+                <MudDivider Style="margin-bottom:12px; border-color:#352d47;" />
+                <MudText Typo="Typo.subtitle2" Style="margin-bottom:8px;">Format Legality</MudText>
+                <div class="d-flex flex-wrap gap-1">
+                    @foreach (var (format, status) in Legalities.OrderBy(l => l.Key))
+                    {
+                        var (bg, fg) = status switch
+                        {
+                            "legal"      => ("#4caf5022", "#4caf50"),
+                            "restricted" => ("#ff980022", "#ff9800"),
+                            "banned"     => ("#f4433622", "#f44336"),
+                            _            => ("#ffffff11", "#666")
+                        };
+                        <div style="background:@bg; color:@fg; border:1px solid @fg; border-radius:4px; padding:2px 8px; font-size:0.7rem; white-space:nowrap;">
+                            @FormatName(format): @status
+                        </div>
+                    }
+                </div>
+            }
         </div>
     </DialogContent>
     <DialogActions>

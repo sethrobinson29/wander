@@ -13,7 +13,11 @@ public record CardSearchResponse(
     string? ImageUriNormal,
     string? ImageUriSmall,
     string? ImageUriArtCrop,
-    Dictionary<string, string> Legalities);
+    Dictionary<string, string> Legalities,
+    string? BackFaceManaCost,
+    string? BackFaceTypeLine,
+    string? BackFaceOracleText,
+    string? BackImageUriNormal);
 
 public record CardPrintingResponse(
     Guid Id,

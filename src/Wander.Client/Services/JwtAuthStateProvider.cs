@@ -9,11 +9,15 @@ public class JwtAuthStateProvider(LocalStorage localStorage) : AuthenticationSta
     private static readonly AuthenticationState Anonymous =
         new(new ClaimsPrincipal(new ClaimsIdentity()));
 
+    private AuthenticationState? _cached;
+
     public override async Task<AuthenticationState> GetAuthenticationStateAsync()
     {
+        if (_cached is not null) return _cached;
+
         var token = await localStorage.GetAsync("accessToken");
         if (string.IsNullOrWhiteSpace(token))
-            return Anonymous;
+            return _cached = Anonymous;
 
         var claims = ParseClaimsFromJwt(token);
         var expiry = claims.FirstOrDefault(c => c.Type == "exp");
@@ -23,15 +27,19 @@ public class JwtAuthStateProvider(LocalStorage localStorage) : AuthenticationSta
             if (DateTimeOffset.UtcNow.ToUnixTimeSeconds() > expUnix)
             {
                 await localStorage.RemoveAsync("accessToken");
-                return Anonymous;
+                return _cached = Anonymous;
             }
         }
 
         var identity = new ClaimsIdentity(claims, "jwt");
-        return new AuthenticationState(new ClaimsPrincipal(identity));
+        return _cached = new AuthenticationState(new ClaimsPrincipal(identity));
     }
 
-    public void NotifyUserChanged() => NotifyAuthenticationStateChanged(GetAuthenticationStateAsync());
+    public void NotifyUserChanged()
+    {
+        _cached = null;
+        NotifyAuthenticationStateChanged(GetAuthenticationStateAsync());
+    }
 
     private static IEnumerable<Claim> ParseClaimsFromJwt(string jwt)
     {

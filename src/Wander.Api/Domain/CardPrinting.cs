@@ -13,4 +13,6 @@ public class CardPrinting
     public string? ImageUriArtCrop { get; set; }
     public DateTimeOffset UpdatedAt { get; set; }
     public string? FlavorText { get; set; }
+    public string? BackImageUriNormal { get; set; }
+    public string? BackImageUriSmall { get; set; }
 }

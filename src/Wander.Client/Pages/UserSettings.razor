@@ -15,26 +15,26 @@
 }
 
 <MudContainer MaxWidth="MaxWidth.Large" Class="mt-8">
-    <MudText Typo="Typo.h4" Class="mb-6" Style="font-family:'Cinzel',serif; color:#c9a84c;">
+    <MudText Typo="Typo.h4" Class="mb-6" Style="font-family:'Cinzel',serif; color:#c4a35f;">
         Account Settings
     </MudText>
 
     <MudGrid>
         <!-- Sidebar -->
         <MudItem xs="12" md="3">
-            <MudCard Style="background:#241a35; border:1px solid #3d2d5e;">
+            <MudCard Style="border:1px solid #352d47;">
                 <MudCardContent Class="pa-2">
                     <MudNavMenu>
                         <MudNavLink OnClick='() => _section = "about"'
-                                    Style="@(_section == "about" ? "color:#c9a84c;" : "")">
+                                    Style="@(_section == "about" ? "color:#c4a35f;" : "")">
                             About Me
                         </MudNavLink>
                         <MudNavLink OnClick='() => _section = "security"'
-                                    Style="@(_section == "security" ? "color:#c9a84c;" : "")">
+                                    Style="@(_section == "security" ? "color:#c4a35f;" : "")">
                             Login &amp; Security
                         </MudNavLink>
                         <MudNavLink OnClick='() => _section = "privacy"'
-                                    Style="@(_section == "privacy" ? "color:#c9a84c;" : "")">
+                                    Style="@(_section == "privacy" ? "color:#c4a35f;" : "")">
                             Privacy
                         </MudNavLink>
                     </MudNavMenu>
@@ -44,7 +44,7 @@
 
         <!-- Content -->
         <MudItem xs="12" md="9">
-            <MudCard Style="background:#241a35; border:1px solid #3d2d5e;">
+            <MudCard Style="border:1px solid #352d47;">
                 <MudCardContent Class="pa-6">
                     @switch (_section)
                     {
@@ -55,9 +55,9 @@
                             <div class="d-flex align-center gap-4 mb-5">
                                 <AvatarDisplay Username="@_newUsername" AvatarId="@_avatarId" Size="80" />
                                 <div>
-                                    <MudText Typo="Typo.body2" Style="color:#9e94c8;" Class="mb-1">@AvatarLabel</MudText>
+                                    <MudText Typo="Typo.body2" Style="color:#948aa8;" Class="mb-1">@AvatarLabel</MudText>
                                     <MudButton Variant="Variant.Outlined" Size="Size.Small"
-                                               Style="color:#9e94c8; border-color:#3d2d5e;"
+                                               Style="color:#948aa8; border-color:#352d47;"
                                                OnClick="OpenAvatarPicker">Change</MudButton>
                                 </div>
                             </div>
@@ -89,7 +89,7 @@
 
                         case "security":
                             <MudText Typo="Typo.h6" Class="mb-4" Style="font-family:'Cinzel',serif;">Login &amp; Security</MudText>
-                            <MudText Typo="Typo.body2" Class="mb-4" Style="color:#9e94c8;">
+                            <MudText Typo="Typo.body2" Class="mb-4" Style="color:#948aa8;">
                                 Your current password is required to change your email, username, or password.
                             </MudText>
                             <MudGrid>
@@ -149,7 +149,7 @@
 
                         case "privacy":
                             <MudText Typo="Typo.h6" Class="mb-4" Style="font-family:'Cinzel',serif;">Privacy</MudText>
-                            <MudText Typo="Typo.body2" Class="mb-4" Style="color:#9e94c8;">
+                            <MudText Typo="Typo.body2" Class="mb-4" Style="color:#948aa8;">
                                 Control who can see each piece of your profile.
                                 "Followers Only" is treated as Private until the follower system is built.
                             </MudText>

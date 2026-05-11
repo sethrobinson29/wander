@@ -1,23 +1,23 @@
 @inherits LayoutComponentBase
 
 <MudLayout>
-    <MudAppBar Elevation="0" Style="border-bottom: 1px solid #3d2d5e;">
+    <MudAppBar Elevation="0" Style="border-bottom: 1px solid #352d47;">
         <MudButton Variant="Variant.Text" Href="/"
-                   Style="font-family:'Cinzel',serif; color:#c9a84c; letter-spacing:0.08em; font-size:1.1rem; text-transform:none; padding:0 8px; margin-right:16px; min-width:unset;">
+                   Style="font-family:'Cinzel',serif; color:#c4a35f; letter-spacing:0.08em; font-size:1.1rem; text-transform:none; padding:0 8px; margin-right:16px; min-width:unset;">
             WANDER
         </MudButton>
         <MudButton Variant="Variant.Text" Href="/"
-                   Style="color:#e8e0ff; text-transform:none; min-width:unset;">Home</MudButton>
+                   Style="color:#ebe4d0; text-transform:none; min-width:unset;">Home</MudButton>
         <MudButton Variant="Variant.Text" Href="/browse"
-                   Style="color:#e8e0ff; text-transform:none; min-width:unset;">Browse</MudButton>
+                   Style="color:#ebe4d0; text-transform:none; min-width:unset;">Browse</MudButton>
         <MudButton Variant="Variant.Text" Href="/help"
-                   Style="color:#e8e0ff; text-transform:none; min-width:unset;">Help</MudButton>
+                   Style="color:#ebe4d0; text-transform:none; min-width:unset;">Help</MudButton>
         <SearchBar />
         <AuthorizeView>
             <Authorized>
-                <span style="color:#9e94c8; margin:0 4px; user-select:none;">|</span>
+                <span style="color:#948aa8; margin:0 4px; user-select:none;">|</span>
                 <MudButton Variant="Variant.Text" Href="/decks"
-                           Style="color:#e8e0ff; text-transform:none; min-width:unset;">Your Collection</MudButton>
+                           Style="color:#ebe4d0; text-transform:none; min-width:unset;">Your Collection</MudButton>
             </Authorized>
         </AuthorizeView>
         <MudSpacer />
@@ -42,6 +42,18 @@
             @Body
         </MudContainer>
     </MudMainContent>
+
+    <footer style="border-top:1px solid #352d47; padding:16px 24px; display:flex; align-items:center; justify-content:space-between;">
+        <MudText Typo="Typo.caption" Style="color:#645a76;">Wander © 2025</MudText>
+        <div class="d-flex align-center gap-2">
+            <MudLink Href="https://sethrobinson29.com" Target="_blank"
+                     Style="color:#645a76; font-size:0.75rem;">sethrobinson29.com</MudLink>
+            <span style="color:#352d47;">|</span>
+            <MudIconButton Icon="@Icons.Custom.Brands.GitHub" Color="Color.Inherit"
+                           Href="https://github.com/sethrobinson29" Target="_blank"
+                           Style="color:#645a76;" Size="Size.Small" />
+        </div>
+    </footer>
 </MudLayout>
 
 @code {

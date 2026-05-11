@@ -80,7 +80,11 @@ public record DeckCardResponse(
     int Quantity,
     bool IsCommander,
     bool IsSideboard,
-    List<string> Errors);
+    List<string> Errors,
+    string? BackFaceManaCost,
+    string? BackFaceTypeLine,
+    string? BackFaceOracleText,
+    string? BackImageUriNormal);
 
 public record BulkImportRequest([Required][MaxLength(200_000)] string Decklist);
 

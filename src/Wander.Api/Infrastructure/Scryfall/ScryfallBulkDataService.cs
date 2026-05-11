@@ -101,12 +101,15 @@ public class ScryfallBulkDataService(
             db.Cards.Add(new Card
             {
                 Id = cardId,
-                ScryfallId = oracleId,          // now stores oracle_id, not printing id
+                ScryfallId = oracleId,
                 Name = src.Name,
-                ManaCost = src.ManaCost,
+                ManaCost = src.ManaCost ?? src.CardFaces?.FirstOrDefault()?.ManaCost,
                 Cmc = src.Cmc,
                 TypeLine = src.TypeLine,
-                OracleText = src.OracleText,
+                OracleText = src.OracleText ?? src.CardFaces?.FirstOrDefault()?.OracleText,
+                BackFaceManaCost = src.CardFaces?.Count > 1 ? src.CardFaces[1].ManaCost : null,
+                BackFaceTypeLine = src.CardFaces?.Count > 1 ? src.CardFaces[1].TypeLine : null,
+                BackFaceOracleText = src.CardFaces?.Count > 1 ? src.CardFaces[1].OracleText : null,
                 Colors = src.Colors ?? [],
                 ColorIdentity = src.ColorIdentity,
                 Legalities = src.Legalities,
@@ -119,10 +122,13 @@ public class ScryfallBulkDataService(
             cardId = existingCardId;
             var tracked = db.Cards.Find(existingCardId)!;
             tracked.Name = src.Name;
-            tracked.ManaCost = src.ManaCost;
+            tracked.ManaCost = src.ManaCost ?? src.CardFaces?.FirstOrDefault()?.ManaCost;
             tracked.Cmc = src.Cmc;
             tracked.TypeLine = src.TypeLine;
-            tracked.OracleText = src.OracleText;
+            tracked.OracleText = src.OracleText ?? src.CardFaces?.FirstOrDefault()?.OracleText;
+            tracked.BackFaceManaCost = src.CardFaces?.Count > 1 ? src.CardFaces[1].ManaCost : null;
+            tracked.BackFaceTypeLine = src.CardFaces?.Count > 1 ? src.CardFaces[1].TypeLine : null;
+            tracked.BackFaceOracleText = src.CardFaces?.Count > 1 ? src.CardFaces[1].OracleText : null;
             tracked.Colors = src.Colors ?? [];
             tracked.ColorIdentity = src.ColorIdentity;
             tracked.Legalities = src.Legalities;
@@ -142,7 +148,9 @@ public class ScryfallBulkDataService(
                 ImageUriSmall = src.EffectiveImageUris?.Small,
                 ImageUriNormal = src.EffectiveImageUris?.Normal,
                 ImageUriArtCrop = src.EffectiveImageUris?.ArtCrop,
-                FlavorText = src.EffectiveFlavorText,   // new
+                FlavorText = src.EffectiveFlavorText,
+                BackImageUriNormal = src.CardFaces?.Count > 1 ? src.CardFaces[1].ImageUris?.Normal : null,
+                BackImageUriSmall = src.CardFaces?.Count > 1 ? src.CardFaces[1].ImageUris?.Small : null,
                 UpdatedAt = DateTimeOffset.UtcNow,
             });
         }
@@ -154,7 +162,9 @@ public class ScryfallBulkDataService(
             tracked.ImageUriSmall = src.EffectiveImageUris?.Small;
             tracked.ImageUriNormal = src.EffectiveImageUris?.Normal;
             tracked.ImageUriArtCrop = src.EffectiveImageUris?.ArtCrop;
-            tracked.FlavorText = src.EffectiveFlavorText;  // new
+            tracked.FlavorText = src.EffectiveFlavorText;
+            tracked.BackImageUriNormal = src.CardFaces?.Count > 1 ? src.CardFaces[1].ImageUris?.Normal : null;
+            tracked.BackImageUriSmall = src.CardFaces?.Count > 1 ? src.CardFaces[1].ImageUris?.Small : null;
             tracked.UpdatedAt = DateTimeOffset.UtcNow;
         }
     }

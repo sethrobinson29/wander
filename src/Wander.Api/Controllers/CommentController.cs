@@ -26,7 +26,7 @@ public class CommentController(WanderDbContext db, ActivityService activity, Not
             return NotFound();
 
         var comments = await db.DeckComments
-            .Where(c => c.DeckId == deckId && c.ParentCommentId == null)
+            .Where(c => c.DeckId == deckId && c.ParentCommentId == null && !c.IsDeleted)
             .Include(c => c.Author)
             .Include(c => c.Replies).ThenInclude(r => r.Author)
             .OrderBy(c => c.CreatedAt)
@@ -148,6 +148,7 @@ public class CommentController(WanderDbContext db, ActivityService activity, Not
         c.IsDeleted ? "[deleted]" : c.Body,
         c.IsDeleted, c.CreatedAt, c.UpdatedAt,
         c.Replies
+            .Where(r => !r.IsDeleted)
             .OrderBy(r => r.CreatedAt)
             .Select(MapCommentFlat)
             .ToList());

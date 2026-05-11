@@ -1,0 +1,75 @@
+@inject WanderApiClient Api
+
+@if (Value != null)
+{
+    <div class="d-flex align-center gap-2 mb-2 pa-2"
+         style="background:#14101e; border:1px solid #c4a35f44; border-radius:4px;">
+        <MudIcon Icon="@Icons.Material.Filled.Star" Size="Size.Small" Style="color:#c4a35f;" />
+        <MudText Typo="Typo.body2" Class="flex-grow-1">@Value.Name</MudText>
+        <ManaCost Cost="@Value.ManaCost" />
+        <MudIconButton Icon="@Icons.Material.Filled.Close" Size="Size.Small"
+                       OnClick="Clear" />
+    </div>
+}
+else
+{
+    <div style="position:relative;">
+        <MudTextField T="string" Value="_search" ValueChanged="OnSearchInput"
+                      Label="@Label" Variant="Variant.Outlined" FullWidth="true"
+                      Adornment="Adornment.End" AdornmentIcon="@Icons.Material.Filled.Search"
+                      DebounceInterval="300" />
+
+        @if (_results.Count > 0)
+        {
+            <MudList T="CardSearchResult"
+                     Style="position:absolute; top:100%; left:0; right:0; z-index:9999;
+                            background:#14101e; border:1px solid #352d47; border-radius:4px;
+                            max-height:200px; overflow-y:auto;">
+                @foreach (var card in _results)
+                {
+                    <MudListItem T="CardSearchResult" OnClick="() => Select(card)"
+                                 Style="border-bottom:1px solid #251f31; cursor:pointer;">
+                        <div class="d-flex justify-space-between align-center">
+                            <MudText Typo="Typo.body2">@card.Name</MudText>
+                            <ManaCost Cost="@card.ManaCost" />
+                        </div>
+                        <MudText Typo="Typo.caption" Style="color:#948aa8;">@card.TypeLine</MudText>
+                    </MudListItem>
+                }
+            </MudList>
+        }
+    </div>
+}
+
+@code {
+    [Parameter] public CardSearchResult? Value { get; set; }
+    [Parameter] public EventCallback<CardSearchResult?> ValueChanged { get; set; }
+    [Parameter] public string Label { get; set; } = "Search for a commander...";
+
+    string _search = "";
+    List<CardSearchResult> _results = [];
+
+    async Task OnSearchInput(string q)
+    {
+        _search = q;
+        if (q.Length < 2) { _results = []; return; }
+        var results = await Api.SearchCardsAsync(q);
+        _results = results
+            .Where(c => c.TypeLine.Contains("Legendary", StringComparison.OrdinalIgnoreCase))
+            .ToList();
+    }
+
+    async Task Select(CardSearchResult card)
+    {
+        _results = [];
+        _search = "";
+        await ValueChanged.InvokeAsync(card);
+    }
+
+    async Task Clear()
+    {
+        _search = "";
+        _results = [];
+        await ValueChanged.InvokeAsync(null);
+    }
+}

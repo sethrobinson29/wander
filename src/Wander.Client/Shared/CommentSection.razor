@@ -2,6 +2,8 @@
 @inject WanderApiClient Api
 @inject AuthenticationStateProvider AuthState
 @inject ISnackbar Snackbar
+@inject IJSRuntime JS
+@implements IAsyncDisposable
 @using System.Net.Http.Json
 @using System.Security.Claims
 @using Wander.Client.Models
@@ -15,10 +17,13 @@
     @if (_isAuthenticated)
     {
         <div class="d-flex gap-2 align-start mb-6">
-            <MudTextField @bind-Value="_newBody"
-                          Placeholder="Write a comment..."
-                          Variant="Variant.Outlined" FullWidth="true" Lines="2"
-                          Style="background:#1a1228;" />
+            <div id="comment-box-wrapper" style="flex:1">
+                <MudTextField @bind-Value="_newBody"
+                              Placeholder="Write a comment..."
+                              Variant="Variant.Outlined" FullWidth="true" Lines="2"
+                              Style="background:#1a1228;"
+                              Immediate="true" />
+            </div>
             <MudButton Variant="Variant.Filled" Color="Color.Primary" Class="mt-1"
                        OnClick="PostComment"
                        Disabled="_posting || string.IsNullOrWhiteSpace(_newBody)">
@@ -28,14 +33,14 @@
     }
     else
     {
-        <MudText Typo="Typo.body2" Style="color:#9e94c8;" Class="mb-4">
-            <MudLink Href="/login" Style="color:#c9a84c;">Log in</MudLink> to leave a comment.
+        <MudText Typo="Typo.body2" Style="color:#948aa8;" Class="mb-4">
+            <MudLink Href="/login" Style="color:#c4a35f;">Log in</MudLink> to leave a comment.
         </MudText>
     }
 
     @foreach (var comment in _comments)
     {
-        <MudCard Style="background:#1a1228; border:1px solid #3d2d5e;" Class="mb-3">
+        <MudCard Style="background:#1a1228; border:1px solid #352d47;" Class="mb-3">
             <MudCardContent Class="pa-3">
 
                 @* Top-level comment *@
@@ -48,19 +53,19 @@
                                      Style="font-weight:600; color:#e8e0f0;">
                                 @comment.AuthorUsername
                             </MudText>
-                            <MudText Typo="Typo.caption" Style="color:#9e94c8;">
+                            <MudText Typo="Typo.caption" Style="color:#948aa8;">
                                 @comment.CreatedAt.ToString("MMM d, yyyy")
                             </MudText>
                             @if (comment.UpdatedAt.HasValue && !comment.IsDeleted)
                             {
                                 <MudText Typo="Typo.caption"
-                                         Style="color:#9e94c8; font-style:italic;">
+                                         Style="color:#948aa8; font-style:italic;">
                                     (edited)
                                 </MudText>
                             }
                         </div>
                         <MudText Typo="Typo.body2"
-                                 Style="@(comment.IsDeleted ? "color:#9e94c8; font-style:italic;" : "color:#e8e0f0;")">
+                                 Style="@(comment.IsDeleted ? "color:#948aa8; font-style:italic;" : "color:#e8e0f0;")">
                             @comment.Body
                         </MudText>
 
@@ -71,7 +76,7 @@
                                 @if (_isAuthenticated)
                                 {
                                     <MudButton Variant="Variant.Text" Size="Size.Small"
-                                               Style="color:#9e94c8; min-width:0; padding:0 8px;"
+                                               Style="color:#948aa8; min-width:0; padding:0 8px;"
                                                OnClick="() => ToggleReplyBox(comment.Id)">
                                         Reply
                                     </MudButton>
@@ -94,10 +99,13 @@
                 @if (_replyingTo == comment.Id)
                 {
                     <div class="d-flex gap-2 align-start mt-3 ml-10">
-                        <MudTextField @bind-Value="_replyBody"
-                                      Placeholder="Write a reply..."
-                                      Variant="Variant.Outlined" FullWidth="true" Lines="2"
-                                      Style="background:#241a35;" />
+                        <div id="reply-box-@comment.Id" style="flex:1">
+                            <MudTextField @bind-Value="_replyBody"
+                                          Placeholder="Write a reply..."
+                                          Variant="Variant.Outlined" FullWidth="true" Lines="2"
+                                          Style=""
+                                          Immediate="true" />
+                        </div>
                         <div class="d-flex flex-column gap-1 mt-1">
                             <MudButton Variant="Variant.Filled" Color="Color.Primary"
                                        Size="Size.Small"
@@ -126,19 +134,19 @@
                                              Style="font-weight:600; color:#e8e0f0;">
                                         @reply.AuthorUsername
                                     </MudText>
-                                    <MudText Typo="Typo.caption" Style="color:#9e94c8;">
+                                    <MudText Typo="Typo.caption" Style="color:#948aa8;">
                                         @reply.CreatedAt.ToString("MMM d, yyyy")
                                     </MudText>
                                     @if (reply.UpdatedAt.HasValue && !reply.IsDeleted)
                                     {
                                         <MudText Typo="Typo.caption"
-                                                 Style="color:#9e94c8; font-style:italic;">
+                                                 Style="color:#948aa8; font-style:italic;">
                                             (edited)
                                         </MudText>
                                     }
                                 </div>
                                 <MudText Typo="Typo.body2"
-                                         Style="@(reply.IsDeleted ? "color:#9e94c8; font-style:italic;" : "color:#e8e0f0;")">
+                                         Style="@(reply.IsDeleted ? "color:#948aa8; font-style:italic;" : "color:#e8e0f0;")">
                                     @reply.Body
                                 </MudText>
                                 @if (!reply.IsDeleted && (_currentUserId == reply.AuthorId || _isOwner))
@@ -168,6 +176,7 @@
     string? _currentUserId;
     string _newBody = "", _replyBody = "";
     Guid? _replyingTo;
+    DotNetObjectReference<CommentSection>? _objRef;
 
     int TotalCount => _comments.Sum(c => 1 + c.Replies.Count);
 
@@ -178,6 +187,36 @@
         _currentUserId = authState.User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
         _isOwner = _currentUserId == OwnerId;
         _comments = await Api.GetCommentsAsync(DeckId);
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        _objRef ??= DotNetObjectReference.Create(this);
+        if (_isAuthenticated)
+            await JS.InvokeVoidAsync("attachEnterSubmit", "comment-box-wrapper", _objRef, nameof(SubmitComment));
+        if (_replyingTo.HasValue)
+            await JS.InvokeVoidAsync("attachEnterSubmit", $"reply-box-{_replyingTo.Value}", _objRef, nameof(SubmitReply));
+    }
+
+    [JSInvokable]
+    public async Task SubmitComment()
+    {
+        await PostComment();
+        await InvokeAsync(StateHasChanged);
+    }
+
+    [JSInvokable]
+    public async Task SubmitReply()
+    {
+        if (_replyingTo.HasValue)
+            await PostReply(_replyingTo.Value);
+        await InvokeAsync(StateHasChanged);
+    }
+
+    public ValueTask DisposeAsync()
+    {
+        _objRef?.Dispose();
+        return ValueTask.CompletedTask;
     }
 
     void ToggleReplyBox(Guid commentId)

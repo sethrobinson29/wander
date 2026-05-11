@@ -4,7 +4,7 @@
 
 <MudDialog>
     <TitleContent>
-        <MudText Typo="Typo.h6" Style="font-family:'Cinzel',serif; color:#c9a84c;">
+        <MudText Typo="Typo.h6" Style="font-family:'Cinzel',serif; color:#c4a35f;">
             Switch Printing — @Card.CardName
         </MudText>
     </TitleContent>
@@ -17,7 +17,7 @@
         }
         else if (_printings.Count == 0)
         {
-            <MudText Style="color:#9e94c8;">No printings found for this card.</MudText>
+            <MudText Style="color:#948aa8;">No printings found for this card.</MudText>
         }
         else
         {
@@ -27,15 +27,15 @@
                 {
                     var selected = p.Id == _selectedId;
                     <div style="cursor:pointer; border-radius:6px;
-                        border:2px solid @(selected ? "#c9a84c" : "transparent");
-                        overflow:hidden; background:#1c1228;"
+                        border:2px solid @(selected ? "#c4a35f" : "transparent");
+                        overflow:hidden; background:#14101e;"
                          @onclick="() => _selectedId = p.Id">
                         @if (p.ImageUriNormal != null)
                         {
                             <img src="@p.ImageUriNormal" style="width:100%; display:block;"
                                  alt="@p.SetCode" />
                         }
-                        <div style="padding:4px; font-size:0.7rem; color:#9e94c8; text-align:center;">
+                        <div style="padding:4px; font-size:0.7rem; color:#948aa8; text-align:center;">
                             @p.SetCode.ToUpperInvariant() · #@p.CollectorNumber
                         </div>
                     </div>

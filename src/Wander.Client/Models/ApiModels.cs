@@ -29,7 +29,7 @@ public record PublicProfileResponse(
 
 public record PublicDeckSummary(
     Guid Id, string Name, string? Description,
-    string Format, int CardCount, DateTimeOffset UpdatedAt);
+    string Format, int CardCount, List<string> ColorIdentity, DateTimeOffset UpdatedAt);
 
 public record UpdateProfileRequest(
     string? FirstName, string? LastName, string? Pronouns, string? Bio, string? AvatarId);
@@ -64,7 +64,11 @@ public record CardSearchResult(
     string? ImageUriNormal,
     string? ImageUriSmall,
     string? ImageUriArtCrop,
-    Dictionary<string, string> Legalities);
+    Dictionary<string, string> Legalities,
+    string? BackFaceManaCost,
+    string? BackFaceTypeLine,
+    string? BackFaceOracleText,
+    string? BackImageUriNormal);
 
 public record CardPrintingInfo(
     Guid Id,
@@ -78,6 +82,8 @@ public record CardPrintingInfo(
 
 public enum Format { Standard, Pioneer, Modern, Legacy, Vintage, Commander, Pauper, Explorer, Historic, Timeless }
 public enum Visibility { Public, Private, Unlisted }
+public enum DeckGroupBy { Type, ManaValue, Color, ColorIdentity, None }
+public enum DeckSortBy  { ManaValue, Name }
 
 public record DeckSummary(
     Guid Id, string Name, string? Description, Format Format,
@@ -94,7 +100,7 @@ public record DeckDetail(
     double? CoverCropLeft, double? CoverCropTop,
     double? CoverCropWidth, double? CoverCropHeight,
     Visibility Visibility, string OwnerId, string OwnerUsername,
-    List<DeckCardDetail> Cards, int LikeCount, bool IsLikedByCurrentUser,
+    List<DeckCardDetail> Cards, List<string> DeckErrors, int LikeCount, bool IsLikedByCurrentUser,
     DateTimeOffset CreatedAt, DateTimeOffset UpdatedAt);
 
 public record DeckCardDetail(
@@ -116,7 +122,11 @@ public record DeckCardDetail(
     int Quantity,
     bool IsCommander,
     bool IsSideboard,
-    List<string> Errors);
+    List<string> Errors,
+    string? BackFaceManaCost,
+    string? BackFaceTypeLine,
+    string? BackFaceOracleText,
+    string? BackImageUriNormal);
 
 public record CommentResponse(
     Guid Id,

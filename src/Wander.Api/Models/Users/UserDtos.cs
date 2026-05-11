@@ -45,7 +45,7 @@ public record PublicProfileResponse(
 
 public record PublicDeckSummary(
     Guid Id, string Name, string? Description,
-    string Format, int CardCount, DateTimeOffset UpdatedAt);
+    string Format, int CardCount, List<string> ColorIdentity, DateTimeOffset UpdatedAt);
 
 public record ActivityItem(string Type, string? TargetId, string? TargetName, DateTimeOffset CreatedAt);
 public record ActivityPageResponse(List<ActivityItem> Items, int Total);

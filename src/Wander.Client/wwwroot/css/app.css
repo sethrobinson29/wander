@@ -5,27 +5,26 @@
 html, body {
     margin: 0;
     padding: 0;
-    background-color: #0f0a1a;
-    color: #e8e0ff;
+    background-color: #100c18;
+    color: #ebe4d0;
     font-family: 'Inter', sans-serif;
 }
 
-/* Cinzel headings via MudBlazor typography — applied globally */
+/* Cinzel display font — h1–h3 only; h4+ stays Inter */
+h1, h2, h3,
 .mud-typography-h1,
 .mud-typography-h2,
-.mud-typography-h3,
-.mud-typography-h4,
-.mud-typography-h5,
-.mud-typography-h6 {
-    font-family: 'Cinzel', serif !important;
-    letter-spacing: 0.03em;
+.mud-typography-h3 {
+    font-family: 'Cinzel', serif;
+    letter-spacing: 0.06em;
+    font-weight: 500;
 }
 
 /* Gold accent underline for page titles */
 .page-title {
     font-family: 'Cinzel', serif;
-    color: #c9a84c;
-    border-bottom: 1px solid #3d2d5e;
+    color: #c4a35f;
+    border-bottom: 1px solid #352d47;
     padding-bottom: 0.5rem;
     margin-bottom: 1.5rem;
 }
@@ -38,10 +37,10 @@ html, body {
 
 .card-preview-image {
     display: none;
-    position: absolute;
-    z-index: 1000;
-    top: 0;
-    left: calc(100% + 12px);
+    position: fixed;
+    z-index: 2000;
+    left: calc(var(--cursor-x, 0px) + 20px);
+    top: calc(var(--cursor-y, 0px) - 60px);
     width: 200px;
     border-radius: 8px;
     box-shadow: 0 8px 32px rgba(0, 0, 0, 0.8);
@@ -63,25 +62,24 @@ html, body {
     font-size: 10px;
     font-weight: 700;
     margin-right: 2px;
-    color: #fff;
 }
-.mana-W { background: #f9faf4; color: #555; border: 1px solid #ccc; }
-.mana-U { background: #0e68ab; }
-.mana-B { background: #150b00; border: 1px solid #555; }
-.mana-R { background: #d3202a; }
-.mana-G { background: #00733e; }
-.mana-C { background: #ccc4c0; color: #555; }
+.mana-W { background: #ecd9a8; color: #2a2410; border: 1px solid rgba(0,0,0,0.3); }
+.mana-U { background: #5d8fd6; color: #0a1224; }
+.mana-B { background: #6a5d85; color: #ecd9a8; }
+.mana-R { background: #c8665a; color: #2a0a08; }
+.mana-G { background: #6fa073; color: #0f2418; }
+.mana-C { background: #7a7488; color: #15131e; }
 
 /* Scrollbar styling */
 ::-webkit-scrollbar { width: 6px; }
-::-webkit-scrollbar-track { background: #0f0a1a; }
-::-webkit-scrollbar-thumb { background: #3d2d5e; border-radius: 3px; }
-::-webkit-scrollbar-thumb:hover { background: #5a4a8a; }
+::-webkit-scrollbar-track { background: #100c18; }
+::-webkit-scrollbar-thumb { background: #352d47; border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: #4a3f63; }
 
 /* Context menu — sits above card hover preview images (z-index: 1000) */
 .wander-context-menu {
-    background: #241a35;
-    border: 1px solid #3d2d5e;
+    background: #1c1726;
+    border: 1px solid #352d47;
     border-radius: 4px;
     padding: 4px 0;
     min-width: 180px;
@@ -101,5 +99,28 @@ html, body {
     cursor: pointer;
     padding: 6px 12px;
 }
-.wander-ctx-item:hover { background: #3d2d5e; }
+.wander-ctx-item:hover { background: #251f31; }
 .wander-ctx-item-danger { color: var(--mud-palette-error); }
+
+/* Layout utility classes */
+.wander-label {
+    font-size: 0.6875rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: #948aa8;
+    margin: 0;
+}
+
+.wander-display { font-family: 'Cinzel', serif; }
+
+.wander-tnum { font-variant-numeric: tabular-nums; }
+
+/* Sidebar layout — left panel with hairline border */
+.wander-sidebar {
+    border-right: 1px solid #352d47;
+    min-height: calc(100vh - 64px);
+}
+
+/* Format filter list */
+.wander-format-list .mud-list-item { padding: 6px 12px; border-left: 2px solid transparent; font-size: 13px; }
+.wander-format-list .wander-format-active { background: #251f31; border-left-color: #c4a35f; color: #ebe4d0; }

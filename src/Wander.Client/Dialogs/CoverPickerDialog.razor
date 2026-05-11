@@ -4,7 +4,7 @@
 <MudDialog>
     <DialogContent>
         <div style="margin-bottom:12px;">
-            <MudButton Variant="Variant.Outlined" Style="color:#9e94c8; border-color:#3d2d5e;"
+            <MudButton Variant="Variant.Outlined" Style="color:#948aa8; border-color:#352d47;"
                        OnClick="() => MudDialog.Close(DialogResult.Ok<Guid?>(null))">
                 Reset to auto (commander art)
             </MudButton>
@@ -15,7 +15,7 @@
                 var c = card;
                 <div @onclick="() => MudDialog.Close(DialogResult.Ok<Guid?>(c.ImagePrintingId))"
                      style="cursor:pointer; border-radius:6px; overflow:hidden;
-                            border:2px solid @(c.ImagePrintingId == _currentPrintingId ? "#c9a84c" : "transparent");">
+                            border:2px solid @(c.ImagePrintingId == _currentPrintingId ? "#c4a35f" : "transparent");">
                     <img src="@(c.ImageUriArtCrop ?? c.ImageUriNormal)" alt="@c.CardName"
                          style="width:100%; display:block;" />
                 </div>

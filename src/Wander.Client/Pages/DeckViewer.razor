@@ -135,9 +135,10 @@
     </div>
 </div>
 
-<div class="d-flex gap-2 mb-3 align-center">
+<div class="d-flex mb-3" style="margin-left:auto; width:fit-content;">
     <MudSelect T="DeckGroupBy" @bind-Value="_groupBy" Label="Group by"
-               Variant="Variant.Outlined" Dense="true" Style="max-width:160px;">
+               Variant="Variant.Outlined" Dense="true"
+               Style="width:150px; border-radius:4px;">
         <MudSelectItem Value="DeckGroupBy.Type">Type</MudSelectItem>
         <MudSelectItem Value="DeckGroupBy.ManaValue">Mana Value</MudSelectItem>
         <MudSelectItem Value="DeckGroupBy.Color">Color</MudSelectItem>
@@ -145,7 +146,8 @@
         <MudSelectItem Value="DeckGroupBy.None">None</MudSelectItem>
     </MudSelect>
     <MudSelect T="DeckSortBy" @bind-Value="_sortBy" Label="Sort by"
-               Variant="Variant.Outlined" Dense="true" Style="max-width:160px;">
+               Variant="Variant.Outlined" Dense="true"
+               Style="width:150px; border-radius:4px; margin-left:8px;">
         <MudSelectItem Value="DeckSortBy.ManaValue">Mana Value</MudSelectItem>
         <MudSelectItem Value="DeckSortBy.Name">Name</MudSelectItem>
     </MudSelect>
@@ -915,7 +917,10 @@ else
     }
 
     static List<string> FilterDeckErrors(List<string> errors) =>
-        errors.Where(e => !e.Contains("must have exactly", StringComparison.OrdinalIgnoreCase)).ToList();
+        errors.Where(e =>
+            !e.Contains("must have exactly", StringComparison.OrdinalIgnoreCase) &&
+            !e.Contains("do not use a sideboard", StringComparison.OrdinalIgnoreCase)
+        ).ToList();
 
     // ── Helpers ───────────────────────────────────────────────────────────────
     static string GetTypeGroup(string typeLine)

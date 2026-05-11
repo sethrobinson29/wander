@@ -94,7 +94,7 @@ public record DeckDetail(
     double? CoverCropLeft, double? CoverCropTop,
     double? CoverCropWidth, double? CoverCropHeight,
     Visibility Visibility, string OwnerId, string OwnerUsername,
-    List<DeckCardDetail> Cards, int LikeCount, bool IsLikedByCurrentUser,
+    List<DeckCardDetail> Cards, List<string> DeckErrors, int LikeCount, bool IsLikedByCurrentUser,
     DateTimeOffset CreatedAt, DateTimeOffset UpdatedAt);
 
 public record DeckCardDetail(

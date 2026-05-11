@@ -497,6 +497,7 @@ else
         if (_deck != null)
         {
             _localCards = _deck.Cards.ToList();
+            _validationErrors = FilterDeckErrors(_deck.DeckErrors);
             var authState = await AuthState.GetAuthenticationStateAsync();
             _isAuthenticated = authState.User.Identity?.IsAuthenticated == true;
             _isOwner = _isAuthenticated && _deck.OwnerUsername == authState.User.Identity!.Name;
@@ -809,7 +810,8 @@ else
         }
         else
         {
-            _validationErrors = [];
+            var saved = await response.Content.ReadFromJsonAsync<DeckDetail>();
+            _validationErrors = FilterDeckErrors(saved?.DeckErrors ?? []);
             Snackbar.Add("Deck saved.", Severity.Success);
         }
         _saving = false;
@@ -854,7 +856,7 @@ else
         if (result is not null && !result.Canceled && result.Data is DeckDetail updated)
         {
             _localCards = updated.Cards.ToList();
-            _validationErrors = [];
+            _validationErrors = FilterDeckErrors(updated.DeckErrors);
         }
     }
 
@@ -889,6 +891,9 @@ else
             Snackbar.Add("Failed to update visibility.", Severity.Error);
         }
     }
+
+    static List<string> FilterDeckErrors(List<string> errors) =>
+        errors.Where(e => !e.Contains("must have exactly", StringComparison.OrdinalIgnoreCase)).ToList();
 
     // ── Helpers ───────────────────────────────────────────────────────────────
     static string GetTypeGroup(string typeLine)

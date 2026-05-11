@@ -135,6 +135,22 @@
     </div>
 </div>
 
+<div class="d-flex gap-2 mb-3 align-center">
+    <MudSelect T="DeckGroupBy" @bind-Value="_groupBy" Label="Group by"
+               Variant="Variant.Outlined" Dense="true" Style="max-width:160px;">
+        <MudSelectItem Value="DeckGroupBy.Type">Type</MudSelectItem>
+        <MudSelectItem Value="DeckGroupBy.ManaValue">Mana Value</MudSelectItem>
+        <MudSelectItem Value="DeckGroupBy.Color">Color</MudSelectItem>
+        <MudSelectItem Value="DeckGroupBy.ColorIdentity">Color Identity</MudSelectItem>
+        <MudSelectItem Value="DeckGroupBy.None">None</MudSelectItem>
+    </MudSelect>
+    <MudSelect T="DeckSortBy" @bind-Value="_sortBy" Label="Sort by"
+               Variant="Variant.Outlined" Dense="true" Style="max-width:160px;">
+        <MudSelectItem Value="DeckSortBy.ManaValue">Mana Value</MudSelectItem>
+        <MudSelectItem Value="DeckSortBy.Name">Name</MudSelectItem>
+    </MudSelect>
+</div>
+
 @if (_isOwner && _validationErrors.Count > 0)
 {
     <MudAlert Severity="Severity.Warning" Class="mb-4">
@@ -278,7 +294,7 @@
                         <span class="wander-display" style="font-size:13px;letter-spacing:0.1em;text-transform:uppercase;">@group.Key</span>
                         <span class="ml-2 wander-tnum" style="color:#645a76;font-size:12px;">@group.Sum(c => c.Quantity)</span>
                     </div>
-                    @foreach (var card in group.OrderBy(c => c.Cmc).ThenBy(c => c.CardName))
+                    @foreach (var card in SortCards(group))
                     {
                         <CardRow Card="@card" ShowQuantityControl="true" ShowRemove="true"
                                  Context="CardContext.BuilderMain"
@@ -310,7 +326,7 @@
                         <span class="wander-display" style="font-size:13px;letter-spacing:0.1em;text-transform:uppercase;">Sideboard</span>
                         <span class="ml-2 wander-tnum" style="color:#645a76;font-size:12px;">@sideboardCards.Sum(c => c.Quantity)</span>
                     </div>
-                    @foreach (var card in sideboardCards.OrderBy(c => c.Cmc).ThenBy(c => c.CardName))
+                    @foreach (var card in SortCards(sideboardCards))
                     {
                         <CardRow Card="@card" ShowQuantityControl="true" ShowRemove="true"
                                  Context="CardContext.BuilderMain"
@@ -373,7 +389,7 @@ else
                         <span class="wander-display" style="font-size:13px;letter-spacing:0.1em;text-transform:uppercase;">@group.Key</span>
                         <span class="ml-2 wander-tnum" style="color:#645a76;font-size:12px;">@group.Sum(c => c.Quantity)</span>
                     </div>
-                    @foreach (var card in group.OrderBy(c => c.Cmc).ThenBy(c => c.CardName))
+                    @foreach (var card in SortCards(group))
                     {
                         <CardRow Card="@card" Context="CardContext.Viewer"
                                  OnOpenScryfall="() => OpenScryfall(card)"
@@ -400,7 +416,7 @@ else
                         <span class="wander-display" style="font-size:13px;letter-spacing:0.1em;text-transform:uppercase;">Sideboard</span>
                         <span class="ml-2 wander-tnum" style="color:#645a76;font-size:12px;">@sideboardCards.Sum(c => c.Quantity)</span>
                     </div>
-                    @foreach (var card in sideboardCards.OrderBy(c => c.Cmc).ThenBy(c => c.CardName))
+                    @foreach (var card in SortCards(sideboardCards))
                     {
                         <CardRow Card="@card" Context="CardContext.Viewer"
                                  OnOpenScryfall="() => OpenScryfall(card)"
@@ -471,11 +487,14 @@ else
         }
     }
 
+    DeckGroupBy _groupBy = DeckGroupBy.Type;
+    DeckSortBy  _sortBy  = DeckSortBy.ManaValue;
+
     IEnumerable<IGrouping<string, DeckCardDetail>> GroupedCards =>
         _localCards
             .Where(c => !c.IsCommander && !c.IsSideboard)
-            .GroupBy(c => GetTypeGroup(c.TypeLine))
-            .OrderBy(g => TypeGroupOrder(g.Key));
+            .GroupBy(c => GetGroupKey(c))
+            .OrderBy(g => GetGroupOrder(g.Key));
 
     List<ChartSeries<double>> ManaCurveSeries => [new ChartSeries<double>
     {
@@ -914,4 +933,61 @@ else
             "Artifact"     => 4, "Planeswalker" => 5, "Battle"     => 6, "Land"        => 7,
             _              => 8,
         };
+
+    string GetGroupKey(DeckCardDetail c) => _groupBy switch
+    {
+        DeckGroupBy.Type          => GetTypeGroup(c.TypeLine),
+        DeckGroupBy.ManaValue     => c.Cmc >= 7 ? "7+" : ((int)c.Cmc).ToString(),
+        DeckGroupBy.Color         => c.TypeLine.Contains("Land", StringComparison.OrdinalIgnoreCase)
+                                         ? "Land"
+                                         : GetColorGroup(c.ColorIdentity),
+        DeckGroupBy.ColorIdentity => GetColorIdentityGroup(c.ColorIdentity),
+        DeckGroupBy.None          => "All Cards",
+        _                         => GetTypeGroup(c.TypeLine)
+    };
+
+    int GetGroupOrder(string key) => _groupBy switch
+    {
+        DeckGroupBy.Type          => TypeGroupOrder(key),
+        DeckGroupBy.ManaValue     => key == "7+" ? 7 : int.TryParse(key, out var n) ? n : 99,
+        DeckGroupBy.Color         => ColorGroupOrder(key),
+        DeckGroupBy.ColorIdentity => ColorGroupOrder(key),
+        DeckGroupBy.None          => 0,
+        _                         => 0
+    };
+
+    static string GetColorGroup(List<string> identity) => identity.Count switch
+    {
+        0 => "Colorless",
+        1 => identity[0] switch { "W" => "White", "U" => "Blue", "B" => "Black", "R" => "Red", "G" => "Green", _ => "Colorless" },
+        _ => "Multicolor"
+    };
+
+    static string GetColorIdentityGroup(List<string> identity) => identity.Count switch
+    {
+        0 => "Colorless",
+        1 => identity[0],
+        _ => string.Join("", identity.OrderBy(c => "WUBRG".IndexOf(c)))
+    };
+
+    static readonly Dictionary<string, int> _colorOrder = new()
+    {
+        ["White"] = 0, ["W"] = 0,
+        ["Blue"]  = 1, ["U"] = 1,
+        ["Black"] = 2, ["B"] = 2,
+        ["Red"]   = 3, ["R"] = 3,
+        ["Green"] = 4, ["G"] = 4,
+    };
+
+    static int ColorGroupOrder(string key) =>
+        key == "Colorless" ? 99 :
+        key == "Land"      ? 90 :
+        _colorOrder.TryGetValue(key, out var o) ? o : 50;
+
+    IEnumerable<DeckCardDetail> SortCards(IEnumerable<DeckCardDetail> cards) => _sortBy switch
+    {
+        DeckSortBy.Name      => cards.OrderBy(c => c.CardName),
+        DeckSortBy.ManaValue => cards.OrderBy(c => c.Cmc).ThenBy(c => c.CardName),
+        _                    => cards.OrderBy(c => c.Cmc).ThenBy(c => c.CardName)
+    };
 }

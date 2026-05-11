@@ -78,6 +78,8 @@ public record CardPrintingInfo(
 
 public enum Format { Standard, Pioneer, Modern, Legacy, Vintage, Commander, Pauper, Explorer, Historic, Timeless }
 public enum Visibility { Public, Private, Unlisted }
+public enum DeckGroupBy { Type, ManaValue, Color, ColorIdentity, None }
+public enum DeckSortBy  { ManaValue, Name }
 
 public record DeckSummary(
     Guid Id, string Name, string? Description, Format Format,

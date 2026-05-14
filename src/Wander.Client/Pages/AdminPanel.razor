@@ -1,0 +1,594 @@
+@page "/admin"
+@attribute [Authorize(Roles = "Admin")]
+@layout Layout.AdminLayout
+@implements IAsyncDisposable
+@inject WanderApiClient Api
+@inject ISnackbar Snackbar
+@inject IDialogService Dialogs
+@inject NavigationManager Nav
+@inject AuthenticationStateProvider AuthStateProvider
+@inject IJSRuntime JS
+@inject LocalStorage LocalStorage
+@using Wander.Client.Dialogs
+
+<PageTitle>WanderAdmin</PageTitle>
+
+<div style="display:flex; height:100vh; overflow:hidden;">
+
+    <!-- ── Sidebar ─────────────────────────────────────────────────────── -->
+    <nav style="width:220px; min-width:220px; border-right:1px solid var(--mud-palette-lines-default);
+                display:flex; flex-direction:column; height:100vh; overflow:hidden;
+                background:var(--mud-palette-background);">
+
+        <!-- Brand -->
+        <div style="padding:16px; border-bottom:1px solid var(--mud-palette-lines-default);">
+            <MudText Typo="Typo.subtitle1" Style="font-weight:600; font-family:'Cinzel',serif; color:var(--mud-palette-primary);">
+                WanderAdmin
+            </MudText>
+            <MudText Typo="Typo.caption" Style="font-family:monospace; color:var(--mud-palette-text-secondary);">
+                v1.0 · admin
+            </MudText>
+        </div>
+
+        <!-- Nav -->
+        <div style="padding:8px 0;">
+            <AdminNavItem Label="Users" Active="true" Count="@_data?.Meta.TotalUsers" />
+            <AdminNavItem Label="Scripts" Href="/admin/scripts" />
+            <AdminNavItem Label="Activity log" Href="/admin/activity" />
+            <AdminNavItem Label="Notifications" Href="/admin/notifications" />
+        </div>
+
+        <div style="flex:1;" />
+
+        <!-- Go to main site + logout -->
+        <div style="padding:8px 12px; display:flex; flex-direction:column; gap:6px;">
+            <MudButton FullWidth="true" Variant="Variant.Outlined" Size="Size.Small"
+                       StartIcon="@Icons.Material.Outlined.OpenInNew"
+                       Href="/" Style="justify-content:flex-start;">
+                Go to main site
+            </MudButton>
+            <MudButton FullWidth="true" Variant="Variant.Text" Size="Size.Small"
+                       StartIcon="@Icons.Material.Outlined.Logout"
+                       OnClick="Logout" Style="justify-content:flex-start;">
+                Log out
+            </MudButton>
+        </div>
+
+        <!-- Current admin chip (click → settings) -->
+        <div @onclick='() => Nav.NavigateTo("/settings")'
+             style="padding:12px; border-top:1px solid var(--mud-palette-lines-default); display:flex; align-items:center; gap:8px; cursor:pointer;"
+             class="admin-nav-item">
+            <MudAvatar Style="width:24px; height:24px; font-size:0.65rem; background:var(--mud-palette-primary); color:#000;">
+                @_adminInitials
+            </MudAvatar>
+            <div>
+                <MudText Typo="Typo.caption" Style="font-weight:500; line-height:1.2;">@_adminUsername</MudText>
+                <MudText Typo="Typo.caption" Style="color:var(--mud-palette-text-secondary); font-size:11px; line-height:1.2;">admin</MudText>
+            </div>
+        </div>
+    </nav>
+
+    <!-- ── Main content ────────────────────────────────────────────────── -->
+    <main style="flex:1; overflow-y:auto; padding:32px; display:flex; flex-direction:column; gap:16px;">
+
+        <!-- Header -->
+        <div class="d-flex align-center justify-space-between">
+            <div>
+                <MudText Typo="Typo.h5" Style="font-family:'Cinzel',serif;">Users</MudText>
+                @if (_data != null)
+                {
+                    <MudText Typo="Typo.body2" Style="color:var(--mud-palette-text-secondary); font-family:monospace;">
+                        @_data.Meta.TotalUsers total · @_data.Meta.AdminCount admins
+                    </MudText>
+                }
+            </div>
+            <MudButton Color="Color.Primary" Variant="Variant.Filled"
+                       StartIcon="@Icons.Material.Filled.Add"
+                       OnClick="OpenCreateAdmin" Disabled="_loading">
+                New admin
+            </MudButton>
+        </div>
+
+        <!-- Toolbar -->
+        <div class="d-flex align-center gap-3 flex-wrap">
+            <MudTextField T="string" @ref="_searchField" Value="@_searchText"
+                          ValueChanged="@OnSearchChanged"
+                          Placeholder="Search by name or email…"
+                          Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Outlined.Search"
+                          Variant="Variant.Outlined" Margin="Margin.Dense"
+                          Style="min-width:280px;"
+                          Immediate="true" Clearable="true" />
+
+            <MudSelect T="string" Value="@_roleFilter" ValueChanged="OnRoleFilterChanged"
+                       Label="Role" Variant="Variant.Outlined" Margin="Margin.Dense"
+                       Style="min-width:120px;"
+                       Dense="true">
+                <MudSelectItem Value="@("all")">All roles</MudSelectItem>
+                <MudSelectItem Value="@("admin")">Admin</MudSelectItem>
+                <MudSelectItem Value="@("user")">User</MudSelectItem>
+            </MudSelect>
+
+            <MudSelect T="string" Value="@_statusFilter" ValueChanged="OnStatusFilterChanged"
+                       Label="Status" Variant="Variant.Outlined" Margin="Margin.Dense"
+                       Style="min-width:130px;"
+                       Dense="true">
+                <MudSelectItem Value="@("all")">All statuses</MudSelectItem>
+                <MudSelectItem Value="@("active")">Active</MudSelectItem>
+                <MudSelectItem Value="@("suspended")">Suspended</MudSelectItem>
+            </MudSelect>
+
+            <div style="margin-left:auto;">
+                <MudSelect T="string" Value="@_sort" ValueChanged="OnSortChanged"
+                           Label="Sort" Variant="Variant.Outlined" Margin="Margin.Dense"
+                           Style="min-width:160px;"
+                           Dense="true">
+                    <MudSelectItem Value="@("createdAt:desc")">Created ↓</MudSelectItem>
+                    <MudSelectItem Value="@("createdAt:asc")">Created ↑</MudSelectItem>
+                    <MudSelectItem Value="@("name:asc")">Name A–Z</MudSelectItem>
+                    <MudSelectItem Value="@("name:desc")">Name Z–A</MudSelectItem>
+                    <MudSelectItem Value="@("lastLogin:desc")">Last login ↓</MudSelectItem>
+                    <MudSelectItem Value="@("lastLogin:asc")">Last login ↑</MudSelectItem>
+                </MudSelect>
+            </div>
+        </div>
+
+        <!-- Bulk action bar -->
+        @if (_selected.Count > 0)
+        {
+            <MudPaper Elevation="1" Style="padding:10px 16px; display:flex; align-items:center; gap:12px; border:1px solid var(--mud-palette-lines-default); border-radius:8px; background:var(--mud-palette-surface);">
+                <MudText Typo="Typo.body2" Style="font-family:monospace; font-weight:700;">
+                    @_selected.Count selected
+                </MudText>
+                <MudText Typo="Typo.caption" Style="color:var(--mud-palette-text-secondary);">across this page</MudText>
+                <div style="margin-left:auto; display:flex; gap:8px;">
+                    <MudButton Size="Size.Small" Variant="Variant.Outlined"
+                               OnClick="BulkSuspend" Disabled="_mutating">
+                        Suspend
+                    </MudButton>
+                    <MudButton Size="Size.Small" Variant="Variant.Outlined" Color="Color.Error"
+                               OnClick="BulkDelete" Disabled="_mutating">
+                        Delete selected
+                    </MudButton>
+                    <MudButton Size="Size.Small" Variant="Variant.Text"
+                               OnClick="@(() => _selected.Clear())">
+                        Clear
+                    </MudButton>
+                </div>
+            </MudPaper>
+        }
+
+        <!-- Table -->
+        <MudPaper Elevation="0" Style="border:1px solid var(--mud-palette-lines-default); border-radius:8px; overflow:hidden; flex:1;">
+            @if (_loading && _data == null)
+            {
+                <div style="padding:32px; text-align:center;">
+                    <MudProgressCircular Color="Color.Primary" Indeterminate="true" />
+                </div>
+            }
+            else if (_error != null)
+            {
+                <div style="padding:32px; text-align:center;">
+                    <MudText Style="color:var(--mud-palette-error);">@_error</MudText>
+                    <MudButton Class="mt-3" OnClick="RefetchAsync">Retry</MudButton>
+                </div>
+            }
+            else
+            {
+                @if (_loading)
+                {
+                    <MudProgressLinear Color="Color.Primary" Indeterminate="true" Style="height:2px;" />
+                }
+                <table style="width:100%; border-collapse:collapse;">
+                    <thead>
+                        <tr style="border-bottom:1px solid var(--mud-palette-lines-default); background:var(--mud-palette-surface);">
+                            <th style="width:40px; padding:10px 12px;">
+                                <MudCheckBox T="bool" Value="@_headerCheckState" ValueChanged="ToggleAll"
+                                             Indeterminate="@(_selected.Count > 0 && _selected.Count < (_data?.Users.Count ?? 0))"
+                                             Color="Color.Primary" Dense="true" />
+                            </th>
+                            <th class="admin-th">Name</th>
+                            <th class="admin-th">Email</th>
+                            <th class="admin-th">Role</th>
+                            <th class="admin-th">Status</th>
+                            <th class="admin-th">Created</th>
+                            <th class="admin-th">Last login</th>
+                            <th style="width:60px;"></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @if (_data?.Users.Count == 0)
+                        {
+                            <tr>
+                                <td colspan="8" style="padding:32px; text-align:center; color:var(--mud-palette-text-secondary);">
+                                    No users match your filters.
+                                    @if (HasActiveFilters)
+                                    {
+                                        <MudButton Size="Size.Small" Class="ml-2" OnClick="ClearFilters">Clear filters</MudButton>
+                                    }
+                                </td>
+                            </tr>
+                        }
+                        @foreach (var user in _data?.Users ?? [])
+                        {
+                            var isSelected = _selected.Contains(user.Id);
+                            <tr style="border-bottom:1px solid var(--mud-palette-lines-default);
+                                       background:@(isSelected ? "rgba(196,163,95,0.08)" : "transparent");
+                                       transition:background 0.1s;"
+                                class="admin-row">
+                                <td style="padding:10px 12px;">
+                                    <MudCheckBox T="bool" Value="@isSelected"
+                                                 ValueChanged="@(v => ToggleRow(user.Id, v))"
+                                                 Color="Color.Primary" Dense="true" />
+                                </td>
+                                <td style="padding:10px 12px;">
+                                    <div class="d-flex align-center gap-2">
+                                        <MudAvatar Style="width:24px; height:24px; font-size:0.6rem; background:var(--mud-palette-secondary); color:var(--mud-palette-background);">
+                                            @Initials(user)
+                                        </MudAvatar>
+                                        <MudText Typo="Typo.body2">@user.Name</MudText>
+                                    </div>
+                                </td>
+                                <td style="padding:10px 12px; font-family:monospace; font-size:0.82rem; color:var(--mud-palette-text-secondary);">
+                                    @user.Email
+                                </td>
+                                <td style="padding:10px 12px;">
+                                    <MudChip T="string" Size="Size.Small"
+                                             Color="@(user.Role == "admin" ? Color.Primary : Color.Default)"
+                                             Variant="@(user.Role == "admin" ? Variant.Filled : Variant.Outlined)">
+                                        @user.Role
+                                    </MudChip>
+                                </td>
+                                <td style="padding:10px 12px;">
+                                    <MudChip T="string" Size="Size.Small"
+                                             Color="@(user.Status == "active" ? Color.Success : Color.Error)"
+                                             Variant="Variant.Filled">
+                                        @user.Status
+                                    </MudChip>
+                                </td>
+                                <td style="padding:10px 12px; font-family:monospace; font-size:0.82rem; color:var(--mud-palette-text-secondary);">
+                                    @user.CreatedAt.ToString("yyyy-MM-dd")
+                                </td>
+                                <td style="padding:10px 12px; font-size:0.82rem; color:var(--mud-palette-text-secondary);">
+                                    @RelativeTime(user.LastLoginAt)
+                                </td>
+                                <td style="padding:10px 8px; text-align:right;">
+                                    <MudMenu Icon="@Icons.Material.Filled.MoreHoriz" Size="Size.Small"
+                                             Dense="true" AnchorOrigin="Origin.BottomRight"
+                                             TransformOrigin="Origin.TopRight">
+                                        <MudMenuItem OnClick="@(() => Nav.NavigateTo($"/users/{user.Username}"))">
+                                            View profile
+                                        </MudMenuItem>
+                                        @if (user.Status == "active")
+                                        {
+                                            <MudMenuItem OnClick="@(() => SuspendSingle(user))">Suspend</MudMenuItem>
+                                        }
+                                        else
+                                        {
+                                            <MudMenuItem OnClick="@(() => ReactivateSingle(user))">Reactivate</MudMenuItem>
+                                        }
+                                        <MudMenuItem OnClick="@(() => DeleteSingle(user))" Style="color:var(--mud-palette-error);">
+                                            Delete
+                                        </MudMenuItem>
+                                    </MudMenu>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            }
+        </MudPaper>
+
+        <!-- Pagination -->
+        @if (_data != null && _data.TotalCount > 0)
+        {
+            <div class="d-flex align-center justify-space-between">
+                <MudText Typo="Typo.caption" Style="color:var(--mud-palette-text-secondary);">
+                    Showing @((_data.Page - 1) * _data.PageSize + 1)–@Math.Min(_data.Page * _data.PageSize, _data.TotalCount) of @_data.TotalCount
+                </MudText>
+                <div class="d-flex align-center gap-2">
+                    <MudText Typo="Typo.caption" Style="font-family:monospace;">
+                        Page @_data.Page of @_data.TotalPages
+                    </MudText>
+                    <MudIconButton Icon="@Icons.Material.Filled.ChevronLeft" Size="Size.Small"
+                                   Disabled="@(_data.Page <= 1 || _loading)"
+                                   OnClick="PrevPage" />
+                    <MudIconButton Icon="@Icons.Material.Filled.ChevronRight" Size="Size.Small"
+                                   Disabled="@(_data.Page >= _data.TotalPages || _loading)"
+                                   OnClick="NextPage" />
+                </div>
+                <MudText Typo="Typo.caption" Style="color:var(--mud-palette-text-secondary);">10 per page</MudText>
+            </div>
+        }
+    </main>
+</div>
+
+<style>
+    .admin-th {
+        padding: 10px 12px;
+        text-align: left;
+        font-size: 0.78rem;
+        font-weight: 600;
+        color: var(--mud-palette-text-secondary);
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+    }
+    .admin-row:hover {
+        background: var(--mud-palette-action-hover) !important;
+    }
+</style>
+
+@code {
+    [SupplyParameterFromQuery(Name = "q")]      public string? Q          { get; set; }
+    [SupplyParameterFromQuery(Name = "role")]   public string? RoleFilter  { get; set; }
+    [SupplyParameterFromQuery(Name = "status")] public string? StatusFilter { get; set; }
+    [SupplyParameterFromQuery(Name = "sort")]   public string? Sort        { get; set; }
+    [SupplyParameterFromQuery(Name = "page")]   public int?    Page        { get; set; }
+
+    AdminUserListResponse? _data;
+    bool _loading, _mutating;
+    string? _error;
+    string _searchText = "";
+    string _roleFilter = "all";
+    string _statusFilter = "all";
+    string _sort = "createdAt:desc";
+    int _page = 1;
+    HashSet<string> _selected = [];
+    string _adminUsername = "";
+    string _adminInitials = "";
+    bool _initialized;
+    CancellationTokenSource? _searchCts;
+    DotNetObjectReference<AdminPanel>? _dotNetRef;
+    MudTextField<string>? _searchField;
+
+    bool _headerCheckState => _data?.Users.Count > 0 && _selected.Count == _data?.Users.Count;
+    bool HasActiveFilters => !string.IsNullOrEmpty(_searchText) || _roleFilter != "all" || _statusFilter != "all";
+
+    protected override async Task OnInitializedAsync()
+    {
+        _searchText   = Q ?? "";
+        _roleFilter   = RoleFilter ?? "all";
+        _statusFilter = StatusFilter ?? "all";
+        _sort         = Sort ?? "createdAt:desc";
+        _page         = Page ?? 1;
+
+        var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+        _adminUsername = authState.User.Identity?.Name ?? "admin";
+        _adminInitials = _adminUsername.Length >= 2 ? _adminUsername[..2].ToUpper() : _adminUsername.ToUpper();
+
+        await FetchUsersAsync();
+        _initialized = true;
+    }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (!_initialized) return;
+        var newQ      = Q ?? "";
+        var newRole   = RoleFilter ?? "all";
+        var newStatus = StatusFilter ?? "all";
+        var newSort   = Sort ?? "createdAt:desc";
+        var newPage   = Page ?? 1;
+
+        if (newQ == _searchText && newRole == _roleFilter && newStatus == _statusFilter
+            && newSort == _sort && newPage == _page)
+            return;
+
+        _searchText = newQ; _roleFilter = newRole; _statusFilter = newStatus;
+        _sort = newSort; _page = newPage;
+        await FetchUsersAsync();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            _dotNetRef = DotNetObjectReference.Create(this);
+            await JS.InvokeVoidAsync("adminKeyHandler.init", _dotNetRef);
+        }
+    }
+
+    async Task FetchUsersAsync()
+    {
+        _loading = true;
+        _error = null;
+        StateHasChanged();
+        try
+        {
+            _data = await Api.AdminGetUsersAsync(_searchText, _roleFilter, _statusFilter, _sort, _page);
+        }
+        catch
+        {
+            _error = "Failed to load users. Check your connection and try again.";
+        }
+        _loading = false;
+    }
+
+    async Task RefetchAsync() => await FetchUsersAsync();
+
+    void UpdateUrl()
+    {
+        var uri = Nav.GetUriWithQueryParameters(new Dictionary<string, object?>
+        {
+            ["q"]      = string.IsNullOrEmpty(_searchText) ? null : _searchText,
+            ["role"]   = _roleFilter == "all" ? null : (object?)_roleFilter,
+            ["status"] = _statusFilter == "all" ? null : (object?)_statusFilter,
+            ["sort"]   = _sort == "createdAt:desc" ? null : (object?)_sort,
+            ["page"]   = _page == 1 ? null : (object?)_page,
+        });
+        Nav.NavigateTo(uri, replace: true);
+    }
+
+    async Task OnSearchChanged(string value)
+    {
+        _searchText = value;
+        _searchCts?.Cancel();
+        _searchCts = new CancellationTokenSource();
+        var cts = _searchCts;
+        try
+        {
+            await Task.Delay(200, cts.Token);
+            _page = 1;
+            _selected.Clear();
+            await FetchUsersAsync();
+            UpdateUrl();
+        }
+        catch (OperationCanceledException) { }
+    }
+
+    async Task OnRoleFilterChanged(string value)
+    {
+        _roleFilter = value; _page = 1; _selected.Clear();
+        await FetchUsersAsync(); UpdateUrl();
+    }
+
+    async Task OnStatusFilterChanged(string value)
+    {
+        _statusFilter = value; _page = 1; _selected.Clear();
+        await FetchUsersAsync(); UpdateUrl();
+    }
+
+    async Task OnSortChanged(string value)
+    {
+        _sort = value; _page = 1;
+        await FetchUsersAsync(); UpdateUrl();
+    }
+
+    async Task PrevPage() { _page--; _selected.Clear(); await FetchUsersAsync(); UpdateUrl(); }
+    async Task NextPage() { _page++; _selected.Clear(); await FetchUsersAsync(); UpdateUrl(); }
+
+    void ClearSearch()
+    {
+        _searchText = ""; _page = 1; _selected.Clear();
+        _ = FetchUsersAsync(); UpdateUrl();
+    }
+
+    async Task ClearFilters()
+    {
+        _searchText = ""; _roleFilter = "all"; _statusFilter = "all"; _page = 1; _selected.Clear();
+        await FetchUsersAsync(); UpdateUrl();
+    }
+
+    void ToggleRow(string id, bool selected)
+    {
+        if (selected) _selected.Add(id); else _selected.Remove(id);
+    }
+
+    void ToggleAll(bool selectAll)
+    {
+        if (selectAll) foreach (var u in _data?.Users ?? []) _selected.Add(u.Id);
+        else _selected.Clear();
+    }
+
+    async Task OpenCreateAdmin()
+    {
+        var dialog = await Dialogs.ShowAsync<CreateAdminDialog>("", new DialogOptions
+        {
+            CloseOnEscapeKey = true,
+            BackdropClick = true,
+        });
+        var result = await dialog.Result;
+        if (!result.Canceled) await FetchUsersAsync();
+    }
+
+    async Task DeleteSingle(AdminUserDto user)
+    {
+        var parameters = new DialogParameters<DeleteConfirmDialog>
+        {
+            { x => x.UserIds, new List<string> { user.Id } },
+            { x => x.UserEmails, new List<string> { user.Email } },
+        };
+        var dialog = await Dialogs.ShowAsync<DeleteConfirmDialog>("", parameters,
+            new DialogOptions { CloseOnEscapeKey = true, BackdropClick = false });
+        var result = await dialog.Result;
+        if (!result.Canceled) { _selected.Remove(user.Id); await FetchUsersAsync(); }
+    }
+
+    async Task BulkDelete()
+    {
+        var ids = _selected.ToList();
+        var emails = _data?.Users.Where(u => ids.Contains(u.Id)).Select(u => u.Email).ToList() ?? new List<string>();
+        var parameters = new DialogParameters<DeleteConfirmDialog>
+        {
+            { x => x.UserIds, ids },
+            { x => x.UserEmails, emails },
+        };
+        var dialog = await Dialogs.ShowAsync<DeleteConfirmDialog>("", parameters,
+            new DialogOptions { CloseOnEscapeKey = true, BackdropClick = false });
+        var result = await dialog.Result;
+        if (!result.Canceled) { _selected.Clear(); await FetchUsersAsync(); }
+    }
+
+    async Task SuspendSingle(AdminUserDto user)
+    {
+        _mutating = true;
+        var resp = await Api.AdminSuspendUsersAsync([user.Id]);
+        if (resp.IsSuccessStatusCode) { Snackbar.Add($"{user.Name} suspended.", Severity.Success); await FetchUsersAsync(); }
+        else Snackbar.Add("Failed to suspend user.", Severity.Error);
+        _mutating = false;
+    }
+
+    async Task ReactivateSingle(AdminUserDto user)
+    {
+        _mutating = true;
+        var resp = await Api.AdminReactivateUsersAsync([user.Id]);
+        if (resp.IsSuccessStatusCode) { Snackbar.Add($"{user.Name} reactivated.", Severity.Success); await FetchUsersAsync(); }
+        else Snackbar.Add("Failed to reactivate user.", Severity.Error);
+        _mutating = false;
+    }
+
+    async Task BulkSuspend()
+    {
+        _mutating = true;
+        var ids = _selected.ToList();
+        var resp = await Api.AdminSuspendUsersAsync(ids);
+        if (resp.IsSuccessStatusCode)
+        {
+            Snackbar.Add($"{ids.Count} user{(ids.Count == 1 ? "" : "s")} suspended.", Severity.Success);
+            _selected.Clear();
+            await FetchUsersAsync();
+        }
+        else Snackbar.Add("Failed to suspend users.", Severity.Error);
+        _mutating = false;
+    }
+
+    [JSInvokable]
+    public async Task FocusSearch()
+    {
+        if (_searchField != null) await _searchField.FocusAsync();
+    }
+
+    static string RelativeTime(DateTimeOffset? dt)
+    {
+        if (dt == null) return "Never";
+        var now = DateTimeOffset.UtcNow;
+        if (dt.Value.Date == now.Date) return "Today";
+        var diff = now - dt.Value;
+        if (diff.TotalHours < 1) return $"{(int)diff.TotalMinutes}m ago";
+        if (diff.TotalHours < 24) return $"{(int)diff.TotalHours}h ago";
+        if (diff.TotalDays < 30) return $"{(int)diff.TotalDays}d ago";
+        return dt.Value.ToString("yyyy-MM-dd");
+    }
+
+    static string Initials(AdminUserDto u)
+    {
+        if (!string.IsNullOrWhiteSpace(u.FirstName) && !string.IsNullOrWhiteSpace(u.LastName))
+            return $"{u.FirstName[0]}{u.LastName[0]}".ToUpper();
+        var parts = u.Name.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        if (parts.Length >= 2) return $"{parts[0][0]}{parts[^1][0]}".ToUpper();
+        return u.Email.Length >= 2 ? u.Email[..2].ToUpper() : u.Email.ToUpper();
+    }
+
+    async Task Logout()
+    {
+        await LocalStorage.RemoveAsync("accessToken");
+        await LocalStorage.RemoveAsync("refreshToken");
+        ((JwtAuthStateProvider)AuthStateProvider).NotifyUserChanged();
+        Nav.NavigateTo("/");
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        _searchCts?.Cancel();
+        await JS.InvokeVoidAsync("adminKeyHandler.dispose");
+        _dotNetRef?.Dispose();
+    }
+}

@@ -12,6 +12,12 @@
                    Style="color:#ebe4d0; text-transform:none; min-width:unset;">Browse</MudButton>
         <MudButton Variant="Variant.Text" Href="/help"
                    Style="color:#ebe4d0; text-transform:none; min-width:unset;">Help</MudButton>
+        <AuthorizeView Roles="Admin">
+            <Authorized>
+                <MudButton Variant="Variant.Text" Href="/admin"
+                           Style="color:#c4a35f; text-transform:none; min-width:unset;">Admin</MudButton>
+            </Authorized>
+        </AuthorizeView>
         <SearchBar />
         <AuthorizeView>
             <Authorized>

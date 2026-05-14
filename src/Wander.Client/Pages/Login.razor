@@ -67,6 +67,7 @@
         await LocalStorage.SetAsync("accessToken", auth!.AccessToken);
         await LocalStorage.SetAsync("refreshToken", auth.RefreshToken);
         ((JwtAuthStateProvider)AuthStateProvider).NotifyUserChanged();
-        Nav.NavigateTo("/decks");
+        var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+        Nav.NavigateTo(authState.User.IsInRole("Admin") ? "/admin" : "/decks");
     }
 }

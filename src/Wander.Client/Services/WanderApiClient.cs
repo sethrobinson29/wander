@@ -223,6 +223,48 @@ public class WanderApiClient(HttpClient http, LocalStorage localStorage)
         return await http.PutAsync("notifications/read-all", null);
     }
 
+    // ── Admin ─────────────────────────────────────────────────────────────────
+
+    public async Task<AdminUserListResponse?> AdminGetUsersAsync(
+        string? q = null, string? role = null, string? status = null,
+        string sort = "createdAt:desc", int page = 1)
+    {
+        await AttachTokenAsync();
+        var url = $"admin/users?sort={Uri.EscapeDataString(sort)}&page={page}&pageSize=10";
+        if (!string.IsNullOrEmpty(q)) url += $"&q={Uri.EscapeDataString(q)}";
+        if (!string.IsNullOrEmpty(role) && role != "all") url += $"&role={role}";
+        if (!string.IsNullOrEmpty(status) && status != "all") url += $"&status={status}";
+        return await http.GetFromJsonAsync<AdminUserListResponse>(url);
+    }
+
+    public async Task<HttpResponseMessage> AdminCreateAdminAsync(AdminCreateAdminRequest req)
+    {
+        await AttachTokenAsync();
+        return await http.PostAsJsonAsync("admin/admins", req);
+    }
+
+    public async Task<HttpResponseMessage> AdminDeleteUsersAsync(List<string> ids)
+    {
+        await AttachTokenAsync();
+        var request = new HttpRequestMessage(HttpMethod.Delete, "admin/users")
+        {
+            Content = System.Net.Http.Json.JsonContent.Create(new { ids }),
+        };
+        return await http.SendAsync(request);
+    }
+
+    public async Task<HttpResponseMessage> AdminSuspendUsersAsync(List<string> ids)
+    {
+        await AttachTokenAsync();
+        return await http.PostAsJsonAsync("admin/users/suspend", new { ids });
+    }
+
+    public async Task<HttpResponseMessage> AdminReactivateUsersAsync(List<string> ids)
+    {
+        await AttachTokenAsync();
+        return await http.PostAsJsonAsync("admin/users/reactivate", new { ids });
+    }
+
     // ── Helpers ───────────────────────────────────────────────────────────────
 
     private async Task AttachTokenAsync()

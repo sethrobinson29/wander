@@ -28,4 +28,6 @@ public class ApplicationUser : IdentityUser
     public Privacy ActivityPrivacy { get; set; } = Privacy.Public;
     public ICollection<UserActivity> Activities { get; set; } = [];
     public ICollection<Notification> ReceivedNotifications { get; set; } = [];
+    public bool IsDeactivated { get; set; }
+    public DateTimeOffset? LastLoginAt { get; set; }
 }

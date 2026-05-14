@@ -41,6 +41,12 @@ public class AuthController(
         if (user is null || !await userManager.CheckPasswordAsync(user, request.Password))
             return Unauthorized(new { message = "Invalid email or password." });
 
+        if (user.IsDeactivated)
+            return Unauthorized(new { message = "Account suspended." });
+
+        user.LastLoginAt = DateTimeOffset.UtcNow;
+        await userManager.UpdateAsync(user);
+
         return Ok(await IssueTokensAsync(user));
     }
 

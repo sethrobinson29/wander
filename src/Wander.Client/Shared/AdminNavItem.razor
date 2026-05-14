@@ -1,0 +1,35 @@
+@inject NavigationManager Nav
+
+<div @onclick="Navigate"
+     style="display:flex; align-items:center; justify-content:space-between;
+            padding:8px 16px; cursor:pointer; user-select:none;
+            font-weight:@(Active ? "600" : "400");
+            background:@(Active ? "rgba(196,163,95,0.1)" : "transparent");
+            border-left:2px solid @(Active ? "var(--mud-palette-primary)" : "transparent");
+            color:@(Active ? "var(--mud-palette-primary)" : "inherit");"
+     class="admin-nav-item">
+    <MudText Typo="Typo.body2" Style="@($"font-weight:inherit; color:inherit;")">@Label</MudText>
+    @if (Count.HasValue)
+    {
+        <span style="font-family:monospace; font-size:0.7rem; background:var(--mud-palette-lines-default);
+                     padding:1px 6px; border-radius:10px; color:var(--mud-palette-text-secondary);">
+            @Count
+        </span>
+    }
+</div>
+
+<style>
+    .admin-nav-item:hover { background: var(--mud-palette-action-hover) !important; }
+</style>
+
+@code {
+    [Parameter] public string Label { get; set; } = "";
+    [Parameter] public string? Href { get; set; }
+    [Parameter] public bool Active { get; set; }
+    [Parameter] public int? Count { get; set; }
+
+    void Navigate()
+    {
+        if (Href != null) Nav.NavigateTo(Href);
+    }
+}

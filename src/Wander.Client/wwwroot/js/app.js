@@ -40,6 +40,28 @@ window.getElementRect = (element) => {
 
 const _enterSubmitAttached = new WeakSet();
 
+window.adminKeyHandler = {
+    _ref: null,
+    _fn: null,
+    init(dotNetRef) {
+        this._ref = dotNetRef;
+        this._fn = (e) => {
+            const tag = document.activeElement?.tagName?.toLowerCase();
+            const isInput = tag === 'input' || tag === 'textarea' || tag === 'select';
+            if (e.key === '/' && !isInput) {
+                e.preventDefault();
+                dotNetRef.invokeMethodAsync('FocusSearch');
+            }
+        };
+        window.addEventListener('keydown', this._fn);
+    },
+    dispose() {
+        if (this._fn) window.removeEventListener('keydown', this._fn);
+        this._ref = null;
+        this._fn = null;
+    }
+};
+
 window.attachEnterSubmit = (wrapperId, dotNetRef, methodName) => {
     const wrapper = document.getElementById(wrapperId);
     if (!wrapper) return;

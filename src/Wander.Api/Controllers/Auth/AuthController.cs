@@ -63,7 +63,8 @@ public class AuthController(
 
     private async Task<AuthResponse> IssueTokensAsync(ApplicationUser user)
     {
-        var (accessToken, expiresAt) = tokenService.GenerateAccessToken(user);
+        var roles = await userManager.GetRolesAsync(user);
+        var (accessToken, expiresAt) = tokenService.GenerateAccessToken(user, roles);
         var refreshToken = tokenService.GenerateRefreshToken(user.Id);
 
         db.RefreshTokens.Add(refreshToken);

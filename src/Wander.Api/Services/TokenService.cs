@@ -10,20 +10,22 @@ namespace Wander.Api.Services;
 
 public class TokenService(IConfiguration config)
 {
-    public (string token, DateTimeOffset expiresAt) GenerateAccessToken(ApplicationUser user)
+    public (string token, DateTimeOffset expiresAt) GenerateAccessToken(ApplicationUser user, IList<string> roles)
     {
         var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(config["Jwt:Key"]!));
         var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
         var expiryMinutes = config.GetValue<int>("Jwt:ExpiryMinutes", 60);
         var expiresAt = DateTimeOffset.UtcNow.AddMinutes(expiryMinutes);
 
-        var claims = new[]
+        var claims = new List<Claim>
         {
             new Claim(JwtRegisteredClaimNames.Sub, user.Id),
             new Claim(JwtRegisteredClaimNames.Email, user.Email!),
             new Claim(JwtRegisteredClaimNames.UniqueName, user.UserName!),
             new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
         };
+        foreach (var role in roles)
+            claims.Add(new Claim(System.Security.Claims.ClaimTypes.Role, role));
 
         var token = new JwtSecurityToken(
             issuer: config["Jwt:Issuer"],

@@ -6,7 +6,7 @@ namespace Wander.Api.Controllers;
 
 [ApiController]
 [Route("admin")]
-[Authorize]
+[Authorize(Roles = "Admin")]
 public class AdminController(ScryfallBulkDataService syncService) : ControllerBase
 {
     [HttpPost("sync")]

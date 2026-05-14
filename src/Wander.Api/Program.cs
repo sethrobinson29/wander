@@ -137,6 +137,38 @@ builder.Services.AddRateLimiter(options =>
 
 var app = builder.Build();
 
+using (var scope = app.Services.CreateScope())
+{
+    var roleManager = scope.ServiceProvider.GetRequiredService<RoleManager<IdentityRole>>();
+    var userManager = scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
+    var cfg = scope.ServiceProvider.GetRequiredService<IConfiguration>();
+
+    if (!await roleManager.RoleExistsAsync("Admin"))
+        await roleManager.CreateAsync(new IdentityRole("Admin"));
+
+    var adminEmail = cfg["Admin:Email"];
+    var adminPassword = cfg["Admin:Password"];
+    if (adminEmail is not null && adminPassword is not null)
+    {
+        var admin = await userManager.FindByEmailAsync(adminEmail);
+        if (admin is null)
+        {
+            admin = new ApplicationUser
+            {
+                UserName = "admin",
+                Email = adminEmail,
+                CreatedAt = DateTimeOffset.UtcNow,
+            };
+            var result = await userManager.CreateAsync(admin, adminPassword);
+            if (!result.Succeeded)
+                throw new InvalidOperationException(
+                    $"Admin seeding failed: {string.Join(", ", result.Errors.Select(e => e.Description))}");
+        }
+        if (!await userManager.IsInRoleAsync(admin, "Admin"))
+            await userManager.AddToRoleAsync(admin, "Admin");
+    }
+}
+
 app.UseRouting();
 app.UseCors("BlazorClient");
 app.UseRateLimiter();

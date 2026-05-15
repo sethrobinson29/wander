@@ -66,11 +66,8 @@ public class UserController(
         var isFollowing = requesterId != null && !isSelf &&
                           await db.Follows.AnyAsync(f => f.FollowerId == requesterId && f.FolloweeId == user.Id);
 
-        var followerTask  = db.Follows.CountAsync(f => f.FolloweeId == user.Id);
-        var followingTask = db.Follows.CountAsync(f => f.FollowerId == user.Id);
-        await Task.WhenAll(followerTask, followingTask);
-        var followerCount  = followerTask.Result;
-        var followingCount = followingTask.Result;
+        var followerCount  = await db.Follows.CountAsync(f => f.FolloweeId == user.Id);
+        var followingCount = await db.Follows.CountAsync(f => f.FollowerId == user.Id);
 
         var publicDecks = await db.Decks
             .Where(d => d.OwnerId == user.Id && d.Visibility == Visibility.Public)

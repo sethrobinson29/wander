@@ -1,6 +1,7 @@
 using System.Net.Http.Json;
 using System.Runtime.CompilerServices;
 using System.Text.Json;
+using Microsoft.EntityFrameworkCore;
 using Wander.Api.Domain;
 using Wander.Api.Infrastructure.Data;
 using Wander.Api.Services;
@@ -31,13 +32,13 @@ public class ScryfallBulkDataService(
             return;
         }
 
-        var existingCards = db.Cards
+        var existingCards = await db.Cards
             .Select(c => new { c.ScryfallId, c.Id })
-            .ToDictionary(c => c.ScryfallId, c => c.Id);
+            .ToDictionaryAsync(c => c.ScryfallId, c => c.Id, cancellationToken);
 
-        var existingPrintings = db.CardPrintings
+        var existingPrintings = await db.CardPrintings
             .Select(p => new { p.ScryfallId, p.Id })
-            .ToDictionary(p => p.ScryfallId, p => p.Id);
+            .ToDictionaryAsync(p => p.ScryfallId, p => p.Id, cancellationToken);
 
         var count = 0;
         await foreach (var card in StreamCardsAsync(downloadUri, cancellationToken))

@@ -53,12 +53,7 @@ public class DeckController(WanderDbContext db, DeckValidationService validator,
     [HttpGet("{id:guid}")]
     public async Task<ActionResult<DeckDetailResponse>> Get(Guid id, CancellationToken ct)
     {
-        var deck = await db.Decks
-            .Include(d => d.Owner)
-            .Include(d => d.CoverPrinting)
-            .Include(d => d.Cards).ThenInclude(dc => dc.Card).ThenInclude(c => c.Printings)
-            .Include(d => d.Cards).ThenInclude(dc => dc.Printing)
-            .FirstOrDefaultAsync(d => d.Id == id, ct);
+        var deck = await WithFullDetails().FirstOrDefaultAsync(d => d.Id == id, ct);
 
         if (deck is null) return NotFound();
 
@@ -139,12 +134,7 @@ public class DeckController(WanderDbContext db, DeckValidationService validator,
         UpdateDeckRequest request,
         CancellationToken ct)
     {
-        var deck = await db.Decks
-            .Include(d => d.Owner)
-            .Include(d => d.CoverPrinting)
-            .Include(d => d.Cards).ThenInclude(dc => dc.Card).ThenInclude(c => c.Printings)
-            .Include(d => d.Cards).ThenInclude(dc => dc.Printing)
-            .FirstOrDefaultAsync(d => d.Id == id, ct);
+        var deck = await WithFullDetails().FirstOrDefaultAsync(d => d.Id == id, ct);
 
         if (deck is null) return NotFound();
         if (deck.OwnerId != UserId) return Forbid();
@@ -301,12 +291,7 @@ public class DeckController(WanderDbContext db, DeckValidationService validator,
         List<DeckCardRequest> request,
         CancellationToken ct)
     {
-        var deck = await db.Decks
-            .Include(d => d.Owner)
-            .Include(d => d.CoverPrinting)
-            .Include(d => d.Cards).ThenInclude(dc => dc.Card).ThenInclude(c => c.Printings)
-            .Include(d => d.Cards).ThenInclude(dc => dc.Printing)
-            .FirstOrDefaultAsync(d => d.Id == id, ct);
+        var deck = await WithFullDetails().FirstOrDefaultAsync(d => d.Id == id, ct);
 
         if (deck is null) return NotFound();
         if (deck.OwnerId != UserId) return Forbid();
@@ -367,12 +352,7 @@ public class DeckController(WanderDbContext db, DeckValidationService validator,
         [FromBody] BulkImportRequest request,
         CancellationToken ct)
     {
-        var deck = await db.Decks
-            .Include(d => d.Owner)
-            .Include(d => d.CoverPrinting)
-            .Include(d => d.Cards).ThenInclude(dc => dc.Card).ThenInclude(c => c.Printings)
-            .Include(d => d.Cards).ThenInclude(dc => dc.Printing)
-            .FirstOrDefaultAsync(d => d.Id == id, ct);
+        var deck = await WithFullDetails().FirstOrDefaultAsync(d => d.Id == id, ct);
 
         if (deck is null) return NotFound();
         if (deck.OwnerId != UserId) return Forbid();
@@ -460,18 +440,21 @@ public class DeckController(WanderDbContext db, DeckValidationService validator,
         deck.UpdatedAt = DateTimeOffset.UtcNow;
         await db.SaveChangesAsync(ct);
 
-        // Reload so navigation properties are populated for the response
-        deck = await db.Decks
-            .Include(d => d.Owner)
-            .Include(d => d.Cards).ThenInclude(dc => dc.Card).ThenInclude(c => c.Printings)
-            .Include(d => d.Cards).ThenInclude(dc => dc.Printing)
-            .FirstAsync(d => d.Id == id, ct);
+        // Reload so navigation properties (including newly added cards) are populated for the response
+        deck = await WithFullDetails().FirstAsync(d => d.Id == id, ct);
 
         var (likeCount, isLiked) = await GetLikeInfoAsync(id, ct);
         return Ok(ToDetail(deck, likeCount, isLiked));
     }
 
     // ── Helpers ──────────────────────────────────────────────────────────────
+
+    private IQueryable<Deck> WithFullDetails() =>
+        db.Decks
+            .Include(d => d.Owner)
+            .Include(d => d.CoverPrinting)
+            .Include(d => d.Cards).ThenInclude(dc => dc.Card).ThenInclude(c => c.Printings)
+            .Include(d => d.Cards).ThenInclude(dc => dc.Printing);
 
     private static DeckSummaryResponse ToSummary(Deck d) => new(
     d.Id,

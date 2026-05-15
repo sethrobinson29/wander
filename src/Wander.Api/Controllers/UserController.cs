@@ -18,7 +18,8 @@ public class UserController(
     WanderDbContext db,
     TokenService tokenService,
     ActivityService activity,
-    NotificationService notifications) : ControllerBase
+    NotificationService notifications,
+    IAuditLogService auditLog) : ControllerBase
 {
     private string UserId => User.FindFirstValue(ClaimTypes.NameIdentifier)!;
 
@@ -59,6 +60,9 @@ public class UserController(
 
         var requesterId = User.FindFirstValue(ClaimTypes.NameIdentifier);
         var isSelf = requesterId == user.Id;
+
+        if (user.IsDeactivated) return NotFound();
+
         var isFollowing = requesterId != null && !isSelf &&
                           await db.Follows.AnyAsync(f => f.FollowerId == requesterId && f.FolloweeId == user.Id);
 
@@ -108,7 +112,7 @@ public class UserController(
 
         var lowerQ = q.ToLower();
         var users = await db.Users
-            .Where(u => u.UserName!.ToLower().Contains(lowerQ))
+            .Where(u => !u.IsDeactivated && u.UserName!.ToLower().Contains(lowerQ))
             .Select(u => new UserSearchResult(
                 u.UserName!,
                 u.AvatarId,
@@ -165,6 +169,9 @@ public class UserController(
 
         var requesterId = User.FindFirstValue(ClaimTypes.NameIdentifier);
         var isSelf = requesterId == user.Id;
+
+        if (user.IsDeactivated) return NotFound();
+
         var isFollowing = requesterId != null && !isSelf &&
                            await db.Follows.AnyAsync(f => f.FollowerId == requesterId && f.FolloweeId == user.Id);
 
@@ -204,6 +211,8 @@ public class UserController(
         user.AvatarId = request.AvatarId;
 
         await db.SaveChangesAsync();
+        await auditLog.LogAsync(AuditEvents.UserUpdatedName,
+            actorId: UserId, actorUsername: user.UserName);
         return NoContent();
     }
 
@@ -217,11 +226,15 @@ public class UserController(
         if (!await userManager.CheckPasswordAsync(user, request.CurrentPassword))
             return BadRequest(new { errors = new[] { "Current password is incorrect." } });
 
+        var passwordChanged = false;
+        var emailChanged = false;
+
         if (request.NewPassword is not null)
         {
             var result = await userManager.ChangePasswordAsync(user, request.CurrentPassword, request.NewPassword);
             if (!result.Succeeded)
                 return BadRequest(new { errors = result.Errors.Select(e => e.Description) });
+            passwordChanged = true;
         }
 
         if (!string.Equals(user.Email, request.NewEmail, StringComparison.OrdinalIgnoreCase))
@@ -232,6 +245,7 @@ public class UserController(
             var result = await userManager.SetEmailAsync(user, request.NewEmail);
             if (!result.Succeeded)
                 return BadRequest(new { errors = result.Errors.Select(e => e.Description) });
+            emailChanged = true;
         }
 
         if (!string.Equals(user.UserName, request.NewUsername, StringComparison.OrdinalIgnoreCase))
@@ -246,6 +260,14 @@ public class UserController(
 
         // Invalidate all existing sessions before issuing new tokens
         await db.RefreshTokens.Where(t => t.UserId == user.Id).ExecuteDeleteAsync();
+
+        if (passwordChanged)
+            await auditLog.LogAsync(AuditEvents.UserUpdatedPassword,
+                actorId: UserId, actorUsername: user.UserName);
+
+        if (emailChanged)
+            await auditLog.LogAsync(AuditEvents.UserUpdatedEmail,
+                actorId: UserId, actorUsername: user.UserName);
 
         return Ok(await IssueTokensAsync(user));
     }
@@ -267,6 +289,26 @@ public class UserController(
         user.ActivityPrivacy = request.ActivityPrivacy;
 
         await db.SaveChangesAsync();
+        await auditLog.LogAsync(AuditEvents.UserUpdatedPrivacy,
+            actorId: UserId, actorUsername: user.UserName);
+        return NoContent();
+    }
+
+    [HttpDelete("me")]
+    [Authorize]
+    public async Task<IActionResult> DeleteMyAccount()
+    {
+        var user = await userManager.FindByIdAsync(UserId);
+        if (user is null) return NotFound();
+
+        user.IsDeactivated = true;
+        await db.RefreshTokens.Where(t => t.UserId == user.Id).ExecuteDeleteAsync();
+        await db.SaveChangesAsync();
+
+        await auditLog.LogAsync(AuditEvents.UserSelfDeactivated,
+            actorId: user.Id, actorUsername: user.UserName,
+            targetId: user.Id, targetUsername: user.UserName, targetType: "user");
+
         return NoContent();
     }
 
@@ -276,7 +318,8 @@ public class UserController(
     // after a security change without creating a shared dependency on AuthController
     private async Task<AuthResponse> IssueTokensAsync(ApplicationUser user)
     {
-        var (accessToken, expiresAt) = tokenService.GenerateAccessToken(user);
+        var roles = await userManager.GetRolesAsync(user);
+        var (accessToken, expiresAt) = tokenService.GenerateAccessToken(user, roles);
         var refreshToken = tokenService.GenerateRefreshToken(user.Id);
 
         db.RefreshTokens.Add(refreshToken);

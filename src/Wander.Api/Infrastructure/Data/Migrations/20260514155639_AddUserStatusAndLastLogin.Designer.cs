@@ -3,6 +3,7 @@ using System;
 using System.Collections.Generic;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using NpgsqlTypes;
@@ -13,9 +14,11 @@ using Wander.Api.Infrastructure.Data;
 namespace Wander.Api.Infrastructure.Data.Migrations
 {
     [DbContext(typeof(WanderDbContext))]
-    partial class WanderDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260514155639_AddUserStatusAndLastLogin")]
+    partial class AddUserStatusAndLastLogin
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -194,55 +197,6 @@ namespace Wander.Api.Infrastructure.Data.Migrations
                     b.HasIndex("RecipientId");
 
                     b.ToTable("Notifications");
-                });
-
-            modelBuilder.Entity("Wander.Api.Domain.AdminAuditLog", b =>
-                {
-                    b.Property<long>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("bigint");
-
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
-
-                    b.Property<string>("ActorId")
-                        .HasColumnType("text");
-
-                    b.Property<string>("ActorUsername")
-                        .HasColumnType("text");
-
-                    b.Property<int?>("AffectedCount")
-                        .HasColumnType("integer");
-
-                    b.Property<DateTimeOffset>("CreatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<string>("Details")
-                        .HasColumnType("text");
-
-                    b.Property<string>("EventType")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<string>("Severity")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<string>("TargetId")
-                        .HasColumnType("text");
-
-                    b.Property<string>("TargetType")
-                        .HasColumnType("text");
-
-                    b.Property<string>("TargetUsername")
-                        .HasColumnType("text");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("CreatedAt");
-
-                    b.HasIndex("EventType");
-
-                    b.ToTable("AuditLogs");
                 });
 
             modelBuilder.Entity("Wander.Api.Domain.ApplicationUser", b =>

@@ -102,20 +102,27 @@ builder.Services.AddHttpClient<ScryfallBulkDataService>(client =>
 
 builder.Services.AddQuartz(q =>
 {
-    var jobKey = new JobKey("ScryfallSync");
-
-    q.AddJob<ScryfallSyncJob>(opts => opts.WithIdentity(jobKey));
-
+    var scryfallKey = new JobKey("ScryfallSync");
+    q.AddJob<ScryfallSyncJob>(opts => opts.WithIdentity(scryfallKey).StoreDurably());
     q.AddTrigger(opts => opts
-        .ForJob(jobKey)
+        .ForJob(scryfallKey)
         .WithIdentity("ScryfallSync-Trigger")
         .WithCronSchedule("0 0 3 ? * SUN")
+        .StartNow());
+
+    var notifyCleanupKey = new JobKey("NotifyCleanup");
+    q.AddJob<NotificationCleanupJob>(opts => opts.WithIdentity(notifyCleanupKey).StoreDurably());
+    q.AddTrigger(opts => opts
+        .ForJob(notifyCleanupKey)
+        .WithIdentity("NotifyCleanup-Trigger")
+        .WithCronSchedule("0 0 4 * * ?")
         .StartNow());
 });
 
 builder.Services.AddQuartzHostedService(q => q.WaitForJobsToComplete = true);
 builder.Services.AddScoped<DeckValidationService>();
 builder.Services.AddScoped<ActivityService>();
+builder.Services.AddScoped<IAuditLogService, AuditLogService>();
 
 builder.Services.AddSignalR();
 builder.Services.AddScoped<NotificationService>();
@@ -136,6 +143,38 @@ builder.Services.AddRateLimiter(options =>
 });
 
 var app = builder.Build();
+
+using (var scope = app.Services.CreateScope())
+{
+    var roleManager = scope.ServiceProvider.GetRequiredService<RoleManager<IdentityRole>>();
+    var userManager = scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
+    var cfg = scope.ServiceProvider.GetRequiredService<IConfiguration>();
+
+    if (!await roleManager.RoleExistsAsync("Admin"))
+        await roleManager.CreateAsync(new IdentityRole("Admin"));
+
+    var adminEmail = cfg["Admin:Email"];
+    var adminPassword = cfg["Admin:Password"];
+    if (adminEmail is not null && adminPassword is not null)
+    {
+        var admin = await userManager.FindByEmailAsync(adminEmail);
+        if (admin is null)
+        {
+            admin = new ApplicationUser
+            {
+                UserName = "admin",
+                Email = adminEmail,
+                CreatedAt = DateTimeOffset.UtcNow,
+            };
+            var result = await userManager.CreateAsync(admin, adminPassword);
+            if (!result.Succeeded)
+                throw new InvalidOperationException(
+                    $"Admin seeding failed: {string.Join(", ", result.Errors.Select(e => e.Description))}");
+        }
+        if (!await userManager.IsInRoleAsync(admin, "Admin"))
+            await userManager.AddToRoleAsync(admin, "Admin");
+    }
+}
 
 app.UseRouting();
 app.UseCors("BlazorClient");

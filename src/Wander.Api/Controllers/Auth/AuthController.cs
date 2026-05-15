@@ -15,7 +15,8 @@ namespace Wander.Api.Controllers.Auth;
 public class AuthController(
     UserManager<ApplicationUser> userManager,
     WanderDbContext db,
-    TokenService tokenService) : ControllerBase
+    TokenService tokenService,
+    IAuditLogService auditLog) : ControllerBase
 {
     [HttpPost("register")]
     public async Task<ActionResult<AuthResponse>> Register(RegisterRequest request)
@@ -31,6 +32,9 @@ public class AuthController(
         if (!result.Succeeded)
             return BadRequest(new { errors = result.Errors.Select(e => e.Description) });
 
+        await auditLog.LogAsync(AuditEvents.UserCreated,
+            actorId: user.Id, actorUsername: user.UserName);
+
         return Ok(await IssueTokensAsync(user));
     }
 
@@ -38,8 +42,21 @@ public class AuthController(
     public async Task<ActionResult<AuthResponse>> Login(LoginRequest request)
     {
         var user = await userManager.FindByEmailAsync(request.Email);
-        if (user is null || !await userManager.CheckPasswordAsync(user, request.Password))
+        var passwordOk = user is not null && await userManager.CheckPasswordAsync(user, request.Password);
+
+        if (!passwordOk)
+        {
+            if (user is not null && await userManager.IsInRoleAsync(user, "Admin"))
+                await auditLog.LogAsync(AuditEvents.AuthLoginFailed,
+                    actorUsername: user.UserName, severity: AuditSeverity.Warning);
             return Unauthorized(new { message = "Invalid email or password." });
+        }
+
+        if (user!.IsDeactivated)
+            return Unauthorized(new { message = "Account suspended." });
+
+        user.LastLoginAt = DateTimeOffset.UtcNow;
+        await userManager.UpdateAsync(user);
 
         return Ok(await IssueTokensAsync(user));
     }
@@ -63,7 +80,8 @@ public class AuthController(
 
     private async Task<AuthResponse> IssueTokensAsync(ApplicationUser user)
     {
-        var (accessToken, expiresAt) = tokenService.GenerateAccessToken(user);
+        var roles = await userManager.GetRolesAsync(user);
+        var (accessToken, expiresAt) = tokenService.GenerateAccessToken(user, roles);
         var refreshToken = tokenService.GenerateRefreshToken(user.Id);
 
         db.RefreshTokens.Add(refreshToken);

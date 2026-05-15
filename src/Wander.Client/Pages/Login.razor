@@ -13,11 +13,14 @@
 
             <MudTextField @bind-Value="_email" Label="Email" InputType="InputType.Email"
                           Variant="Variant.Outlined" FullWidth="true" Class="mb-4"
+                          Immediate="true"
                           Error="@(_submitted && _emailError != null)"
                           ErrorText="@_emailError" />
 
             <MudTextField @bind-Value="_password" Label="Password" InputType="InputType.Password"
                           Variant="Variant.Outlined" FullWidth="true" Class="mb-6"
+                          Immediate="true"
+                          OnKeyDown="@(async e => { if (e.Key == "Enter") await Submit(); })"
                           Error="@(_submitted && _passwordError != null)"
                           ErrorText="@_passwordError" />
 
@@ -67,6 +70,7 @@
         await LocalStorage.SetAsync("accessToken", auth!.AccessToken);
         await LocalStorage.SetAsync("refreshToken", auth.RefreshToken);
         ((JwtAuthStateProvider)AuthStateProvider).NotifyUserChanged();
-        Nav.NavigateTo("/decks");
+        var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+        Nav.NavigateTo(authState.User.IsInRole("Admin") ? "/admin" : "/decks");
     }
 }

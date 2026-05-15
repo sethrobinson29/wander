@@ -1,0 +1,116 @@
+@inject WanderApiClient Api
+@inject ISnackbar Snackbar
+
+<MudDialog Style="min-width:440px;">
+    <TitleContent>
+        <MudText Typo="Typo.h6" Style="font-family:'Cinzel',serif;">Create new admin</MudText>
+        <MudText Typo="Typo.body2" Style="color:var(--mud-palette-text-secondary); margin-top:4px;">
+            Admins have full access. They aren't created from existing users.
+        </MudText>
+    </TitleContent>
+    <DialogContent>
+        <MudGrid Spacing="2">
+            <MudItem xs="6">
+                <MudTextField @bind-Value="_firstName" Label="First name" Placeholder="Jane"
+                              Variant="Variant.Outlined" FullWidth="true"
+                              Error="@(_submitted && _firstNameError != null)"
+                              ErrorText="@_firstNameError" />
+            </MudItem>
+            <MudItem xs="6">
+                <MudTextField @bind-Value="_lastName" Label="Last name" Placeholder="Doe"
+                              Variant="Variant.Outlined" FullWidth="true"
+                              Error="@(_submitted && _lastNameError != null)"
+                              ErrorText="@_lastNameError" />
+            </MudItem>
+        </MudGrid>
+        <MudTextField @bind-Value="_email" Label="Email" Placeholder="jane@wander.co"
+                      InputType="InputType.Email" Variant="Variant.Outlined"
+                      FullWidth="true" Class="mt-3"
+                      Error="@(_submitted && _emailError != null)"
+                      ErrorText="@_emailError" />
+        <div class="d-flex align-end gap-2 mt-3">
+            <MudTextField @bind-Value="_password" Label="Temporary password"
+                          InputType="InputType.Password" Variant="Variant.Outlined"
+                          FullWidth="true"
+                          Error="@(_submitted && _passwordError != null)"
+                          ErrorText="@_passwordError" />
+            <MudButton Variant="Variant.Outlined" Size="Size.Small" Style="white-space:nowrap;"
+                       OnClick="GeneratePassword">Generate</MudButton>
+        </div>
+        @if (_serverError != null)
+        {
+            <MudAlert Severity="Severity.Error" Dense="true" Class="mt-2">@_serverError</MudAlert>
+        }
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel" Disabled="_loading">Cancel</MudButton>
+        <MudButton Color="Color.Primary" Variant="Variant.Filled"
+                   OnClick="Submit" Disabled="@(_loading || !IsValid)">
+            @(_loading ? "Creating..." : "Create admin")
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] IMudDialogInstance MudDialog { get; set; } = null!;
+
+    string _firstName = "", _lastName = "", _email = "", _password = "";
+    string? _firstNameError, _lastNameError, _emailError, _passwordError, _serverError;
+    bool _loading, _submitted;
+
+    bool IsValid =>
+        !string.IsNullOrWhiteSpace(_firstName) &&
+        !string.IsNullOrWhiteSpace(_lastName) &&
+        !string.IsNullOrWhiteSpace(_email) &&
+        _password.Length >= 8;
+
+    void Cancel() => MudDialog.Cancel();
+
+    void GeneratePassword()
+    {
+        const string chars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%";
+        var bytes = System.Security.Cryptography.RandomNumberGenerator.GetBytes(16);
+        _password = new string(bytes.Select(b => chars[b % chars.Length]).ToArray());
+        _passwordError = null;
+    }
+
+    bool Validate()
+    {
+        _firstNameError = string.IsNullOrWhiteSpace(_firstName) ? "Required." : null;
+        _lastNameError  = string.IsNullOrWhiteSpace(_lastName) ? "Required." : null;
+        _emailError     = string.IsNullOrWhiteSpace(_email) ? "Required."
+                          : !_email.Contains('@') ? "Enter a valid email." : null;
+        _passwordError  = _password.Length < 8 ? "At least 8 characters required." : null;
+        return _firstNameError == null && _lastNameError == null &&
+               _emailError == null && _passwordError == null;
+    }
+
+    async Task Submit()
+    {
+        _submitted = true;
+        _serverError = null;
+        if (!Validate()) return;
+        _loading = true;
+
+        var resp = await Api.AdminCreateAdminAsync(
+            new AdminCreateAdminRequest(_firstName.Trim(), _lastName.Trim(), _email.Trim(), _password));
+
+        if (resp.IsSuccessStatusCode)
+        {
+            var created = await resp.Content.ReadFromJsonAsync<AdminCreateAdminResponse>();
+            Snackbar.Add($"Admin created: {_email.Trim()}.", Severity.Success);
+            MudDialog.Close(DialogResult.Ok(created?.User));
+        }
+        else
+        {
+            var body = await resp.Content.ReadFromJsonAsync<System.Text.Json.JsonElement>();
+            _serverError = body.TryGetProperty("error", out var err)
+                ? err.TryGetProperty("message", out var msg) ? msg.GetString() : "Failed to create admin."
+                : "Failed to create admin.";
+            if (body.TryGetProperty("error", out var e2) &&
+                e2.TryGetProperty("field", out var field) && field.GetString() == "email")
+                _emailError = _serverError;
+            _loading = false;
+        }
+    }
+}

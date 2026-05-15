@@ -1,0 +1,204 @@
+@page "/admin/scripts"
+@attribute [Authorize(Roles = "Admin")]
+@layout Layout.AdminLayout
+@inject WanderApiClient Api
+@inject ISnackbar Snackbar
+
+<PageTitle>Scripts — WanderAdmin</PageTitle>
+
+<div style="display:flex; height:100%; overflow:hidden;">
+
+    <AdminSidebar ActivePage="scripts" />
+
+    <main style="flex:1; overflow-y:auto; padding:32px; display:flex; flex-direction:column; gap:16px;">
+
+        <div>
+            <MudText Typo="Typo.h5" Style="font-family:'Cinzel',serif;">Scripts</MudText>
+            <MudText Typo="Typo.body2" Style="color:var(--mud-palette-text-secondary); font-family:monospace;">
+                Background jobs — trigger manually or wait for scheduled run
+            </MudText>
+        </div>
+
+        <MudPaper Elevation="0" Style="border:1px solid var(--mud-palette-lines-default); border-radius:8px; overflow:hidden;">
+            @if (_loading)
+            {
+                <div style="padding:32px; text-align:center;">
+                    <MudProgressCircular Color="Color.Primary" Indeterminate="true" />
+                </div>
+            }
+            else if (_error != null)
+            {
+                <div style="padding:32px; text-align:center;">
+                    <MudText Style="color:var(--mud-palette-error);">@_error</MudText>
+                    <MudButton Class="mt-3" OnClick="LoadAsync">Retry</MudButton>
+                </div>
+            }
+            else
+            {
+                <table style="width:100%; border-collapse:collapse;">
+                    <thead>
+                        <tr style="border-bottom:1px solid var(--mud-palette-lines-default); background:var(--mud-palette-surface);">
+                            <th class="admin-th">Job</th>
+                            <th class="admin-th">Description</th>
+                            <th class="admin-th">Last run</th>
+                            <th class="admin-th">Last status</th>
+                            <th style="width:120px;"></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var job in _jobs)
+                        {
+                            var status = _jobStatus.GetValueOrDefault(job.Id);
+                            <tr style="border-bottom:1px solid var(--mud-palette-lines-default);" class="admin-row">
+                                <td style="padding:10px 12px; font-family:monospace; font-size:0.85rem; font-weight:600;">
+                                    @job.Id
+                                </td>
+                                <td style="padding:10px 12px; font-size:0.85rem; color:var(--mud-palette-text-secondary);">
+                                    @job.Description
+                                </td>
+                                <td style="padding:10px 12px; font-family:monospace; font-size:0.82rem; color:var(--mud-palette-text-secondary);">
+                                    @(status?.CreatedAt.ToLocalTime().ToString("yyyy-MM-dd HH:mm:ss") ?? "Never")
+                                </td>
+                                <td style="padding:10px 12px;">
+                                    @if (status != null)
+                                    {
+                                        <MudChip T="string" Size="Size.Small"
+                                                 Color="@EventColor(status.EventType)"
+                                                 Variant="Variant.Filled">
+                                            @EventLabel(status.EventType)
+                                        </MudChip>
+                                    }
+                                    else
+                                    {
+                                        <MudText Typo="Typo.caption" Style="color:var(--mud-palette-text-secondary);">—</MudText>
+                                    }
+                                </td>
+                                <td style="padding:10px 12px; text-align:right;">
+                                    <MudButton Variant="Variant.Outlined" Size="Size.Small"
+                                               Disabled="@(_running.Contains(job.Id))"
+                                               OnClick="@(() => RunJobAsync(job))">
+                                        @if (_running.Contains(job.Id))
+                                        {
+                                            <MudProgressCircular Size="Size.Small" Indeterminate="true" Style="margin-right:6px;" />
+                                            @:Running…
+                                        }
+                                        else
+                                        {
+                                            @:Run now
+                                        }
+                                    </MudButton>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            }
+        </MudPaper>
+
+    </main>
+</div>
+
+<style>
+    .admin-th {
+        padding: 10px 12px;
+        text-align: left;
+        font-size: 0.78rem;
+        font-weight: 600;
+        color: var(--mud-palette-text-secondary);
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+    }
+    .admin-row:hover { background: var(--mud-palette-action-hover) !important; }
+</style>
+
+@code {
+    // Add new jobs here. Id must match the targetId used in audit log calls.
+    private readonly List<JobDefinition> _jobs =
+    [
+        new("scryfall", "Syncs card and printing data from the Scryfall bulk-data API. Skips if data is less than 7 days old.")
+        {
+            RunAsync = api => api.AdminTriggerSyncAsync()
+        },
+        new("notify-cleanup", "Removes read notifications older than 30 days and unread notifications older than 90 days. Runs daily at 04:00 UTC.")
+        {
+            RunAsync = api => api.AdminTriggerNotifyCleanupAsync()
+        },
+    ];
+
+    bool _loading;
+    string? _error;
+    Dictionary<string, AuditLogEntryDto> _jobStatus = [];
+    HashSet<string> _running = [];
+
+    protected override async Task OnInitializedAsync() => await LoadAsync();
+
+    async Task LoadAsync()
+    {
+        _loading = true;
+        _error = null;
+        StateHasChanged();
+        try
+        {
+            var activity = await Api.AdminGetActivityAsync(type: "job", page: 1);
+            _jobStatus = activity?.Entries
+                .GroupBy(e => e.TargetId)
+                .ToDictionary(g => g.Key ?? "", g => g.First())
+                ?? [];
+        }
+        catch
+        {
+            _error = "Failed to load job status.";
+        }
+        _loading = false;
+    }
+
+    async Task RunJobAsync(JobDefinition job)
+    {
+        _running.Add(job.Id);
+        StateHasChanged();
+        try
+        {
+            var resp = await job.RunAsync(Api);
+            if (resp.IsSuccessStatusCode)
+            {
+                Snackbar.Add($"{job.Id} started.", Severity.Success);
+                await LoadAsync();
+            }
+            else
+            {
+                Snackbar.Add($"{job.Id} failed.", Severity.Error);
+            }
+        }
+        catch
+        {
+            Snackbar.Add($"{job.Id} failed.", Severity.Error);
+        }
+        _running.Remove(job.Id);
+    }
+
+    static Color EventColor(string? eventType) => eventType switch
+    {
+        "job.sync.completed"           => Color.Success,
+        "job.sync.skipped"             => Color.Default,
+        "job.sync.started"             => Color.Warning,
+        "job.notify-cleanup.completed" => Color.Success,
+        "job.notify-cleanup.started"   => Color.Warning,
+        _                              => Color.Default,
+    };
+
+    static string EventLabel(string? eventType) => eventType switch
+    {
+        "job.sync.completed"           => "completed",
+        "job.sync.skipped"             => "skipped",
+        "job.sync.started"             => "in progress",
+        "job.notify-cleanup.completed" => "completed",
+        "job.notify-cleanup.started"   => "in progress",
+        _                              => eventType ?? "unknown",
+    };
+
+    record JobDefinition(string Id, string Description)
+    {
+        public Func<WanderApiClient, Task<HttpResponseMessage>> RunAsync { get; init; } = _ =>
+            Task.FromResult(new HttpResponseMessage(System.Net.HttpStatusCode.NotImplemented));
+    }
+}

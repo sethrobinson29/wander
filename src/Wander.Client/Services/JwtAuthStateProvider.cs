@@ -46,19 +46,26 @@ public class JwtAuthStateProvider(LocalStorage localStorage) : AuthenticationSta
         var payload = jwt.Split('.')[1];
         var padded = payload.PadRight(payload.Length + (4 - payload.Length % 4) % 4, '=');
         var json = System.Text.Encoding.UTF8.GetString(Convert.FromBase64String(padded));
-        var claims = JsonSerializer.Deserialize<Dictionary<string, JsonElement>>(json)!;
+        var map = JsonSerializer.Deserialize<Dictionary<string, JsonElement>>(json)!;
 
-        return claims.Select(kvp =>
+        var result = new List<Claim>();
+        foreach (var kvp in map)
         {
             var type = kvp.Key switch
             {
                 "sub" => ClaimTypes.NameIdentifier,
                 "email" => ClaimTypes.Email,
                 "unique_name" => ClaimTypes.Name,
+                "role" => ClaimTypes.Role,
                 "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier" => ClaimTypes.NameIdentifier,
                 _ => kvp.Key,
             };
-            return new Claim(type, kvp.Value.ToString()!);
-        });
+
+            if (kvp.Value.ValueKind == JsonValueKind.Array)
+                result.AddRange(kvp.Value.EnumerateArray().Select(v => new Claim(type, v.ToString())));
+            else
+                result.Add(new Claim(type, kvp.Value.ToString()));
+        }
+        return result;
     }
 }

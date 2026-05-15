@@ -5,6 +5,7 @@
 @inject ISnackbar Snackbar
 @inject LocalStorage LocalStorage
 @inject AuthenticationStateProvider AuthStateProvider
+@inject NavigationManager Nav
 @using Microsoft.AspNetCore.Components.Authorization
 @using Wander.Client.Models
 
@@ -141,10 +142,16 @@
                                     }
                                 </MudAlert>
                             }
-                            <MudButton Variant="Variant.Filled" Color="Color.Primary"
-                                       Class="mt-4" OnClick="SaveSecurity" Disabled="_saving">
-                                @(_saving ? "Saving..." : "Save")
-                            </MudButton>
+                            <div class="d-flex justify-space-between align-center mt-4">
+                                <MudButton Variant="Variant.Filled" Color="Color.Primary"
+                                           OnClick="SaveSecurity" Disabled="_saving">
+                                    @(_saving ? "Saving..." : "Save")
+                                </MudButton>
+                                <MudButton Variant="Variant.Outlined" Color="Color.Error"
+                                           OnClick="OpenDeleteAccountDialog">
+                                    Delete Account
+                                </MudButton>
+                            </div>
                             break;
 
                         case "privacy":
@@ -331,6 +338,12 @@
         Snackbar.Add(response.IsSuccessStatusCode ? "Privacy settings saved." : "Failed to save privacy settings.",
                      response.IsSuccessStatusCode ? Severity.Success : Severity.Error);
         _saving = false;
+    }
+
+    async Task OpenDeleteAccountDialog()
+    {
+        await Dialogs.ShowAsync<Dialogs.DeleteAccountDialog>("",
+            new DialogOptions { MaxWidth = MaxWidth.ExtraSmall, FullWidth = true });
     }
 
     // Returns (label, getter, setter) tuples to drive the 8 privacy rows without repetition

@@ -24,7 +24,7 @@ public class DeckController(WanderDbContext db, DeckValidationService validator,
         CancellationToken ct)
     {
         IQueryable<Deck> query = db.Decks
-            .Where(d => d.Visibility == Visibility.Public)
+            .Where(d => d.Visibility == Visibility.Public && !d.Owner!.IsDeactivated)
             .Include(d => d.Owner)
             .Include(d => d.Cards).ThenInclude(dc => dc.Card);
 
@@ -62,12 +62,13 @@ public class DeckController(WanderDbContext db, DeckValidationService validator,
 
         if (deck is null) return NotFound();
 
+        var requesterId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+
+        if (deck.Owner?.IsDeactivated == true) return NotFound();
+
         // Private decks visible only to their owner
-        if (deck.Visibility == Visibility.Private)
-        {
-            var requesterId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-            if (requesterId != deck.OwnerId) return NotFound();
-        }
+        if (deck.Visibility == Visibility.Private && requesterId != deck.OwnerId)
+            return NotFound();
 
         var (likeCount, isLiked) = await GetLikeInfoAsync(id, ct);
         return Ok(ToDetail(deck, likeCount, isLiked));
@@ -83,7 +84,7 @@ public class DeckController(WanderDbContext db, DeckValidationService validator,
         if (string.IsNullOrWhiteSpace(q)) return Ok(new List<DeckSummaryResponse>());
 
         IQueryable<Deck> query = db.Decks
-            .Where(d => d.Visibility == Visibility.Public)
+            .Where(d => d.Visibility == Visibility.Public && !d.Owner!.IsDeactivated)
             .Include(d => d.Owner)
             .Include(d => d.Cards).ThenInclude(dc => dc.Card)
             .Include(d => d.CoverPrinting);
@@ -109,6 +110,7 @@ public class DeckController(WanderDbContext db, DeckValidationService validator,
         CreateDeckRequest request,
         CancellationToken ct)
     {
+        if (User.IsInRole("Admin")) return Forbid();
         if (!Enum.IsDefined(request.Format)) return BadRequest(new { error = "Invalid format." });
         if (!Enum.IsDefined(request.Visibility)) return BadRequest(new { error = "Invalid visibility." });
 

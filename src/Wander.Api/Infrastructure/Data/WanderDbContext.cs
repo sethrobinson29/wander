@@ -1,3 +1,4 @@
+using System.Text.Json;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 using NpgsqlTypes;
@@ -19,6 +20,7 @@ public class WanderDbContext : IdentityDbContext<ApplicationUser>
     public DbSet<DeckComment> DeckComments => Set<DeckComment>();
     public DbSet<UserActivity> UserActivities { get; set; } = null!;
     public DbSet<Notification> Notifications { get; set; } = null!;
+    public DbSet<AdminAuditLog> AuditLogs { get; set; } = null!;
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -37,13 +39,22 @@ public class WanderDbContext : IdentityDbContext<ApplicationUser>
                   .HasColumnType("text[]");
 
             entity.Property(c => c.Legalities)
-                  .HasColumnType("jsonb");
+                  .HasColumnType("jsonb")
+                  .HasConversion(
+                      v => JsonSerializer.Serialize(v, (JsonSerializerOptions?)null),
+                      v => JsonSerializer.Deserialize<Dictionary<string, string>>(v, (JsonSerializerOptions?)null)!);
 
-            entity.Property(c => c.NameSearchVector)
-                  .HasComputedColumnSql("to_tsvector('english', \"Name\")", stored: true);
-
-            entity.HasIndex(c => c.NameSearchVector)
-                  .HasMethod("GIN");
+            if (Database.ProviderName != "Npgsql.EntityFrameworkCore.PostgreSQL")
+            {
+                entity.Ignore(c => c.NameSearchVector);
+            }
+            else
+            {
+                entity.Property(c => c.NameSearchVector)
+                      .HasComputedColumnSql("to_tsvector('english', \"Name\")", stored: true);
+                entity.HasIndex(c => c.NameSearchVector)
+                      .HasMethod("GIN");
+            }
 
             entity.HasMany(c => c.Printings)
                   .WithOne(p => p.Card)
@@ -120,6 +131,13 @@ public class WanderDbContext : IdentityDbContext<ApplicationUser>
                 .WithMany(c => c.Replies)
                 .HasForeignKey(c => c.ParentCommentId)
                 .OnDelete(DeleteBehavior.Restrict);
+
+        modelBuilder.Entity<AdminAuditLog>(entity =>
+        {
+            entity.HasKey(l => l.Id);
+            entity.HasIndex(l => l.CreatedAt);
+            entity.HasIndex(l => l.EventType);
+        });
 
         modelBuilder.Entity<Notification>(entity =>
         {

@@ -1,0 +1,74 @@
+@inject NavigationManager Nav
+@inject AuthenticationStateProvider AuthStateProvider
+@inject LocalStorage LocalStorage
+
+<nav style="width:220px; min-width:220px; border-right:1px solid var(--mud-palette-lines-default);
+            display:flex; flex-direction:column; height:100vh; overflow:hidden;
+            background:var(--mud-palette-background);">
+
+    <div style="padding:16px; border-bottom:1px solid var(--mud-palette-lines-default);">
+        <MudText Typo="Typo.subtitle1" Style="font-weight:600; font-family:'Cinzel',serif; color:var(--mud-palette-primary);">
+            WanderAdmin
+        </MudText>
+        <MudText Typo="Typo.caption" Style="font-family:monospace; color:var(--mud-palette-text-secondary);">
+            v1.0 · admin
+        </MudText>
+    </div>
+
+    <div style="padding:8px 0;">
+        <AdminNavItem Label="Users" Href="/admin" Active="@(ActivePage == "users")" Count="@UserCount" />
+        <AdminNavItem Label="Scripts" Href="/admin/scripts" Active="@(ActivePage == "scripts")" />
+        <AdminNavItem Label="Activity log" Href="/admin/activity" Active="@(ActivePage == "activity")" />
+        <AdminNavItem Label="Notifications" Href="/admin/notifications" Active="@(ActivePage == "notifications")" />
+    </div>
+
+    <div style="flex:1;" />
+
+    <div style="padding:8px 12px; display:flex; flex-direction:column; gap:6px;">
+        <MudButton FullWidth="true" Variant="Variant.Outlined" Size="Size.Small"
+                   StartIcon="@Icons.Material.Outlined.OpenInNew"
+                   Href="/" Style="justify-content:flex-start;">
+            Go to main site
+        </MudButton>
+        <MudButton FullWidth="true" Variant="Variant.Text" Size="Size.Small"
+                   StartIcon="@Icons.Material.Outlined.Logout"
+                   OnClick="Logout" Style="justify-content:flex-start;">
+            Log out
+        </MudButton>
+    </div>
+
+    <div @onclick='() => Nav.NavigateTo("/settings")'
+         style="padding:12px; border-top:1px solid var(--mud-palette-lines-default); display:flex; align-items:center; gap:8px; cursor:pointer;"
+         class="admin-nav-item">
+        <MudAvatar Style="width:24px; height:24px; font-size:0.65rem; background:var(--mud-palette-primary); color:#000;">
+            @_adminInitials
+        </MudAvatar>
+        <div>
+            <MudText Typo="Typo.caption" Style="font-weight:500; line-height:1.2;">@_adminUsername</MudText>
+            <MudText Typo="Typo.caption" Style="color:var(--mud-palette-text-secondary); font-size:11px; line-height:1.2;">admin</MudText>
+        </div>
+    </div>
+</nav>
+
+@code {
+    [Parameter] public string ActivePage { get; set; } = "";
+    [Parameter] public int? UserCount { get; set; }
+
+    string _adminUsername = "";
+    string _adminInitials = "";
+
+    protected override async Task OnInitializedAsync()
+    {
+        var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+        _adminUsername = authState.User.Identity?.Name ?? "admin";
+        _adminInitials = _adminUsername.Length >= 2 ? _adminUsername[..2].ToUpper() : _adminUsername.ToUpper();
+    }
+
+    async Task Logout()
+    {
+        await LocalStorage.RemoveAsync("accessToken");
+        await LocalStorage.RemoveAsync("refreshToken");
+        ((JwtAuthStateProvider)AuthStateProvider).NotifyUserChanged();
+        Nav.NavigateTo("/");
+    }
+}

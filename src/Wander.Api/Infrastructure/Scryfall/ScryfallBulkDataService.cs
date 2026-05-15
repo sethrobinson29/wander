@@ -3,13 +3,15 @@ using System.Runtime.CompilerServices;
 using System.Text.Json;
 using Wander.Api.Domain;
 using Wander.Api.Infrastructure.Data;
+using Wander.Api.Services;
 
 namespace Wander.Api.Infrastructure.Scryfall;
 
 public class ScryfallBulkDataService(
     HttpClient httpClient,
     WanderDbContext db,
-    ILogger<ScryfallBulkDataService> logger)
+    ILogger<ScryfallBulkDataService> logger,
+    IAuditLogService auditLog)
 {
     private const string BulkDataUrl = "https://api.scryfall.com/bulk-data";
 
@@ -19,6 +21,7 @@ public class ScryfallBulkDataService(
 
     public async Task SyncAsync(CancellationToken cancellationToken = default)
     {
+        await auditLog.LogAsync(AuditEvents.JobSyncStarted, targetId: "scryfall", targetType: "job");
         logger.LogInformation("Starting Scryfall sync...");
 
         var downloadUri = await GetBulkDownloadUriAsync(cancellationToken);
@@ -51,6 +54,7 @@ public class ScryfallBulkDataService(
 
         await db.SaveChangesAsync(cancellationToken);
         logger.LogInformation("Scryfall sync complete. Total cards: {Count}", count);
+        await auditLog.LogAsync(AuditEvents.JobSyncCompleted, targetId: "scryfall", targetType: "job");
     }
 
     private async Task<string?> GetBulkDownloadUriAsync(CancellationToken ct)

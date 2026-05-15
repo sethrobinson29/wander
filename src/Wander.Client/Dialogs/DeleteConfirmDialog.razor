@@ -1,0 +1,72 @@
+@inject WanderApiClient Api
+@inject ISnackbar Snackbar
+
+<MudDialog>
+    <TitleContent>
+        <MudText Typo="Typo.h6">Delete @_count user@(_count == 1 ? "" : "s")?</MudText>
+    </TitleContent>
+    <DialogContent>
+        <MudText Typo="Typo.body2" Class="mb-3">
+            The following accounts and all associated data will be permanently removed.
+            This action cannot be undone.
+        </MudText>
+        <MudPaper Elevation="0" Style="border:1px solid var(--mud-palette-lines-default); border-radius:6px; padding:12px; max-height:200px; overflow-y:auto;">
+            @foreach (var email in _displayEmails)
+            {
+                <div style="font-family:monospace; font-size:0.85rem; color:var(--mud-palette-text-secondary);">· @email</div>
+            }
+            @if (_remainingCount > 0)
+            {
+                <div style="font-family:monospace; font-size:0.85rem; color:var(--mud-palette-text-disabled); margin-top:4px;">…and @_remainingCount more</div>
+            }
+        </MudPaper>
+        @if (_error != null)
+        {
+            <MudAlert Severity="Severity.Error" Dense="true" Class="mt-3">@_error</MudAlert>
+        }
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel" Disabled="_loading">Cancel</MudButton>
+        <MudButton Color="Color.Error" Variant="Variant.Filled"
+                   OnClick="Confirm" Disabled="_loading">
+            @(_loading ? "Deleting..." : $"Delete {_count} user{(_count == 1 ? "" : "s")}")
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] IMudDialogInstance MudDialog { get; set; } = null!;
+
+    [Parameter] public List<string> UserIds { get; set; } = [];
+    [Parameter] public List<string> UserEmails { get; set; } = [];
+
+    bool _loading;
+    string? _error;
+
+    int _count => UserIds.Count;
+    List<string> _displayEmails => UserEmails.Take(10).ToList();
+    int _remainingCount => Math.Max(0, UserEmails.Count - 10);
+
+    void Cancel() => MudDialog.Cancel();
+
+    async Task Confirm()
+    {
+        _loading = true;
+        _error = null;
+        var resp = await Api.AdminDeleteUsersAsync(UserIds);
+        if (resp.IsSuccessStatusCode)
+        {
+            var result = await resp.Content.ReadFromJsonAsync<AdminDeleteUsersResponse>();
+            Snackbar.Add($"Deleted {result?.DeletedCount ?? _count} user{(result?.DeletedCount == 1 ? "" : "s")}.", Severity.Success);
+            MudDialog.Close(DialogResult.Ok(UserIds));
+        }
+        else
+        {
+            var body = await resp.Content.ReadFromJsonAsync<System.Text.Json.JsonElement>();
+            _error = body.TryGetProperty("error", out var err)
+                ? err.TryGetProperty("message", out var msg) ? msg.GetString() : "Failed to delete users."
+                : "Failed to delete users.";
+            _loading = false;
+        }
+    }
+}

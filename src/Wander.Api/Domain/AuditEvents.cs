@@ -13,6 +13,7 @@ public static class AuditEvents
     public const string UserUpdatedPassword = "user.updated.password";
     public const string UserUpdatedEmail = "user.updated.email";
     public const string UserUpdatedPrivacy = "user.updated.privacy";
+    public const string UserSelfDeactivated = "user.self.deactivated";
     public const string AuthLoginFailed = "auth.login.failed";
     public const string JobSyncStarted = "job.sync.started";
     public const string JobSyncCompleted = "job.sync.completed";

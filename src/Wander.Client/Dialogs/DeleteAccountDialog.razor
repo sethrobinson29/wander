@@ -1,0 +1,62 @@
+@inject WanderApiClient Api
+@inject ISnackbar Snackbar
+@inject LocalStorage LocalStorage
+@inject AuthenticationStateProvider AuthStateProvider
+@inject NavigationManager Nav
+@using Microsoft.AspNetCore.Components.Authorization
+
+<MudDialog>
+    <TitleContent>
+        <MudText Typo="Typo.h6" Style="color:var(--mud-palette-error);">Delete Account</MudText>
+    </TitleContent>
+    <DialogContent>
+        <MudText Typo="Typo.body2" Class="mb-4">
+            Your account will be suspended and you will be logged out immediately.
+            An admin can permanently delete your data upon request.
+        </MudText>
+        <MudCheckBox @bind-Value="_confirmed" Color="Color.Error">
+            I understand this will deactivate my account
+        </MudCheckBox>
+        @if (_error != null)
+        {
+            <MudAlert Severity="Severity.Error" Dense="true" Class="mt-3">@_error</MudAlert>
+        }
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel" Disabled="_loading">Cancel</MudButton>
+        <MudButton Color="Color.Error" Variant="Variant.Filled"
+                   OnClick="Confirm" Disabled="@(!_confirmed || _loading)">
+            @(_loading ? "Deleting..." : "Confirm Deletion")
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] IMudDialogInstance MudDialog { get; set; } = null!;
+
+    bool _confirmed;
+    bool _loading;
+    string? _error;
+
+    void Cancel() => MudDialog.Cancel();
+
+    async Task Confirm()
+    {
+        _loading = true;
+        _error = null;
+        var resp = await Api.DeleteMyAccountAsync();
+        if (resp.IsSuccessStatusCode)
+        {
+            await LocalStorage.RemoveAsync("accessToken");
+            await LocalStorage.RemoveAsync("refreshToken");
+            ((JwtAuthStateProvider)AuthStateProvider).NotifyUserChanged();
+            MudDialog.Close(DialogResult.Ok(true));
+            Nav.NavigateTo("/");
+        }
+        else
+        {
+            _error = "Failed to delete account. Please try again.";
+            _loading = false;
+        }
+    }
+}

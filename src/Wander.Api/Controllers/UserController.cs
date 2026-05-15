@@ -60,6 +60,9 @@ public class UserController(
 
         var requesterId = User.FindFirstValue(ClaimTypes.NameIdentifier);
         var isSelf = requesterId == user.Id;
+
+        if (user.IsDeactivated) return NotFound();
+
         var isFollowing = requesterId != null && !isSelf &&
                           await db.Follows.AnyAsync(f => f.FollowerId == requesterId && f.FolloweeId == user.Id);
 
@@ -109,7 +112,7 @@ public class UserController(
 
         var lowerQ = q.ToLower();
         var users = await db.Users
-            .Where(u => u.UserName!.ToLower().Contains(lowerQ))
+            .Where(u => !u.IsDeactivated && u.UserName!.ToLower().Contains(lowerQ))
             .Select(u => new UserSearchResult(
                 u.UserName!,
                 u.AvatarId,
@@ -166,6 +169,9 @@ public class UserController(
 
         var requesterId = User.FindFirstValue(ClaimTypes.NameIdentifier);
         var isSelf = requesterId == user.Id;
+
+        if (user.IsDeactivated) return NotFound();
+
         var isFollowing = requesterId != null && !isSelf &&
                            await db.Follows.AnyAsync(f => f.FollowerId == requesterId && f.FolloweeId == user.Id);
 
@@ -285,6 +291,24 @@ public class UserController(
         await db.SaveChangesAsync();
         await auditLog.LogAsync(AuditEvents.UserUpdatedPrivacy,
             actorId: UserId, actorUsername: user.UserName);
+        return NoContent();
+    }
+
+    [HttpDelete("me")]
+    [Authorize]
+    public async Task<IActionResult> DeleteMyAccount()
+    {
+        var user = await userManager.FindByIdAsync(UserId);
+        if (user is null) return NotFound();
+
+        user.IsDeactivated = true;
+        await db.RefreshTokens.Where(t => t.UserId == user.Id).ExecuteDeleteAsync();
+        await db.SaveChangesAsync();
+
+        await auditLog.LogAsync(AuditEvents.UserSelfDeactivated,
+            actorId: user.Id, actorUsername: user.UserName,
+            targetId: user.Id, targetUsername: user.UserName, targetType: "user");
+
         return NoContent();
     }
 

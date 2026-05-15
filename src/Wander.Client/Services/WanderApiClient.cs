@@ -44,6 +44,12 @@ public class WanderApiClient(HttpClient http, LocalStorage localStorage)
         return await http.PutAsJsonAsync("users/me/privacy", req);
     }
 
+    public async Task<HttpResponseMessage> DeleteMyAccountAsync()
+    {
+        await AttachTokenAsync();
+        return await http.DeleteAsync("users/me");
+    }
+
     public async Task<List<UserSearchResult>> SearchUsersAsync(string q)
     {
         await AttachTokenAsync();

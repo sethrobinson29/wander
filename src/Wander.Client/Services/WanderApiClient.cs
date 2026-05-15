@@ -265,6 +265,12 @@ public class WanderApiClient(HttpClient http, LocalStorage localStorage)
         return await http.PostAsJsonAsync("admin/users/reactivate", new { ids });
     }
 
+    public async Task<HttpResponseMessage> AdminTriggerSyncAsync()
+    {
+        await AttachTokenAsync();
+        return await http.PostAsync("admin/sync", null);
+    }
+
     public async Task<AuditLogListResponse?> AdminGetActivityAsync(
         string? type = null, string? severity = null, int page = 1)
     {

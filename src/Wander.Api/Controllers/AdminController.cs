@@ -15,10 +15,10 @@ namespace Wander.Api.Controllers;
 [Route("admin")]
 [Authorize(Roles = "Admin")]
 public class AdminController(
-    ScryfallBulkDataService syncService,
     UserManager<ApplicationUser> userManager,
     WanderDbContext db,
-    IAuditLogService auditLog) : ControllerBase
+    IAuditLogService auditLog,
+    IServiceScopeFactory scopeFactory) : ControllerBase
 {
     private string UserId => User.FindFirstValue(ClaimTypes.NameIdentifier)!;
     private string ActorUsername => User.Identity?.Name ?? "";
@@ -26,10 +26,15 @@ public class AdminController(
     // ── Jobs ─────────────────────────────────────────────────────────────────
 
     [HttpPost("sync")]
-    public async Task<IActionResult> TriggerSync(CancellationToken cancellationToken)
+    public IActionResult TriggerSync()
     {
-        await syncService.SyncAsync(cancellationToken);
-        return Ok(new { message = "Sync complete." });
+        _ = Task.Run(async () =>
+        {
+            await using var scope = scopeFactory.CreateAsyncScope();
+            var svc = scope.ServiceProvider.GetRequiredService<ScryfallBulkDataService>();
+            await svc.SyncAsync();
+        });
+        return Accepted(new { message = "Sync started." });
     }
 
     // ── Users ─────────────────────────────────────────────────────────────────

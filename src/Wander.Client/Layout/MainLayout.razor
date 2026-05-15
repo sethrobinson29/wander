@@ -72,11 +72,13 @@
     [Inject] LocalStorage LocalStorage { get; set; } = null!;
     [Inject] AuthenticationStateProvider AuthStateProvider { get; set; } = null!;
     [Inject] NavigationManager Nav { get; set; } = null!;
+    [Inject] WanderApiClient Api { get; set; } = null!;
 
     async Task Logout()
     {
         await LocalStorage.RemoveAsync("accessToken");
         await LocalStorage.RemoveAsync("refreshToken");
+        Api.InvalidateToken();
         ((JwtAuthStateProvider)AuthStateProvider).NotifyUserChanged();
         Nav.NavigateTo("/");
     }

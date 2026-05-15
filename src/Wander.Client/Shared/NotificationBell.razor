@@ -15,8 +15,12 @@
 
 <MudBadge Content="@(_unreadCount.ToString())" Color="Color.Error"
           Overlap="true" Bordered="true" Visible="@(_unreadCount > 0)">
-    <MudIconButton Icon="@Icons.Material.Filled.Notifications"
-                   Color="Color.Inherit" @onclick="ToggleBell" />
+    <MudTooltip Text="Real-time notifications unavailable" Disabled="@_hubConnected">
+        <MudIconButton Icon="@Icons.Material.Filled.Notifications"
+                       Color="@(_hubConnected ? Color.Inherit : Color.Default)"
+                       Style="@(!_hubConnected ? "opacity:0.6" : "")"
+                       @onclick="ToggleBell" />
+    </MudTooltip>
 </MudBadge>
 
 @if (_bellOpen)
@@ -68,6 +72,7 @@
     int _unreadCount;
     bool _isAuthenticated;
     bool _bellOpen;
+    bool _hubConnected;
 
     protected override async Task OnInitializedAsync()
     {
@@ -99,8 +104,12 @@
             InvokeAsync(StateHasChanged);
         });
 
-        try { await _hub.StartAsync(); }
-        catch { /* hub unavailable — bell still renders, no real-time push */ }
+        try
+        {
+            await _hub.StartAsync();
+            _hubConnected = true;
+        }
+        catch { /* hub unavailable — bell still renders, polling still works */ }
     }
 
     void ToggleBell() => _bellOpen = !_bellOpen;

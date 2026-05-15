@@ -176,6 +176,7 @@
     string? _currentUserId;
     string _newBody = "", _replyBody = "";
     Guid? _replyingTo;
+    Guid? _prevReplyingTo;
     DotNetObjectReference<CommentSection>? _objRef;
 
     int TotalCount => _comments.Sum(c => 1 + c.Replies.Count);
@@ -192,10 +193,15 @@
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
         _objRef ??= DotNetObjectReference.Create(this);
-        if (_isAuthenticated)
+        if (firstRender && _isAuthenticated)
             await JS.InvokeVoidAsync("attachEnterSubmit", "comment-box-wrapper", _objRef, nameof(SubmitComment));
-        if (_replyingTo.HasValue)
+        if (_replyingTo.HasValue && _replyingTo != _prevReplyingTo)
+        {
+            _prevReplyingTo = _replyingTo;
             await JS.InvokeVoidAsync("attachEnterSubmit", $"reply-box-{_replyingTo.Value}", _objRef, nameof(SubmitReply));
+        }
+        else if (!_replyingTo.HasValue)
+            _prevReplyingTo = null;
     }
 
     [JSInvokable]

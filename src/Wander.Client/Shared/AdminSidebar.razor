@@ -1,6 +1,7 @@
 @inject NavigationManager Nav
 @inject AuthenticationStateProvider AuthStateProvider
 @inject LocalStorage LocalStorage
+@inject WanderApiClient Api
 
 <nav style="width:220px; min-width:220px; border-right:1px solid var(--mud-palette-lines-default);
             display:flex; flex-direction:column; height:100vh; overflow:hidden;
@@ -68,6 +69,7 @@
     {
         await LocalStorage.RemoveAsync("accessToken");
         await LocalStorage.RemoveAsync("refreshToken");
+        Api.InvalidateToken();
         ((JwtAuthStateProvider)AuthStateProvider).NotifyUserChanged();
         Nav.NavigateTo("/");
     }

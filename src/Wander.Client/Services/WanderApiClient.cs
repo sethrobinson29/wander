@@ -297,11 +297,15 @@ public class WanderApiClient(HttpClient http, LocalStorage localStorage)
 
     // ── Helpers ───────────────────────────────────────────────────────────────
 
+    private string? _cachedToken;
+
+    public void InvalidateToken() => _cachedToken = null;
+
     private async Task AttachTokenAsync()
     {
-        var token = await localStorage.GetAsync("accessToken");
-        http.DefaultRequestHeaders.Authorization = string.IsNullOrWhiteSpace(token)
+        _cachedToken ??= await localStorage.GetAsync("accessToken");
+        http.DefaultRequestHeaders.Authorization = string.IsNullOrWhiteSpace(_cachedToken)
             ? null
-            : new AuthenticationHeaderValue("Bearer", token);
+            : new AuthenticationHeaderValue("Bearer", _cachedToken);
     }
 }

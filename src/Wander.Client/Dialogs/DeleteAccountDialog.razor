@@ -49,6 +49,7 @@
         {
             await LocalStorage.RemoveAsync("accessToken");
             await LocalStorage.RemoveAsync("refreshToken");
+            Api.InvalidateToken();
             ((JwtAuthStateProvider)AuthStateProvider).NotifyUserChanged();
             MudDialog.Close(DialogResult.Ok(true));
             Nav.NavigateTo("/");

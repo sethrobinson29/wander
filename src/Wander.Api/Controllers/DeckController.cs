@@ -110,6 +110,7 @@ public class DeckController(WanderDbContext db, DeckValidationService validator,
         CreateDeckRequest request,
         CancellationToken ct)
     {
+        if (User.IsInRole("Admin")) return Forbid();
         if (!Enum.IsDefined(request.Format)) return BadRequest(new { error = "Invalid format." });
         if (!Enum.IsDefined(request.Visibility)) return BadRequest(new { error = "Invalid visibility." });
 

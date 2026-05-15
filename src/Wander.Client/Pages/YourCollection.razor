@@ -3,6 +3,7 @@
 @inject WanderApiClient Api
 @inject NavigationManager Nav
 @inject IDialogService Dialogs
+@inject AuthenticationStateProvider AuthStateProvider
 
 <MudText Typo="Typo.h4" Class="page-title">Your Collection</MudText>
 
@@ -67,6 +68,12 @@ else
 
     protected override async Task OnInitializedAsync()
     {
+        var auth = await AuthStateProvider.GetAuthenticationStateAsync();
+        if (auth.User.IsInRole("Admin"))
+        {
+            Nav.NavigateTo("/admin", replace: true);
+            return;
+        }
         _decks = await Api.GetMyDecksAsync();
         _loading = false;
     }

@@ -1,7 +1,7 @@
 @inherits LayoutComponentBase
 
 <MudLayout>
-    <MudAppBar Elevation="0" Style="border-bottom: 1px solid #352d47;">
+    <MudAppBar Elevation="0" Style="border-bottom: 1px solid #352d47; position:relative;">
         <MudButton Variant="Variant.Text" Href="/"
                    Style="font-family:'Cinzel',serif; color:#c4a35f; letter-spacing:0.08em; font-size:1.1rem; text-transform:none; padding:0 8px; margin-right:16px; min-width:unset;">
             WANDER
@@ -13,25 +13,31 @@
         <MudButton Variant="Variant.Text" Href="/help"
                    Style="color:#ebe4d0; text-transform:none; min-width:unset;">Help</MudButton>
         <AuthorizeView Roles="Admin">
-            <Authorized>
-                <MudButton Variant="Variant.Text" Href="/admin"
-                           Style="color:#c4a35f; text-transform:none; min-width:unset;">Admin</MudButton>
-            </Authorized>
+            <NotAuthorized Context="collectionCtx">
+                <AuthorizeView Context="innerCtx">
+                    <Authorized>
+                        <span style="color:#948aa8; margin:0 4px; user-select:none;">|</span>
+                        <MudButton Variant="Variant.Text" Href="/decks"
+                                   Style="color:#ebe4d0; text-transform:none; min-width:unset;">Your Collection</MudButton>
+                    </Authorized>
+                </AuthorizeView>
+            </NotAuthorized>
         </AuthorizeView>
-        <SearchBar />
-        <AuthorizeView>
-            <Authorized>
-                <span style="color:#948aa8; margin:0 4px; user-select:none;">|</span>
-                <MudButton Variant="Variant.Text" Href="/decks"
-                           Style="color:#ebe4d0; text-transform:none; min-width:unset;">Your Collection</MudButton>
-            </Authorized>
-        </AuthorizeView>
+        <div style="position:absolute; left:50%; top:50%; transform:translate(-50%,-50%);">
+            <SearchBar />
+        </div>
         <MudSpacer />
         <AuthorizeView>
             <Authorized>
                 <NotificationBell />
                 <MudIconButton Icon="@Icons.Material.Filled.AccountCircle"
                                Color="Color.Primary" Href="/settings" Style="margin-right:8px;" />
+                <AuthorizeView Roles="Admin">
+                    <Authorized Context="adminCtx">
+                        <MudButton Variant="Variant.Text" Href="/admin"
+                                   Style="color:#c4a35f; text-transform:none; min-width:unset; margin-right:8px;">Admin</MudButton>
+                    </Authorized>
+                </AuthorizeView>
                 <MudButton Color="Color.Primary" Variant="Variant.Outlined" Size="Size.Small"
                            OnClick="Logout">Log Out</MudButton>
             </Authorized>

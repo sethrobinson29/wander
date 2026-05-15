@@ -57,7 +57,7 @@ public class DeactivatedUserTests : IAsyncLifetime
                 ["Jwt:ExpiryMinutes"] = "60",
             })
             .Build();
-        _tokenService = new TokenService(config);
+        _tokenService = new TokenService(config, _userManager, _db);
         _auditLog = new AuditLogService(_db);
     }
 

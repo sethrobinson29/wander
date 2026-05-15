@@ -55,8 +55,9 @@ public class AuthController(
         if (user!.IsDeactivated)
             return Unauthorized(new { message = "Account suspended." });
 
-        user.LastLoginAt = DateTimeOffset.UtcNow;
-        await userManager.UpdateAsync(user);
+        await db.Users
+            .Where(u => u.Id == user.Id)
+            .ExecuteUpdateAsync(s => s.SetProperty(u => u.LastLoginAt, DateTimeOffset.UtcNow));
 
         return Ok(await IssueTokensAsync(user));
     }

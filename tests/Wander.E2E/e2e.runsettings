@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RunSettings>
+  <RunConfiguration>
+    <EnvironmentVariables>
+      <E2E_BASE_URL>http://localhost:5173</E2E_BASE_URL>
+      <E2E_TEST_EMAIL>urza420@gmail.com</E2E_TEST_EMAIL>
+      <E2E_TEST_PASSWORD>mishrasucks1</E2E_TEST_PASSWORD>
+    </EnvironmentVariables>
+  </RunConfiguration>
+</RunSettings>

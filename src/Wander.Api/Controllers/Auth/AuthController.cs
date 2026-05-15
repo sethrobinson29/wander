@@ -35,7 +35,7 @@ public class AuthController(
         await auditLog.LogAsync(AuditEvents.UserCreated,
             actorId: user.Id, actorUsername: user.UserName);
 
-        return Ok(await IssueTokensAsync(user));
+        return Ok(await tokenService.IssueTokensAsync(user));
     }
 
     [HttpPost("login")]
@@ -59,7 +59,7 @@ public class AuthController(
             .Where(u => u.Id == user.Id)
             .ExecuteUpdateAsync(s => s.SetProperty(u => u.LastLoginAt, DateTimeOffset.UtcNow));
 
-        return Ok(await IssueTokensAsync(user));
+        return Ok(await tokenService.IssueTokensAsync(user));
     }
 
     [HttpPost("refresh-token")]
@@ -76,18 +76,7 @@ public class AuthController(
         stored.IsRevoked = true;
         await db.SaveChangesAsync();
 
-        return Ok(await IssueTokensAsync(stored.User));
+        return Ok(await tokenService.IssueTokensAsync(stored.User));
     }
 
-    private async Task<AuthResponse> IssueTokensAsync(ApplicationUser user)
-    {
-        var roles = await userManager.GetRolesAsync(user);
-        var (accessToken, expiresAt) = tokenService.GenerateAccessToken(user, roles);
-        var refreshToken = tokenService.GenerateRefreshToken(user.Id);
-
-        db.RefreshTokens.Add(refreshToken);
-        await db.SaveChangesAsync();
-
-        return new AuthResponse(accessToken, refreshToken.Token, expiresAt);
-    }
 }

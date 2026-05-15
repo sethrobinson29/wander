@@ -66,7 +66,7 @@ public class UserController(
         var isFollowing = requesterId != null && !isSelf &&
                           await db.Follows.AnyAsync(f => f.FollowerId == requesterId && f.FolloweeId == user.Id);
 
-        var followerCount = await db.Follows.CountAsync(f => f.FolloweeId == user.Id);
+        var followerCount  = await db.Follows.CountAsync(f => f.FolloweeId == user.Id);
         var followingCount = await db.Follows.CountAsync(f => f.FollowerId == user.Id);
 
         var publicDecks = await db.Decks
@@ -269,7 +269,7 @@ public class UserController(
             await auditLog.LogAsync(AuditEvents.UserUpdatedEmail,
                 actorId: UserId, actorUsername: user.UserName);
 
-        return Ok(await IssueTokensAsync(user));
+        return Ok(await tokenService.IssueTokensAsync(user));
     }
 
     [HttpPut("me/privacy")]
@@ -312,19 +312,4 @@ public class UserController(
         return NoContent();
     }
 
-    // ── Helpers ──────────────────────────────────────────────────────────────
-
-    // Verbatim copy of AuthController.IssueTokensAsync — needed here to re-issue tokens
-    // after a security change without creating a shared dependency on AuthController
-    private async Task<AuthResponse> IssueTokensAsync(ApplicationUser user)
-    {
-        var roles = await userManager.GetRolesAsync(user);
-        var (accessToken, expiresAt) = tokenService.GenerateAccessToken(user, roles);
-        var refreshToken = tokenService.GenerateRefreshToken(user.Id);
-
-        db.RefreshTokens.Add(refreshToken);
-        await db.SaveChangesAsync();
-
-        return new AuthResponse(accessToken, refreshToken.Token, expiresAt);
-    }
 }

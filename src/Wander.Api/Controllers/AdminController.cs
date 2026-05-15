@@ -167,14 +167,10 @@ public class AdminController(
             if (result.Succeeded) deleted.Add((id, user.UserName));
         }
 
-        if (deleted.Count == 1)
-            await auditLog.LogAsync(AuditEvents.UserDeleted,
-                actorId: UserId, actorUsername: ActorUsername,
-                targetId: deleted[0].Id, targetUsername: deleted[0].Username, targetType: "user");
-        else if (deleted.Count > 1)
-            await auditLog.LogAsync(AuditEvents.UserDeletedBulk,
-                actorId: UserId, actorUsername: ActorUsername,
-                targetType: "user", affectedCount: deleted.Count);
+        var first = deleted.Count == 1 ? deleted[0] : default;
+        await LogUserBulkOperationAsync(deleted.Count,
+            first.Id, first.Username,
+            AuditEvents.UserDeleted, AuditEvents.UserDeletedBulk);
 
         return Ok(new DeleteUsersResponse(deleted.Count, deleted.Select(d => d.Id).ToList()));
     }
@@ -192,14 +188,9 @@ public class AdminController(
 
         await db.SaveChangesAsync();
 
-        if (users.Count == 1)
-            await auditLog.LogAsync(AuditEvents.UserSuspended,
-                actorId: UserId, actorUsername: ActorUsername,
-                targetId: users[0].Id, targetUsername: users[0].UserName, targetType: "user");
-        else if (users.Count > 1)
-            await auditLog.LogAsync(AuditEvents.UserSuspendedBulk,
-                actorId: UserId, actorUsername: ActorUsername,
-                targetType: "user", affectedCount: users.Count);
+        await LogUserBulkOperationAsync(users.Count,
+            users.FirstOrDefault()?.Id, users.FirstOrDefault()?.UserName,
+            AuditEvents.UserSuspended, AuditEvents.UserSuspendedBulk);
 
         return Ok(new { updated = users.Count });
     }
@@ -212,14 +203,9 @@ public class AdminController(
             user.IsDeactivated = false;
         await db.SaveChangesAsync();
 
-        if (users.Count == 1)
-            await auditLog.LogAsync(AuditEvents.UserReactivated,
-                actorId: UserId, actorUsername: ActorUsername,
-                targetId: users[0].Id, targetUsername: users[0].UserName, targetType: "user");
-        else if (users.Count > 1)
-            await auditLog.LogAsync(AuditEvents.UserReactivatedBulk,
-                actorId: UserId, actorUsername: ActorUsername,
-                targetType: "user", affectedCount: users.Count);
+        await LogUserBulkOperationAsync(users.Count,
+            users.FirstOrDefault()?.Id, users.FirstOrDefault()?.UserName,
+            AuditEvents.UserReactivated, AuditEvents.UserReactivatedBulk);
 
         return Ok(new { updated = users.Count });
     }
@@ -260,6 +246,20 @@ public class AdminController(
     }
 
     // ── Helpers ───────────────────────────────────────────────────────────────
+
+    private Task LogUserBulkOperationAsync(int count, string? singleId, string? singleUsername,
+        string singleEvent, string bulkEvent)
+    {
+        if (count == 1)
+            return auditLog.LogAsync(singleEvent,
+                actorId: UserId, actorUsername: ActorUsername,
+                targetId: singleId, targetUsername: singleUsername, targetType: "user");
+        if (count > 1)
+            return auditLog.LogAsync(bulkEvent,
+                actorId: UserId, actorUsername: ActorUsername,
+                targetType: "user", affectedCount: count);
+        return Task.CompletedTask;
+    }
 
     private static AdminUserDto ToDto(ApplicationUser u, bool isAdmin) => new(
         u.Id,

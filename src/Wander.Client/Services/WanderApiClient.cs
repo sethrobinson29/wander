@@ -277,6 +277,12 @@ public class WanderApiClient(HttpClient http, LocalStorage localStorage)
         return await http.PostAsync("admin/sync", null);
     }
 
+    public async Task<HttpResponseMessage> AdminTriggerNotifyCleanupAsync()
+    {
+        await AttachTokenAsync();
+        return await http.PostAsync("admin/notify-cleanup", null);
+    }
+
     public async Task<AuditLogListResponse?> AdminGetActivityAsync(
         string? type = null, string? severity = null, int page = 1)
     {

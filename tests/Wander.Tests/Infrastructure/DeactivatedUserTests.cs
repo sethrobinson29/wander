@@ -7,6 +7,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Npgsql;
+using Quartz;
 using Wander.Api.Controllers;
 using Wander.Api.Controllers.Auth;
 using Wander.Api.Domain;
@@ -98,11 +99,21 @@ public class DeactivatedUserTests : IAsyncLifetime
     private AdminController MakeAdminController(string actorId, string actorUsername)
     {
         var controller = new AdminController(_userManager, _db, _auditLog,
-            _provider.GetRequiredService<IServiceScopeFactory>())
+            new NullSchedulerFactory())
         {
             ControllerContext = ControllerContextFor(actorId, actorUsername),
         };
         return controller;
+    }
+
+    private sealed class NullSchedulerFactory : ISchedulerFactory
+    {
+        public Task<IReadOnlyList<IScheduler>> GetAllSchedulers(CancellationToken ct = default)
+            => Task.FromResult<IReadOnlyList<IScheduler>>([]);
+        public Task<IScheduler> GetScheduler(CancellationToken ct = default)
+            => throw new NotSupportedException("Scheduler not available in tests.");
+        public Task<IScheduler?> GetScheduler(string schedName, CancellationToken ct = default)
+            => Task.FromResult<IScheduler?>(null);
     }
 
     private static ControllerContext ControllerContextFor(string userId, string? username = null) => new()

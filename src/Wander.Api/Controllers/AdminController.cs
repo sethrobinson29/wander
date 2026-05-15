@@ -3,9 +3,9 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Quartz;
 using Wander.Api.Domain;
 using Wander.Api.Infrastructure.Data;
-using Wander.Api.Infrastructure.Scryfall;
 using Wander.Api.Models.Admin;
 using Wander.Api.Services;
 
@@ -18,7 +18,7 @@ public class AdminController(
     UserManager<ApplicationUser> userManager,
     WanderDbContext db,
     IAuditLogService auditLog,
-    IServiceScopeFactory scopeFactory) : ControllerBase
+    ISchedulerFactory schedulerFactory) : ControllerBase
 {
     private string UserId => User.FindFirstValue(ClaimTypes.NameIdentifier)!;
     private string ActorUsername => User.Identity?.Name ?? "";
@@ -26,15 +26,19 @@ public class AdminController(
     // ── Jobs ─────────────────────────────────────────────────────────────────
 
     [HttpPost("sync")]
-    public IActionResult TriggerSync()
+    public async Task<IActionResult> TriggerSync()
     {
-        _ = Task.Run(async () =>
-        {
-            await using var scope = scopeFactory.CreateAsyncScope();
-            var svc = scope.ServiceProvider.GetRequiredService<ScryfallBulkDataService>();
-            await svc.SyncAsync();
-        });
+        var scheduler = await schedulerFactory.GetScheduler();
+        await scheduler.TriggerJob(new JobKey("ScryfallSync"));
         return Accepted(new { message = "Sync started." });
+    }
+
+    [HttpPost("notify-cleanup")]
+    public async Task<IActionResult> TriggerNotifyCleanup()
+    {
+        var scheduler = await schedulerFactory.GetScheduler();
+        await scheduler.TriggerJob(new JobKey("NotifyCleanup"));
+        return Accepted(new { message = "Notification cleanup started." });
     }
 
     // ── Users ─────────────────────────────────────────────────────────────────

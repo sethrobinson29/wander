@@ -102,14 +102,20 @@ builder.Services.AddHttpClient<ScryfallBulkDataService>(client =>
 
 builder.Services.AddQuartz(q =>
 {
-    var jobKey = new JobKey("ScryfallSync");
-
-    q.AddJob<ScryfallSyncJob>(opts => opts.WithIdentity(jobKey));
-
+    var scryfallKey = new JobKey("ScryfallSync");
+    q.AddJob<ScryfallSyncJob>(opts => opts.WithIdentity(scryfallKey).StoreDurably());
     q.AddTrigger(opts => opts
-        .ForJob(jobKey)
+        .ForJob(scryfallKey)
         .WithIdentity("ScryfallSync-Trigger")
         .WithCronSchedule("0 0 3 ? * SUN")
+        .StartNow());
+
+    var notifyCleanupKey = new JobKey("NotifyCleanup");
+    q.AddJob<NotificationCleanupJob>(opts => opts.WithIdentity(notifyCleanupKey).StoreDurably());
+    q.AddTrigger(opts => opts
+        .ForJob(notifyCleanupKey)
+        .WithIdentity("NotifyCleanup-Trigger")
+        .WithCronSchedule("0 0 4 * * ?")
         .StartNow());
 });
 

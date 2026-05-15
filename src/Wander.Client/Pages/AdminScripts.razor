@@ -119,6 +119,10 @@
         {
             RunAsync = api => api.AdminTriggerSyncAsync()
         },
+        new("notify-cleanup", "Removes read notifications older than 30 days and unread notifications older than 90 days. Runs daily at 04:00 UTC.")
+        {
+            RunAsync = api => api.AdminTriggerNotifyCleanupAsync()
+        },
     ];
 
     bool _loading;
@@ -174,18 +178,22 @@
 
     static Color EventColor(string? eventType) => eventType switch
     {
-        "job.sync.completed" => Color.Success,
-        "job.sync.skipped"   => Color.Default,
-        "job.sync.started"   => Color.Warning,
-        _                    => Color.Default,
+        "job.sync.completed"           => Color.Success,
+        "job.sync.skipped"             => Color.Default,
+        "job.sync.started"             => Color.Warning,
+        "job.notify-cleanup.completed" => Color.Success,
+        "job.notify-cleanup.started"   => Color.Warning,
+        _                              => Color.Default,
     };
 
     static string EventLabel(string? eventType) => eventType switch
     {
-        "job.sync.completed" => "completed",
-        "job.sync.skipped"   => "skipped",
-        "job.sync.started"   => "in progress",
-        _                    => eventType ?? "unknown",
+        "job.sync.completed"           => "completed",
+        "job.sync.skipped"             => "skipped",
+        "job.sync.started"             => "in progress",
+        "job.notify-cleanup.completed" => "completed",
+        "job.notify-cleanup.started"   => "in progress",
+        _                              => eventType ?? "unknown",
     };
 
     record JobDefinition(string Id, string Description)

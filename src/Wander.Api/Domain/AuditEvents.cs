@@ -18,6 +18,8 @@ public static class AuditEvents
     public const string JobSyncStarted = "job.sync.started";
     public const string JobSyncCompleted = "job.sync.completed";
     public const string JobSyncSkipped = "job.sync.skipped";
+    public const string JobNotifyCleanupStarted = "job.notify-cleanup.started";
+    public const string JobNotifyCleanupCompleted = "job.notify-cleanup.completed";
 }
 
 public enum AuditSeverity

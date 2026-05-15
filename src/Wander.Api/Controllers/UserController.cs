@@ -19,7 +19,7 @@ public class UserController(
     TokenService tokenService,
     ActivityService activity,
     NotificationService notifications,
-    AuditLogService auditLog) : ControllerBase
+    IAuditLogService auditLog) : ControllerBase
 {
     private string UserId => User.FindFirstValue(ClaimTypes.NameIdentifier)!;
 
@@ -205,7 +205,7 @@ public class UserController(
         user.AvatarId = request.AvatarId;
 
         await db.SaveChangesAsync();
-        await auditLog.LogAsync("user.updated.name",
+        await auditLog.LogAsync(AuditEvents.UserUpdatedName,
             actorId: UserId, actorUsername: user.UserName);
         return NoContent();
     }
@@ -256,11 +256,11 @@ public class UserController(
         await db.RefreshTokens.Where(t => t.UserId == user.Id).ExecuteDeleteAsync();
 
         if (passwordChanged)
-            await auditLog.LogAsync("user.updated.password",
+            await auditLog.LogAsync(AuditEvents.UserUpdatedPassword,
                 actorId: UserId, actorUsername: user.UserName);
 
         if (emailChanged)
-            await auditLog.LogAsync("user.updated.email",
+            await auditLog.LogAsync(AuditEvents.UserUpdatedEmail,
                 actorId: UserId, actorUsername: user.UserName);
 
         return Ok(await IssueTokensAsync(user));
@@ -283,7 +283,7 @@ public class UserController(
         user.ActivityPrivacy = request.ActivityPrivacy;
 
         await db.SaveChangesAsync();
-        await auditLog.LogAsync("user.updated.privacy",
+        await auditLog.LogAsync(AuditEvents.UserUpdatedPrivacy,
             actorId: UserId, actorUsername: user.UserName);
         return NoContent();
     }

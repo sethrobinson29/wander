@@ -11,7 +11,7 @@ public class ScryfallBulkDataService(
     HttpClient httpClient,
     WanderDbContext db,
     ILogger<ScryfallBulkDataService> logger,
-    AuditLogService auditLog)
+    IAuditLogService auditLog)
 {
     private const string BulkDataUrl = "https://api.scryfall.com/bulk-data";
 
@@ -21,7 +21,7 @@ public class ScryfallBulkDataService(
 
     public async Task SyncAsync(CancellationToken cancellationToken = default)
     {
-        await auditLog.LogAsync("job.sync.started", targetId: "scryfall", targetType: "job");
+        await auditLog.LogAsync(AuditEvents.JobSyncStarted, targetId: "scryfall", targetType: "job");
         logger.LogInformation("Starting Scryfall sync...");
 
         var downloadUri = await GetBulkDownloadUriAsync(cancellationToken);
@@ -54,7 +54,7 @@ public class ScryfallBulkDataService(
 
         await db.SaveChangesAsync(cancellationToken);
         logger.LogInformation("Scryfall sync complete. Total cards: {Count}", count);
-        await auditLog.LogAsync("job.sync.completed", targetId: "scryfall", targetType: "job");
+        await auditLog.LogAsync(AuditEvents.JobSyncCompleted, targetId: "scryfall", targetType: "job");
     }
 
     private async Task<string?> GetBulkDownloadUriAsync(CancellationToken ct)

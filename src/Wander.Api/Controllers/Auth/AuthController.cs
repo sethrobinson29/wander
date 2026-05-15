@@ -16,7 +16,7 @@ public class AuthController(
     UserManager<ApplicationUser> userManager,
     WanderDbContext db,
     TokenService tokenService,
-    AuditLogService auditLog) : ControllerBase
+    IAuditLogService auditLog) : ControllerBase
 {
     [HttpPost("register")]
     public async Task<ActionResult<AuthResponse>> Register(RegisterRequest request)
@@ -32,7 +32,7 @@ public class AuthController(
         if (!result.Succeeded)
             return BadRequest(new { errors = result.Errors.Select(e => e.Description) });
 
-        await auditLog.LogAsync("user.created",
+        await auditLog.LogAsync(AuditEvents.UserCreated,
             actorId: user.Id, actorUsername: user.UserName);
 
         return Ok(await IssueTokensAsync(user));
@@ -47,8 +47,8 @@ public class AuthController(
         if (!passwordOk)
         {
             if (user is not null && await userManager.IsInRoleAsync(user, "Admin"))
-                await auditLog.LogAsync("auth.login.failed",
-                    actorUsername: user.UserName, severity: "warning");
+                await auditLog.LogAsync(AuditEvents.AuthLoginFailed,
+                    actorUsername: user.UserName, severity: AuditSeverity.Warning);
             return Unauthorized(new { message = "Invalid email or password." });
         }
 

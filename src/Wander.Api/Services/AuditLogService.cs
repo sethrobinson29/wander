@@ -3,7 +3,7 @@ using Wander.Api.Infrastructure.Data;
 
 namespace Wander.Api.Services;
 
-public class AuditLogService(WanderDbContext db)
+public class AuditLogService(WanderDbContext db) : IAuditLogService
 {
     public async Task LogAsync(
         string eventType,
@@ -13,13 +13,13 @@ public class AuditLogService(WanderDbContext db)
         string? targetUsername = null,
         string? targetType = null,
         int? affectedCount = null,
-        string severity = "info",
+        AuditSeverity severity = AuditSeverity.Info,
         string? details = null)
     {
         db.AuditLogs.Add(new AdminAuditLog
         {
             EventType = eventType,
-            Severity = severity,
+            Severity = severity.ToString().ToLower(),
             ActorId = actorId,
             ActorUsername = actorUsername,
             TargetId = targetId,

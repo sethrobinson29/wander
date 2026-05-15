@@ -18,7 +18,7 @@ public class AdminController(
     ScryfallBulkDataService syncService,
     UserManager<ApplicationUser> userManager,
     WanderDbContext db,
-    AuditLogService auditLog) : ControllerBase
+    IAuditLogService auditLog) : ControllerBase
 {
     private string UserId => User.FindFirstValue(ClaimTypes.NameIdentifier)!;
     private string ActorUsername => User.Identity?.Name ?? "";
@@ -133,7 +133,7 @@ public class AdminController(
             return BadRequest(new { error = new { code = "VALIDATION", message = string.Join(", ", result.Errors.Select(e => e.Description)) } });
 
         await userManager.AddToRoleAsync(user, "Admin");
-        await auditLog.LogAsync("user.created",
+        await auditLog.LogAsync(AuditEvents.UserCreated,
             actorId: UserId, actorUsername: ActorUsername,
             targetId: user.Id, targetUsername: user.UserName, targetType: "user");
 
@@ -159,11 +159,11 @@ public class AdminController(
         }
 
         if (deleted.Count == 1)
-            await auditLog.LogAsync("user.deleted",
+            await auditLog.LogAsync(AuditEvents.UserDeleted,
                 actorId: UserId, actorUsername: ActorUsername,
                 targetId: deleted[0].Id, targetUsername: deleted[0].Username, targetType: "user");
         else if (deleted.Count > 1)
-            await auditLog.LogAsync("user.deleted.bulk",
+            await auditLog.LogAsync(AuditEvents.UserDeletedBulk,
                 actorId: UserId, actorUsername: ActorUsername,
                 targetType: "user", affectedCount: deleted.Count);
 
@@ -184,11 +184,11 @@ public class AdminController(
         await db.SaveChangesAsync();
 
         if (users.Count == 1)
-            await auditLog.LogAsync("user.suspended",
+            await auditLog.LogAsync(AuditEvents.UserSuspended,
                 actorId: UserId, actorUsername: ActorUsername,
                 targetId: users[0].Id, targetUsername: users[0].UserName, targetType: "user");
         else if (users.Count > 1)
-            await auditLog.LogAsync("user.suspended.bulk",
+            await auditLog.LogAsync(AuditEvents.UserSuspendedBulk,
                 actorId: UserId, actorUsername: ActorUsername,
                 targetType: "user", affectedCount: users.Count);
 
@@ -204,11 +204,11 @@ public class AdminController(
         await db.SaveChangesAsync();
 
         if (users.Count == 1)
-            await auditLog.LogAsync("user.reactivated",
+            await auditLog.LogAsync(AuditEvents.UserReactivated,
                 actorId: UserId, actorUsername: ActorUsername,
                 targetId: users[0].Id, targetUsername: users[0].UserName, targetType: "user");
         else if (users.Count > 1)
-            await auditLog.LogAsync("user.reactivated.bulk",
+            await auditLog.LogAsync(AuditEvents.UserReactivatedBulk,
                 actorId: UserId, actorUsername: ActorUsername,
                 targetType: "user", affectedCount: users.Count);
 

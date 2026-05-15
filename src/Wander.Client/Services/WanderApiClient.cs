@@ -8,9 +8,11 @@ public class WanderApiClient(HttpClient http, LocalStorage localStorage)
 {
     // ── Auth ──────────────────────────────────────────────────────────────────
 
-    public Task<AuthResponse?> RegisterAsync(string username, string email, string password) =>
-        http.PostAsJsonAsync("auth/register",
-            new { username, email, password }).ContinueWith(t => t.Result.Content.ReadFromJsonAsync<AuthResponse?>().Result);
+    public async Task<AuthResponse?> RegisterAsync(string username, string email, string password)
+    {
+        var response = await http.PostAsJsonAsync("auth/register", new { username, email, password });
+        return await response.Content.ReadFromJsonAsync<AuthResponse?>();
+    }
 
     public Task<HttpResponseMessage> RegisterRawAsync(string username, string email, string password) =>
         http.PostAsJsonAsync("auth/register", new { username, email, password });

@@ -141,6 +141,8 @@ public record CommentResponse(
 
 public record PostCommentRequest(string Body);
 
+public record SetCoverResult(string? ImageUri, double CropLeft, double CropTop, double CropWidth, double CropHeight);
+
 // ── Requests ─────────────────────────────────────────────────────────────────
 
 public record CreateDeckRequest(string Name, string? Description, Format Format, Visibility Visibility);

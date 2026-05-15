@@ -279,16 +279,16 @@
         {
             if (!isReply)
             {
-                _comments = await Api.GetCommentsAsync(DeckId); // re-fetch to get [deleted] state
+                _comments = _comments.Where(c => c.Id != commentId).ToList();
             }
             else if (parentId.HasValue)
             {
-                var parent = _comments.FirstOrDefault(c => c.Id == parentId.Value);
-                if (parent is not null)
-                {
-                    // Re-fetch just this comment's replies by reloading all
-                    _comments = await Api.GetCommentsAsync(DeckId);
-                }
+                var idx = _comments.FindIndex(c => c.Id == parentId.Value);
+                if (idx >= 0)
+                    _comments[idx] = _comments[idx] with
+                    {
+                        Replies = _comments[idx].Replies.Where(r => r.Id != commentId).ToList()
+                    };
             }
         }
         else

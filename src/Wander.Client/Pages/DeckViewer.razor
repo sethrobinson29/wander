@@ -660,10 +660,18 @@ else
             "", parameters, new DialogOptions { MaxWidth = MaxWidth.Large, FullWidth = true });
         var result = await dialog.Result;
 
-        if (result is { Canceled: false })
+        if (result is { Canceled: false, Data: CardPrintingInfo printing })
         {
-            _deck = await Api.GetDeckAsync(_deck!.Id) ?? _deck;
-            _localCards = _deck.Cards.ToList();
+            var idx = _localCards.FindIndex(c => c.Id == card.Id);
+            if (idx >= 0)
+                _localCards[idx] = _localCards[idx] with
+                {
+                    PrintingId = printing.Id,
+                    ImagePrintingId = printing.Id,
+                    ImageUriNormal = printing.ImageUriNormal,
+                    ImageUriSmall = printing.ImageUriSmall,
+                    ImageUriArtCrop = printing.ImageUriArtCrop,
+                };
             StateHasChanged();
         }
     }
@@ -674,7 +682,7 @@ else
         var parameters = new DialogParameters<Dialogs.DeckImageCropperDialog>
         {
             { x => x.Card,         card        },
-            { x => x.DeckId,       _deck.Id    },
+            { x => x.DeckId,       _deck!.Id   },
             { x => x.BannerWidth,  rect.Width  },
             { x => x.BannerHeight, rect.Height }
         };
@@ -682,9 +690,16 @@ else
             "", parameters, new DialogOptions { MaxWidth = MaxWidth.Large, FullWidth = true });
         var result = await dialog.Result;
 
-        if (result is { Canceled: false })
+        if (result is { Canceled: false, Data: SetCoverResult cover })
         {
-            _deck = await Api.GetDeckAsync(_deck.Id) ?? _deck;
+            _deck = _deck with
+            {
+                CoverImageUri = cover.ImageUri,
+                CoverCropLeft = cover.CropLeft,
+                CoverCropTop = cover.CropTop,
+                CoverCropWidth = cover.CropWidth,
+                CoverCropHeight = cover.CropHeight
+            };
             StateHasChanged();
         }
     }

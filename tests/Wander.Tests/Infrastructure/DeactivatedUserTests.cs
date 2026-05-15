@@ -6,16 +6,17 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using Moq;
 using Npgsql;
 using Quartz;
 using Wander.Api.Controllers;
 using Wander.Api.Controllers.Auth;
 using Wander.Api.Domain;
 using Wander.Api.Infrastructure.Data;
+using Wander.Api.Hubs;
 using Wander.Api.Models.Admin;
 using Wander.Api.Models.Auth;
 using Wander.Api.Services;
-using Wander.Tests.Helpers;
 
 namespace Wander.Tests.Infrastructure;
 
@@ -90,7 +91,7 @@ public class DeactivatedUserTests : IAsyncLifetime
     private UserController MakeUserController(string userId) =>
         new(_userManager, _db, _tokenService,
             new ActivityService(_db),
-            new NotificationService(_db, NullHubContext<Wander.Api.Hubs.NotificationHub>.Instance),
+            new NotificationService(_db, new Mock<IHubContext<NotificationHub>>().Object),
             _auditLog)
         {
             ControllerContext = ControllerContextFor(userId),
@@ -99,21 +100,11 @@ public class DeactivatedUserTests : IAsyncLifetime
     private AdminController MakeAdminController(string actorId, string actorUsername)
     {
         var controller = new AdminController(_userManager, _db, _auditLog,
-            new NullSchedulerFactory())
+            new Mock<ISchedulerFactory>().Object)
         {
             ControllerContext = ControllerContextFor(actorId, actorUsername),
         };
         return controller;
-    }
-
-    private sealed class NullSchedulerFactory : ISchedulerFactory
-    {
-        public Task<IReadOnlyList<IScheduler>> GetAllSchedulers(CancellationToken ct = default)
-            => Task.FromResult<IReadOnlyList<IScheduler>>([]);
-        public Task<IScheduler> GetScheduler(CancellationToken ct = default)
-            => throw new NotSupportedException("Scheduler not available in tests.");
-        public Task<IScheduler?> GetScheduler(string schedName, CancellationToken ct = default)
-            => Task.FromResult<IScheduler?>(null);
     }
 
     private static ControllerContext ControllerContextFor(string userId, string? username = null) => new()

@@ -1,11 +1,11 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
+using Moq;
 using Npgsql;
 using Wander.Api.Domain;
 using Wander.Api.Infrastructure.Data;
 using Wander.Api.Infrastructure.Scryfall;
 using Wander.Api.Services;
-using Wander.Tests.Helpers;
 
 namespace Wander.Tests.Infrastructure;
 
@@ -34,7 +34,7 @@ public class ScryfallSyncTests
         httpClient.DefaultRequestHeaders.Add("Accept", "application/json");
         httpClient.Timeout = TimeSpan.FromMinutes(10);
         var logger = NullLogger<ScryfallBulkDataService>.Instance;
-        var auditLog = NullAuditLogService.Instance;
+        var auditLog = new Mock<IAuditLogService>().Object;
         var service = new ScryfallBulkDataService(httpClient, db, logger, auditLog);
 
         await service.SyncAsync();

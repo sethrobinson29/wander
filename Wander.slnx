@@ -5,5 +5,7 @@
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/Wander.Tests/Wander.Tests.csproj" />
+    <Project Path="tests/Wander.Client.Tests/Wander.Client.Tests.csproj" />
+    <Project Path="tests/Wander.E2E/Wander.E2E.csproj" />
   </Folder>
 </Solution>

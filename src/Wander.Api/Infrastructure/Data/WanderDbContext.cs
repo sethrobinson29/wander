@@ -150,6 +150,9 @@ public class WanderDbContext : IdentityDbContext<ApplicationUser>
                   .WithMany()
                   .HasForeignKey(n => n.ActorId)
                   .OnDelete(DeleteBehavior.Cascade);
+
+            // cleanup job filters on (IsRead, CreatedAt) — composite covers both branches
+            entity.HasIndex(n => new { n.IsRead, n.CreatedAt });
         });
     }
 }

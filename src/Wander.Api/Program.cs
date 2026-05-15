@@ -116,6 +116,7 @@ builder.Services.AddQuartz(q =>
 builder.Services.AddQuartzHostedService(q => q.WaitForJobsToComplete = true);
 builder.Services.AddScoped<DeckValidationService>();
 builder.Services.AddScoped<ActivityService>();
+builder.Services.AddScoped<AuditLogService>();
 
 builder.Services.AddSignalR();
 builder.Services.AddScoped<NotificationService>();

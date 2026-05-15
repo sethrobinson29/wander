@@ -6,7 +6,11 @@ using Wander.Api.Infrastructure.Scryfall;
 namespace Wander.Api.Services;
 
 [DisallowConcurrentExecution]
-public class ScryfallSyncJob(ScryfallBulkDataService syncService, WanderDbContext db, ILogger<ScryfallSyncJob> logger) : IJob
+public class ScryfallSyncJob(
+    ScryfallBulkDataService syncService,
+    WanderDbContext db,
+    ILogger<ScryfallSyncJob> logger,
+    AuditLogService auditLog) : IJob
 {
     public async Task Execute(IJobExecutionContext context)
     {
@@ -19,6 +23,7 @@ public class ScryfallSyncJob(ScryfallBulkDataService syncService, WanderDbContex
             if (DateTimeOffset.UtcNow - mostRecent < TimeSpan.FromDays(7))
             {
                 logger.LogInformation("Skipping Scryfall sync — data is {Age:0.1} days old.", (DateTimeOffset.UtcNow - mostRecent).TotalDays);
+                await auditLog.LogAsync("job.sync.skipped", targetId: "scryfall", targetType: "job");
                 return;
             }
         }

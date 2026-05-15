@@ -15,7 +15,8 @@ namespace Wander.Api.Controllers.Auth;
 public class AuthController(
     UserManager<ApplicationUser> userManager,
     WanderDbContext db,
-    TokenService tokenService) : ControllerBase
+    TokenService tokenService,
+    AuditLogService auditLog) : ControllerBase
 {
     [HttpPost("register")]
     public async Task<ActionResult<AuthResponse>> Register(RegisterRequest request)
@@ -31,6 +32,9 @@ public class AuthController(
         if (!result.Succeeded)
             return BadRequest(new { errors = result.Errors.Select(e => e.Description) });
 
+        await auditLog.LogAsync("user.created",
+            actorId: user.Id, actorUsername: user.UserName);
+
         return Ok(await IssueTokensAsync(user));
     }
 
@@ -38,10 +42,17 @@ public class AuthController(
     public async Task<ActionResult<AuthResponse>> Login(LoginRequest request)
     {
         var user = await userManager.FindByEmailAsync(request.Email);
-        if (user is null || !await userManager.CheckPasswordAsync(user, request.Password))
-            return Unauthorized(new { message = "Invalid email or password." });
+        var passwordOk = user is not null && await userManager.CheckPasswordAsync(user, request.Password);
 
-        if (user.IsDeactivated)
+        if (!passwordOk)
+        {
+            if (user is not null && await userManager.IsInRoleAsync(user, "Admin"))
+                await auditLog.LogAsync("auth.login.failed",
+                    actorUsername: user.UserName, severity: "warning");
+            return Unauthorized(new { message = "Invalid email or password." });
+        }
+
+        if (user!.IsDeactivated)
             return Unauthorized(new { message = "Account suspended." });
 
         user.LastLoginAt = DateTimeOffset.UtcNow;

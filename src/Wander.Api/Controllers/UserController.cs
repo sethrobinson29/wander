@@ -18,7 +18,8 @@ public class UserController(
     WanderDbContext db,
     TokenService tokenService,
     ActivityService activity,
-    NotificationService notifications) : ControllerBase
+    NotificationService notifications,
+    AuditLogService auditLog) : ControllerBase
 {
     private string UserId => User.FindFirstValue(ClaimTypes.NameIdentifier)!;
 
@@ -204,6 +205,8 @@ public class UserController(
         user.AvatarId = request.AvatarId;
 
         await db.SaveChangesAsync();
+        await auditLog.LogAsync("user.updated.name",
+            actorId: UserId, actorUsername: user.UserName);
         return NoContent();
     }
 
@@ -217,11 +220,15 @@ public class UserController(
         if (!await userManager.CheckPasswordAsync(user, request.CurrentPassword))
             return BadRequest(new { errors = new[] { "Current password is incorrect." } });
 
+        var passwordChanged = false;
+        var emailChanged = false;
+
         if (request.NewPassword is not null)
         {
             var result = await userManager.ChangePasswordAsync(user, request.CurrentPassword, request.NewPassword);
             if (!result.Succeeded)
                 return BadRequest(new { errors = result.Errors.Select(e => e.Description) });
+            passwordChanged = true;
         }
 
         if (!string.Equals(user.Email, request.NewEmail, StringComparison.OrdinalIgnoreCase))
@@ -232,6 +239,7 @@ public class UserController(
             var result = await userManager.SetEmailAsync(user, request.NewEmail);
             if (!result.Succeeded)
                 return BadRequest(new { errors = result.Errors.Select(e => e.Description) });
+            emailChanged = true;
         }
 
         if (!string.Equals(user.UserName, request.NewUsername, StringComparison.OrdinalIgnoreCase))
@@ -246,6 +254,14 @@ public class UserController(
 
         // Invalidate all existing sessions before issuing new tokens
         await db.RefreshTokens.Where(t => t.UserId == user.Id).ExecuteDeleteAsync();
+
+        if (passwordChanged)
+            await auditLog.LogAsync("user.updated.password",
+                actorId: UserId, actorUsername: user.UserName);
+
+        if (emailChanged)
+            await auditLog.LogAsync("user.updated.email",
+                actorId: UserId, actorUsername: user.UserName);
 
         return Ok(await IssueTokensAsync(user));
     }
@@ -267,6 +283,8 @@ public class UserController(
         user.ActivityPrivacy = request.ActivityPrivacy;
 
         await db.SaveChangesAsync();
+        await auditLog.LogAsync("user.updated.privacy",
+            actorId: UserId, actorUsername: user.UserName);
         return NoContent();
     }
 

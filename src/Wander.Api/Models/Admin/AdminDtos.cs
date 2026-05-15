@@ -37,3 +37,23 @@ public record DeleteUsersRequest([Required] List<string> Ids);
 public record DeleteUsersResponse(int DeletedCount, List<string> DeletedIds);
 
 public record BulkUserIdsRequest([Required] List<string> Ids);
+
+public record AuditLogEntryDto(
+    long Id,
+    string EventType,
+    string Severity,
+    string? ActorId,
+    string? ActorUsername,
+    string? TargetId,
+    string? TargetUsername,
+    string? TargetType,
+    int? AffectedCount,
+    string? Details,
+    DateTimeOffset CreatedAt);
+
+public record AuditLogListResponse(
+    List<AuditLogEntryDto> Entries,
+    int Page,
+    int PageSize,
+    int TotalCount,
+    int TotalPages);

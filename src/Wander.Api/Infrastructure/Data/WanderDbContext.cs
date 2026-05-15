@@ -19,6 +19,7 @@ public class WanderDbContext : IdentityDbContext<ApplicationUser>
     public DbSet<DeckComment> DeckComments => Set<DeckComment>();
     public DbSet<UserActivity> UserActivities { get; set; } = null!;
     public DbSet<Notification> Notifications { get; set; } = null!;
+    public DbSet<AdminAuditLog> AuditLogs { get; set; } = null!;
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -120,6 +121,13 @@ public class WanderDbContext : IdentityDbContext<ApplicationUser>
                 .WithMany(c => c.Replies)
                 .HasForeignKey(c => c.ParentCommentId)
                 .OnDelete(DeleteBehavior.Restrict);
+
+        modelBuilder.Entity<AdminAuditLog>(entity =>
+        {
+            entity.HasKey(l => l.Id);
+            entity.HasIndex(l => l.CreatedAt);
+            entity.HasIndex(l => l.EventType);
+        });
 
         modelBuilder.Entity<Notification>(entity =>
         {

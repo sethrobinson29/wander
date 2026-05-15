@@ -6,67 +6,14 @@
 @inject ISnackbar Snackbar
 @inject IDialogService Dialogs
 @inject NavigationManager Nav
-@inject AuthenticationStateProvider AuthStateProvider
 @inject IJSRuntime JS
-@inject LocalStorage LocalStorage
 @using Wander.Client.Dialogs
 
 <PageTitle>WanderAdmin</PageTitle>
 
 <div style="display:flex; height:100vh; overflow:hidden;">
 
-    <!-- ── Sidebar ─────────────────────────────────────────────────────── -->
-    <nav style="width:220px; min-width:220px; border-right:1px solid var(--mud-palette-lines-default);
-                display:flex; flex-direction:column; height:100vh; overflow:hidden;
-                background:var(--mud-palette-background);">
-
-        <!-- Brand -->
-        <div style="padding:16px; border-bottom:1px solid var(--mud-palette-lines-default);">
-            <MudText Typo="Typo.subtitle1" Style="font-weight:600; font-family:'Cinzel',serif; color:var(--mud-palette-primary);">
-                WanderAdmin
-            </MudText>
-            <MudText Typo="Typo.caption" Style="font-family:monospace; color:var(--mud-palette-text-secondary);">
-                v1.0 · admin
-            </MudText>
-        </div>
-
-        <!-- Nav -->
-        <div style="padding:8px 0;">
-            <AdminNavItem Label="Users" Active="true" Count="@_data?.Meta.TotalUsers" />
-            <AdminNavItem Label="Scripts" Href="/admin/scripts" />
-            <AdminNavItem Label="Activity log" Href="/admin/activity" />
-            <AdminNavItem Label="Notifications" Href="/admin/notifications" />
-        </div>
-
-        <div style="flex:1;" />
-
-        <!-- Go to main site + logout -->
-        <div style="padding:8px 12px; display:flex; flex-direction:column; gap:6px;">
-            <MudButton FullWidth="true" Variant="Variant.Outlined" Size="Size.Small"
-                       StartIcon="@Icons.Material.Outlined.OpenInNew"
-                       Href="/" Style="justify-content:flex-start;">
-                Go to main site
-            </MudButton>
-            <MudButton FullWidth="true" Variant="Variant.Text" Size="Size.Small"
-                       StartIcon="@Icons.Material.Outlined.Logout"
-                       OnClick="Logout" Style="justify-content:flex-start;">
-                Log out
-            </MudButton>
-        </div>
-
-        <!-- Current admin chip (click → settings) -->
-        <div @onclick='() => Nav.NavigateTo("/settings")'
-             style="padding:12px; border-top:1px solid var(--mud-palette-lines-default); display:flex; align-items:center; gap:8px; cursor:pointer;"
-             class="admin-nav-item">
-            <MudAvatar Style="width:24px; height:24px; font-size:0.65rem; background:var(--mud-palette-primary); color:#000;">
-                @_adminInitials
-            </MudAvatar>
-            <div>
-                <MudText Typo="Typo.caption" Style="font-weight:500; line-height:1.2;">@_adminUsername</MudText>
-                <MudText Typo="Typo.caption" Style="color:var(--mud-palette-text-secondary); font-size:11px; line-height:1.2;">admin</MudText>
-            </div>
-        </div>
-    </nav>
+    <AdminSidebar ActivePage="users" UserCount="@_data?.Meta.TotalUsers" />
 
     <!-- ── Main content ────────────────────────────────────────────────── -->
     <main style="flex:1; overflow-y:auto; padding:32px; display:flex; flex-direction:column; gap:16px;">
@@ -248,8 +195,8 @@
                                 <td style="padding:10px 12px; font-family:monospace; font-size:0.82rem; color:var(--mud-palette-text-secondary);">
                                     @user.CreatedAt.ToString("yyyy-MM-dd")
                                 </td>
-                                <td style="padding:10px 12px; font-size:0.82rem; color:var(--mud-palette-text-secondary);">
-                                    @RelativeTime(user.LastLoginAt)
+                                <td style="padding:10px 12px; font-family:monospace; font-size:0.82rem; color:var(--mud-palette-text-secondary);">
+                                    @(user.LastLoginAt.HasValue ? user.LastLoginAt.Value.ToLocalTime().ToString("yyyy-MM-dd HH:mm") : "Never")
                                 </td>
                                 <td style="padding:10px 8px; text-align:right;">
                                     <MudMenu Icon="@Icons.Material.Filled.MoreHoriz" Size="Size.Small"
@@ -333,8 +280,6 @@
     string _sort = "createdAt:desc";
     int _page = 1;
     HashSet<string> _selected = [];
-    string _adminUsername = "";
-    string _adminInitials = "";
     bool _initialized;
     CancellationTokenSource? _searchCts;
     DotNetObjectReference<AdminPanel>? _dotNetRef;
@@ -350,10 +295,6 @@
         _statusFilter = StatusFilter ?? "all";
         _sort         = Sort ?? "createdAt:desc";
         _page         = Page ?? 1;
-
-        var authState = await AuthStateProvider.GetAuthenticationStateAsync();
-        _adminUsername = authState.User.Identity?.Name ?? "admin";
-        _adminInitials = _adminUsername.Length >= 2 ? _adminUsername[..2].ToUpper() : _adminUsername.ToUpper();
 
         await FetchUsersAsync();
         _initialized = true;
@@ -556,33 +497,13 @@
         if (_searchField != null) await _searchField.FocusAsync();
     }
 
-    static string RelativeTime(DateTimeOffset? dt)
-    {
-        if (dt == null) return "Never";
-        var now = DateTimeOffset.UtcNow;
-        if (dt.Value.Date == now.Date) return "Today";
-        var diff = now - dt.Value;
-        if (diff.TotalHours < 1) return $"{(int)diff.TotalMinutes}m ago";
-        if (diff.TotalHours < 24) return $"{(int)diff.TotalHours}h ago";
-        if (diff.TotalDays < 30) return $"{(int)diff.TotalDays}d ago";
-        return dt.Value.ToString("yyyy-MM-dd");
-    }
-
-    static string Initials(AdminUserDto u)
+static string Initials(AdminUserDto u)
     {
         if (!string.IsNullOrWhiteSpace(u.FirstName) && !string.IsNullOrWhiteSpace(u.LastName))
             return $"{u.FirstName[0]}{u.LastName[0]}".ToUpper();
         var parts = u.Name.Split(' ', StringSplitOptions.RemoveEmptyEntries);
         if (parts.Length >= 2) return $"{parts[0][0]}{parts[^1][0]}".ToUpper();
         return u.Email.Length >= 2 ? u.Email[..2].ToUpper() : u.Email.ToUpper();
-    }
-
-    async Task Logout()
-    {
-        await LocalStorage.RemoveAsync("accessToken");
-        await LocalStorage.RemoveAsync("refreshToken");
-        ((JwtAuthStateProvider)AuthStateProvider).NotifyUserChanged();
-        Nav.NavigateTo("/");
     }
 
     public async ValueTask DisposeAsync()

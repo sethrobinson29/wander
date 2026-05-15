@@ -7,6 +7,7 @@ using Wander.Api.Domain;
 using Wander.Api.Infrastructure.Data;
 using Wander.Api.Infrastructure.Scryfall;
 using Wander.Api.Models.Admin;
+using Wander.Api.Services;
 
 namespace Wander.Api.Controllers;
 
@@ -16,9 +17,11 @@ namespace Wander.Api.Controllers;
 public class AdminController(
     ScryfallBulkDataService syncService,
     UserManager<ApplicationUser> userManager,
-    WanderDbContext db) : ControllerBase
+    WanderDbContext db,
+    AuditLogService auditLog) : ControllerBase
 {
     private string UserId => User.FindFirstValue(ClaimTypes.NameIdentifier)!;
+    private string ActorUsername => User.Identity?.Name ?? "";
 
     // ── Jobs ─────────────────────────────────────────────────────────────────
 
@@ -130,6 +133,9 @@ public class AdminController(
             return BadRequest(new { error = new { code = "VALIDATION", message = string.Join(", ", result.Errors.Select(e => e.Description)) } });
 
         await userManager.AddToRoleAsync(user, "Admin");
+        await auditLog.LogAsync("user.created",
+            actorId: UserId, actorUsername: ActorUsername,
+            targetId: user.Id, targetUsername: user.UserName, targetType: "user");
 
         return StatusCode(201, new CreateAdminResponse(ToDto(user, isAdmin: true), request.Email));
     }
@@ -143,16 +149,25 @@ public class AdminController(
         if (request.Ids.Contains(UserId))
             return Conflict(new { error = new { code = "CANNOT_DELETE_SELF", message = "You cannot delete your own account." } });
 
-        var deleted = new List<string>();
+        var deleted = new List<(string Id, string? Username)>();
         foreach (var id in request.Ids)
         {
             var user = await userManager.FindByIdAsync(id);
             if (user is null) continue;
             var result = await userManager.DeleteAsync(user);
-            if (result.Succeeded) deleted.Add(id);
+            if (result.Succeeded) deleted.Add((id, user.UserName));
         }
 
-        return Ok(new DeleteUsersResponse(deleted.Count, deleted));
+        if (deleted.Count == 1)
+            await auditLog.LogAsync("user.deleted",
+                actorId: UserId, actorUsername: ActorUsername,
+                targetId: deleted[0].Id, targetUsername: deleted[0].Username, targetType: "user");
+        else if (deleted.Count > 1)
+            await auditLog.LogAsync("user.deleted.bulk",
+                actorId: UserId, actorUsername: ActorUsername,
+                targetType: "user", affectedCount: deleted.Count);
+
+        return Ok(new DeleteUsersResponse(deleted.Count, deleted.Select(d => d.Id).ToList()));
     }
 
     [HttpPost("users/suspend")]
@@ -167,6 +182,16 @@ public class AdminController(
             .ExecuteDeleteAsync();
 
         await db.SaveChangesAsync();
+
+        if (users.Count == 1)
+            await auditLog.LogAsync("user.suspended",
+                actorId: UserId, actorUsername: ActorUsername,
+                targetId: users[0].Id, targetUsername: users[0].UserName, targetType: "user");
+        else if (users.Count > 1)
+            await auditLog.LogAsync("user.suspended.bulk",
+                actorId: UserId, actorUsername: ActorUsername,
+                targetType: "user", affectedCount: users.Count);
+
         return Ok(new { updated = users.Count });
     }
 
@@ -177,7 +202,52 @@ public class AdminController(
         foreach (var user in users)
             user.IsDeactivated = false;
         await db.SaveChangesAsync();
+
+        if (users.Count == 1)
+            await auditLog.LogAsync("user.reactivated",
+                actorId: UserId, actorUsername: ActorUsername,
+                targetId: users[0].Id, targetUsername: users[0].UserName, targetType: "user");
+        else if (users.Count > 1)
+            await auditLog.LogAsync("user.reactivated.bulk",
+                actorId: UserId, actorUsername: ActorUsername,
+                targetType: "user", affectedCount: users.Count);
+
         return Ok(new { updated = users.Count });
+    }
+
+    // ── Activity log ─────────────────────────────────────────────────────────
+
+    [HttpGet("activity")]
+    public async Task<ActionResult<AuditLogListResponse>> GetActivity(
+        [FromQuery] string? type = null,
+        [FromQuery] string? severity = null,
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = 25)
+    {
+        page = Math.Max(1, page);
+        pageSize = Math.Clamp(pageSize, 1, 100);
+
+        var query = db.AuditLogs.AsQueryable();
+
+        if (!string.IsNullOrEmpty(type))
+            query = query.Where(l => l.EventType.StartsWith(type));
+
+        if (!string.IsNullOrEmpty(severity))
+            query = query.Where(l => l.Severity == severity);
+
+        var totalCount = await query.CountAsync();
+        var items = await query
+            .OrderByDescending(l => l.CreatedAt)
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
+            .Select(l => new AuditLogEntryDto(
+                l.Id, l.EventType, l.Severity, l.ActorId, l.ActorUsername,
+                l.TargetId, l.TargetUsername, l.TargetType, l.AffectedCount, l.Details, l.CreatedAt))
+            .ToListAsync();
+
+        return Ok(new AuditLogListResponse(
+            items, page, pageSize, totalCount,
+            (int)Math.Ceiling((double)totalCount / pageSize)));
     }
 
     // ── Helpers ───────────────────────────────────────────────────────────────

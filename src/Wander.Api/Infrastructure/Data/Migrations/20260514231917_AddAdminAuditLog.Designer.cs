@@ -3,6 +3,7 @@ using System;
 using System.Collections.Generic;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using NpgsqlTypes;
@@ -13,9 +14,11 @@ using Wander.Api.Infrastructure.Data;
 namespace Wander.Api.Infrastructure.Data.Migrations
 {
     [DbContext(typeof(WanderDbContext))]
-    partial class WanderDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260514231917_AddAdminAuditLog")]
+    partial class AddAdminAuditLog
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -231,9 +234,6 @@ namespace Wander.Api.Infrastructure.Data.Migrations
                         .HasColumnType("text");
 
                     b.Property<string>("TargetType")
-                        .HasColumnType("text");
-
-                    b.Property<string>("TargetUsername")
                         .HasColumnType("text");
 
                     b.HasKey("Id");

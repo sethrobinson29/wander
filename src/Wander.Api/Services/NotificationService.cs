@@ -67,12 +67,38 @@ public class NotificationService(WanderDbContext db, IHubContext<NotificationHub
             .Select(n => n.RecipientId)
             .ToHashSetAsync();
 
-        foreach (var followerId in followerIds)
-        {
-            if (alreadyNotified.Contains(followerId)) continue;
-            await NotifyAsync(followerId, actorId, NotificationType.DeckMadePublic,
-                deckId, deckName, actorUsername);
-        }
+        var now = DateTimeOffset.UtcNow;
+        var notifications = followerIds
+            .Where(id => !alreadyNotified.Contains(id))
+            .Select(followerId => new Notification
+            {
+                RecipientId = followerId,
+                ActorId = actorId,
+                Type = NotificationType.DeckMadePublic,
+                DeckId = deckId,
+                DeckName = deckName,
+                CreatedAt = now
+            })
+            .ToList();
+
+        if (notifications.Count == 0) return;
+
+        db.Notifications.AddRange(notifications);
+        await db.SaveChangesAsync();
+
+        var pushTasks = notifications.Select(n =>
+            hub.Clients
+                .Group($"user-{n.RecipientId}")
+                .SendAsync("ReceiveNotification", new NotificationDto(
+                    n.Id,
+                    n.Type.ToString(),
+                    actorId,
+                    actorUsername,
+                    deckId,
+                    deckName,
+                    n.CreatedAt)));
+
+        await Task.WhenAll(pushTasks);
     }
 
     // Extracted for unit testing

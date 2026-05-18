@@ -181,7 +181,9 @@
                     @if (_searchResults.Count > 0)
                     {
                         <MudList T="CardSearchResult" Class="mt-2"
-                                 Style="background:#14101e; border:1px solid #352d47; border-radius:4px; max-height:400px; overflow-y:auto;">
+                                 Style="background:#14101e; border:1px solid #352d47; border-radius:4px; max-height:400px; overflow-y:auto;"
+                                 @onmousedown="() => _clickingSearchResult = true"
+                                 @onmouseup="() => _clickingSearchResult = false">
                             @foreach (var card in _searchResults)
                             {
                                 <MudListItem T="CardSearchResult" OnClick="() => AddCard(card)"
@@ -492,23 +494,56 @@ else
     DeckGroupBy _groupBy = DeckGroupBy.Type;
     DeckSortBy  _sortBy  = DeckSortBy.ManaValue;
 
-    IEnumerable<IGrouping<string, DeckCardDetail>> GroupedCards =>
-        _localCards
+    bool _cardCacheDirty = true;
+    DeckGroupBy _cachedGroupBy;
+    DeckSortBy _cachedSortBy;
+    List<IGrouping<string, DeckCardDetail>> _groupedCardsCache = [];
+    List<ChartSeries<double>> _manaCurveCache = [];
+
+    IEnumerable<IGrouping<string, DeckCardDetail>> GroupedCards
+    {
+        get
+        {
+            if (_cardCacheDirty || _cachedGroupBy != _groupBy || _cachedSortBy != _sortBy)
+                RebuildCardCache();
+            return _groupedCardsCache;
+        }
+    }
+
+    List<ChartSeries<double>> ManaCurveSeries
+    {
+        get
+        {
+            if (_cardCacheDirty || _cachedGroupBy != _groupBy || _cachedSortBy != _sortBy)
+                RebuildCardCache();
+            return _manaCurveCache;
+        }
+    }
+
+    void RebuildCardCache()
+    {
+        _cachedGroupBy = _groupBy;
+        _cachedSortBy = _sortBy;
+        _cardCacheDirty = false;
+        _groupedCardsCache = _localCards
             .Where(c => !c.IsCommander && !c.IsSideboard)
             .GroupBy(c => GetGroupKey(c))
-            .OrderBy(g => GetGroupOrder(g.Key));
+            .OrderBy(g => GetGroupOrder(g.Key))
+            .ToList();
+        _manaCurveCache = [new ChartSeries<double>
+        {
+            Name = "Cards",
+            Data = Enumerable.Range(0, 8)
+                .Select(cmc => (double)(_localCards
+                    .Where(c => !c.IsCommander && !c.IsSideboard &&
+                        !c.TypeLine.Contains("Land", StringComparison.OrdinalIgnoreCase) &&
+                        (cmc == 7 ? c.Cmc >= 7 : (int)c.Cmc == cmc))
+                    .Sum(c => c.Quantity)))
+                .ToArray()
+        }];
+    }
 
-    List<ChartSeries<double>> ManaCurveSeries => [new ChartSeries<double>
-    {
-        Name = "Cards",
-        Data = Enumerable.Range(0, 8)
-            .Select(cmc => (double)(_localCards
-                .Where(c => !c.IsCommander && !c.IsSideboard &&
-                    !c.TypeLine.Contains("Land", StringComparison.OrdinalIgnoreCase) &&
-                    (cmc == 7 ? c.Cmc >= 7 : (int)c.Cmc == cmc))
-                .Sum(c => c.Quantity)))
-            .ToArray()
-    }];
+    void InvalidateCardCache() => _cardCacheDirty = true;
 
     string[] ManaCurveLabels = ["0", "1", "2", "3", "4", "5", "6", "7+"];
 
@@ -518,6 +553,7 @@ else
         if (_deck != null)
         {
             _localCards = _deck.Cards.ToList();
+            InvalidateCardCache();
             _validationErrors = FilterDeckErrors(_deck.DeckErrors);
             var authState = await AuthState.GetAuthenticationStateAsync();
             _isAuthenticated = authState.User.Identity?.IsAuthenticated == true;
@@ -660,10 +696,21 @@ else
             "", parameters, new DialogOptions { MaxWidth = MaxWidth.Large, FullWidth = true });
         var result = await dialog.Result;
 
-        if (result is { Canceled: false })
+        if (result is { Canceled: false, Data: CardPrintingInfo printing })
         {
-            _deck = await Api.GetDeckAsync(_deck!.Id) ?? _deck;
-            _localCards = _deck.Cards.ToList();
+            var idx = _localCards.FindIndex(c => c.Id == card.Id);
+            if (idx >= 0)
+            {
+                _localCards[idx] = _localCards[idx] with
+                {
+                    PrintingId = printing.Id,
+                    ImagePrintingId = printing.Id,
+                    ImageUriNormal = printing.ImageUriNormal,
+                    ImageUriSmall = printing.ImageUriSmall,
+                    ImageUriArtCrop = printing.ImageUriArtCrop,
+                };
+                InvalidateCardCache();
+            }
             StateHasChanged();
         }
     }
@@ -674,7 +721,7 @@ else
         var parameters = new DialogParameters<Dialogs.DeckImageCropperDialog>
         {
             { x => x.Card,         card        },
-            { x => x.DeckId,       _deck.Id    },
+            { x => x.DeckId,       _deck!.Id   },
             { x => x.BannerWidth,  rect.Width  },
             { x => x.BannerHeight, rect.Height }
         };
@@ -682,20 +729,37 @@ else
             "", parameters, new DialogOptions { MaxWidth = MaxWidth.Large, FullWidth = true });
         var result = await dialog.Result;
 
-        if (result is { Canceled: false })
+        if (result is { Canceled: false, Data: SetCoverResult cover })
         {
-            _deck = await Api.GetDeckAsync(_deck.Id) ?? _deck;
+            _deck = _deck with
+            {
+                CoverImageUri = cover.ImageUri,
+                CoverCropLeft = cover.CropLeft,
+                CoverCropTop = cover.CropTop,
+                CoverCropWidth = cover.CropWidth,
+                CoverCropHeight = cover.CropHeight
+            };
             StateHasChanged();
         }
     }
 
     // ── Card search ───────────────────────────────────────────────────────────
 
+    bool _clickingSearchResult;
+
     async Task OnSearchInput(string q)
     {
         _searchQuery = q.Replace("\r", "").Replace("\n", "");
         if (_searchQuery.Length < 2) { _searchResults = []; return; }
-        _searchResults = await Api.SearchCardsAsync(_searchQuery);
+        try
+        {
+            _searchResults = await Api.SearchCardsAsync(_searchQuery);
+        }
+        catch
+        {
+            _searchResults = [];
+            Snackbar.Add("Card search failed.", Severity.Error);
+        }
     }
 
     void OpenSearchCtx(MouseEventArgs e, CardSearchResult card)
@@ -708,10 +772,9 @@ else
 
     void CloseSearchCtx() => _ctxOpen = false;
 
-    async Task OnSearchFocusOut()
+    void OnSearchFocusOut()
     {
-        // Delay lets click on result or context menu item register before list clears.
-        await Task.Delay(300);
+        if (_clickingSearchResult) return;
         _searchResults = [];
         _searchQuery = "";
     }
@@ -731,6 +794,7 @@ else
                 card.Cmc, card.TypeLine, card.OracleText, null, card.Legalities, card.ColorIdentity, card.ImageUriNormal,
                 card.ImageUriSmall, card.ImageUriArtCrop, card.DefaultPrintingId, 1, false, false, [],
                 card.BackFaceManaCost, card.BackFaceTypeLine, card.BackFaceOracleText, card.BackImageUriNormal));
+        InvalidateCardCache();
     }
 
     void AddToSideboard(CardSearchResult card)
@@ -746,6 +810,7 @@ else
                 card.Cmc, card.TypeLine, card.OracleText, null, card.Legalities, card.ColorIdentity, card.ImageUriNormal,
                 card.ImageUriSmall, card.ImageUriArtCrop, card.DefaultPrintingId, 1, false, true, [],
                 card.BackFaceManaCost, card.BackFaceTypeLine, card.BackFaceOracleText, card.BackImageUriNormal));
+        InvalidateCardCache();
     }
 
     void AddAsCommander(CardSearchResult card)
@@ -757,6 +822,7 @@ else
             card.Cmc, card.TypeLine, card.OracleText, null, card.Legalities, card.ColorIdentity, card.ImageUriNormal,
             card.ImageUriSmall, card.ImageUriArtCrop, card.DefaultPrintingId, 1, true, false, [],
             card.BackFaceManaCost, card.BackFaceTypeLine, card.BackFaceOracleText, card.BackImageUriNormal));
+        InvalidateCardCache();
     }
 
     void MakeCommander(DeckCardDetail card)
@@ -767,17 +833,22 @@ else
         if (commanders.Count == 1 && HasPartner(commanders[0]) && HasPartner(card))
         {
             _localCards.Add(card with { Id = Guid.NewGuid(), IsCommander = true, Quantity = 1 });
+            InvalidateCardCache();
             return;
         }
         _localCards = _localCards.Where(c => !c.IsCommander).ToList();
         _localCards.Add(card with { Id = Guid.NewGuid(), IsCommander = true, Quantity = 1 });
+        InvalidateCardCache();
     }
 
     async Task AddMore(DeckCardDetail card)
     {
         var input = await JS.InvokeAsync<string?>("prompt", "How many copies to add?", "1");
         if (int.TryParse(input, out var count) && count > 0)
+        {
             _localCards = _localCards.Select(c => c == card ? c with { Quantity = c.Quantity + count } : c).ToList();
+            InvalidateCardCache();
+        }
     }
 
     bool IsOutsideColorIdentity(DeckCardDetail card)
@@ -799,25 +870,45 @@ else
          card.OracleText.EndsWith("\nPartner", StringComparison.OrdinalIgnoreCase) ||
          card.OracleText.EndsWith("Partner", StringComparison.OrdinalIgnoreCase));
 
-    void MoveToSideboard(DeckCardDetail card) =>
+    void MoveToSideboard(DeckCardDetail card)
+    {
         _localCards = _localCards.Select(c => c == card ? c with { IsSideboard = true } : c).ToList();
+        InvalidateCardCache();
+    }
 
-    void MoveToMain(DeckCardDetail card) =>
+    void MoveToMain(DeckCardDetail card)
+    {
         _localCards = _localCards.Select(c => c == card ? c with { IsSideboard = false } : c).ToList();
+        InvalidateCardCache();
+    }
 
-    void DemoteCommander(DeckCardDetail card) =>
+    void DemoteCommander(DeckCardDetail card)
+    {
         _localCards = _localCards.Select(c => c == card ? c with { IsCommander = false } : c).ToList();
+        InvalidateCardCache();
+    }
 
-    void IncrementCard(DeckCardDetail card) =>
+    void IncrementCard(DeckCardDetail card)
+    {
         _localCards = _localCards.Select(c => c == card ? c with { Quantity = c.Quantity + 1 } : c).ToList();
+        InvalidateCardCache();
+    }
 
     void DecrementCard(DeckCardDetail card)
     {
         if (card.Quantity <= 1) RemoveCard(card);
-        else _localCards = _localCards.Select(c => c == card ? c with { Quantity = c.Quantity - 1 } : c).ToList();
+        else
+        {
+            _localCards = _localCards.Select(c => c == card ? c with { Quantity = c.Quantity - 1 } : c).ToList();
+            InvalidateCardCache();
+        }
     }
 
-    void RemoveCard(DeckCardDetail card) => _localCards.Remove(card);
+    void RemoveCard(DeckCardDetail card)
+    {
+        _localCards.Remove(card);
+        InvalidateCardCache();
+    }
 
     // ── Save ──────────────────────────────────────────────────────────────────
 
@@ -880,6 +971,7 @@ else
         if (result is not null && !result.Canceled && result.Data is DeckDetail updated)
         {
             _localCards = updated.Cards.ToList();
+            InvalidateCardCache();
             _validationErrors = FilterDeckErrors(updated.DeckErrors);
         }
     }

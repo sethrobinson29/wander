@@ -2,13 +2,16 @@ using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Security.Cryptography;
 using System.Text;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.Configuration;
 using Microsoft.IdentityModel.Tokens;
 using Wander.Api.Domain;
+using Wander.Api.Infrastructure.Data;
+using Wander.Api.Models.Auth;
 
 namespace Wander.Api.Services;
 
-public class TokenService(IConfiguration config)
+public class TokenService(IConfiguration config, UserManager<ApplicationUser> userManager, WanderDbContext db)
 {
     public (string token, DateTimeOffset expiresAt) GenerateAccessToken(ApplicationUser user, IList<string> roles)
     {
@@ -35,6 +38,18 @@ public class TokenService(IConfiguration config)
             signingCredentials: creds);
 
         return (new JwtSecurityTokenHandler().WriteToken(token), expiresAt);
+    }
+
+    public async Task<AuthResponse> IssueTokensAsync(ApplicationUser user)
+    {
+        var roles = await userManager.GetRolesAsync(user);
+        var (accessToken, expiresAt) = GenerateAccessToken(user, roles);
+        var refreshToken = GenerateRefreshToken(user.Id);
+
+        db.RefreshTokens.Add(refreshToken);
+        await db.SaveChangesAsync();
+
+        return new AuthResponse(accessToken, refreshToken.Token, expiresAt);
     }
 
     public RefreshToken GenerateRefreshToken(string userId)

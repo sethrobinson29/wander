@@ -85,6 +85,7 @@ else
 
     string? _lastQ;
     string? _lastType;
+    CancellationTokenSource? _cts;
 
     protected override async Task OnParametersSetAsync()
     {
@@ -92,18 +93,28 @@ else
         _lastQ = Q;
         _lastType = Type;
 
+        _cts?.Cancel();
+        _cts?.Dispose();
+        _cts = new CancellationTokenSource();
+        var token = _cts.Token;
+
         _type = Type ?? "name";
         _decks = [];
         _users = [];
         _loading = true;
 
-        if (!string.IsNullOrWhiteSpace(Q))
+        try
         {
-            if (_type == "user")
-                _users = await Api.SearchUsersAsync(Q);
-            else
-                _decks = await Api.SearchDecksAsync(Q, _type);
+            if (!string.IsNullOrWhiteSpace(Q))
+            {
+                if (_type == "user")
+                    _users = await Api.SearchUsersAsync(Q);
+                else
+                    _decks = await Api.SearchDecksAsync(Q, _type);
+            }
+            if (!token.IsCancellationRequested)
+                _loading = false;
         }
-        _loading = false;
+        catch (OperationCanceledException) { }
     }
 }

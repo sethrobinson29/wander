@@ -72,7 +72,10 @@
     {
         var response = await Api.UpdateCardPrintingAsync(Card.Id, _selectedId);
         if (response.IsSuccessStatusCode)
-            MudDialog.Close(DialogResult.Ok(_selectedId));
+        {
+            var printing = _printings.First(p => p.Id == _selectedId);
+            MudDialog.Close(DialogResult.Ok(printing));
+        }
         else
             Snackbar.Add("Failed to update printing.", Severity.Error);
     }

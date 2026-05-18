@@ -69,6 +69,7 @@
         var auth = await response.Content.ReadFromJsonAsync<AuthResponse>();
         await LocalStorage.SetAsync("accessToken", auth!.AccessToken);
         await LocalStorage.SetAsync("refreshToken", auth.RefreshToken);
+        Api.InvalidateToken();
         ((JwtAuthStateProvider)AuthStateProvider).NotifyUserChanged();
         var authState = await AuthStateProvider.GetAuthenticationStateAsync();
         Nav.NavigateTo(authState.User.IsInRole("Admin") ? "/admin" : "/decks");

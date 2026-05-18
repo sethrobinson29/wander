@@ -132,7 +132,7 @@
             _cropLeft, _cropTop, _cropWidth, _cropHeight);
 
         if (response.IsSuccessStatusCode)
-            MudDialog.Close(DialogResult.Ok(true));
+            MudDialog.Close(DialogResult.Ok(new SetCoverResult(Card.ImageUriArtCrop, _cropLeft, _cropTop, _cropWidth, _cropHeight)));
         else
             Snackbar.Add("Failed to save deck image.", Severity.Error);
     }

@@ -10,10 +10,12 @@ public class JwtAuthStateProvider(LocalStorage localStorage) : AuthenticationSta
         new(new ClaimsPrincipal(new ClaimsIdentity()));
 
     private AuthenticationState? _cached;
+    private DateTimeOffset _cachedAt;
+    private static readonly TimeSpan CacheTtl = TimeSpan.FromMinutes(5);
 
     public override async Task<AuthenticationState> GetAuthenticationStateAsync()
     {
-        if (_cached is not null) return _cached;
+        if (_cached is not null && DateTimeOffset.UtcNow - _cachedAt < CacheTtl) return _cached;
 
         var token = await localStorage.GetAsync("accessToken");
         if (string.IsNullOrWhiteSpace(token))
@@ -32,12 +34,14 @@ public class JwtAuthStateProvider(LocalStorage localStorage) : AuthenticationSta
         }
 
         var identity = new ClaimsIdentity(claims, "jwt");
+        _cachedAt = DateTimeOffset.UtcNow;
         return _cached = new AuthenticationState(new ClaimsPrincipal(identity));
     }
 
     public void NotifyUserChanged()
     {
         _cached = null;
+        _cachedAt = default;
         NotifyAuthenticationStateChanged(GetAuthenticationStateAsync());
     }
 

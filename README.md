@@ -1,6 +1,6 @@
 # Wander
 
-A Magic: The Gathering deck builder and playtesting app. Build and share decklists, write primers, and golfish your decks in a virtual playtesting table.
+A Magic: The Gathering deck builder and playtesting app. Build and share decklists, write primers, and goldfish your decks in a virtual playtesting table.
 
 ## Stack
 

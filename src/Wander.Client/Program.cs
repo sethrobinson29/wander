@@ -16,7 +16,7 @@ var apiBase = builder.Configuration["ApiBaseUrl"] ?? "http://localhost:5156";
 builder.Services.AddScoped(sp =>
 {
     var localStorage = sp.GetRequiredService<LocalStorage>();
-    return new WanderApiClient(new HttpClient { BaseAddress = new Uri(apiBase) }, localStorage);
+    return new WanderApiClient(new HttpClient { BaseAddress = new Uri(apiBase.TrimEnd('/') + "/") }, localStorage);
 });
 
 builder.Services.AddMudServices();

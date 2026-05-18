@@ -1,0 +1,24 @@
+services:
+  api:
+    image: registry.digitalocean.com/${DO_REGISTRY}/wander:api
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Production
+    env_file: .env
+    ports:
+      - "127.0.0.1:5156:8080"
+    restart: unless-stopped
+    networks:
+      - wander-net
+
+  client:
+    image: registry.digitalocean.com/${DO_REGISTRY}/wander:client
+    ports:
+      - "127.0.0.1:3000:80"
+    depends_on:
+      - api
+    restart: unless-stopped
+    networks:
+      - wander-net
+
+networks:
+  wander-net:

@@ -1,0 +1,51 @@
+name: CD
+
+on:
+  push:
+    branches: [master]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install doctl
+        uses: digitalocean/action-doctl@v2
+        with:
+          token: ${{ secrets.DO_API_TOKEN }}
+
+      - name: Log in to DO Container Registry
+        run: doctl registry login
+
+      - name: Build and push API image
+        run: |
+          docker build -f src/Wander.Api/Dockerfile -t registry.digitalocean.com/${{ secrets.DO_REGISTRY }}/wander:api .
+          docker push registry.digitalocean.com/${{ secrets.DO_REGISTRY }}/wander:api
+
+      - name: Build and push client image
+        run: |
+          docker build -f src/Wander.Client/Dockerfile -t registry.digitalocean.com/${{ secrets.DO_REGISTRY }}/wander:client .
+          docker push registry.digitalocean.com/${{ secrets.DO_REGISTRY }}/wander:client
+
+      - name: Deploy to Droplet
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.DO_DROPLET_IP }}
+          username: root
+          key: ${{ secrets.DO_SSH_KEY }}
+          script: |
+            cd /opt/wander
+            git fetch origin && git reset --hard origin/master
+            doctl registry login
+            docker compose -f docker-compose.prod.yml pull
+            docker compose -f docker-compose.prod.yml up -d
+            docker image prune -f
+
+      - name: Purge Cloudflare cache
+        run: |
+          curl -X POST "https://api.cloudflare.com/client/v4/zones/${{ secrets.CF_ZONE_ID }}/purge_cache" \
+            -H "Authorization: Bearer ${{ secrets.CF_API_TOKEN }}" \
+            -H "Content-Type: application/json" \
+            --data '{"purge_everything":true}'

@@ -146,6 +146,9 @@ var app = builder.Build();
 
 using (var scope = app.Services.CreateScope())
 {
+    var db = scope.ServiceProvider.GetRequiredService<WanderDbContext>();
+    await db.Database.MigrateAsync();
+
     var roleManager = scope.ServiceProvider.GetRequiredService<RoleManager<IdentityRole>>();
     var userManager = scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
     var cfg = scope.ServiceProvider.GetRequiredService<IConfiguration>();
@@ -157,7 +160,8 @@ using (var scope = app.Services.CreateScope())
     var adminPassword = cfg["Admin:Password"];
     if (adminEmail is not null && adminPassword is not null)
     {
-        var admin = await userManager.FindByEmailAsync(adminEmail);
+        var admin = await userManager.FindByEmailAsync(adminEmail)
+            ?? await userManager.FindByNameAsync("admin");
         if (admin is null)
         {
             admin = new ApplicationUser

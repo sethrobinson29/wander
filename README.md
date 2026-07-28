@@ -53,7 +53,9 @@ Start (or restart) the API — on every startup it checks for an existing admin 
 
 Card search and deck building need Scryfall's card data in the database first. This is a one-time manual trigger locally (it also runs automatically on a weekly schedule once the API is up).
 
-Log in as the admin user to get a JWT, then trigger the sync job:
+With the client running (`dotnet run --project src/Wander.Client`), log in with the admin account, go to the Admin Panel (`/admin`), and trigger the sync from there.
+
+Prefer the command line? The same endpoint works via curl:
 
 ```bash
 TOKEN=$(curl -s -X POST http://localhost:5156/auth/login \
@@ -64,8 +66,6 @@ TOKEN=$(curl -s -X POST http://localhost:5156/auth/login \
 curl -s -X POST http://localhost:5156/admin/sync \
   -H "Authorization: Bearer $TOKEN"
 ```
-
-Or, once the Blazor client is running (`dotnet run --project src/Wander.Client`), log in with the admin account and trigger it from the Admin Panel (`/admin`) instead.
 
 The sync downloads Scryfall's bulk card data and upserts it — expect ~27k+ cards and a couple of minutes the first time. Card search will return empty results until it completes.
 

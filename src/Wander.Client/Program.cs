@@ -10,6 +10,7 @@ builder.RootComponents.Add<App>("#app");
 builder.RootComponents.Add<HeadOutlet>("head::after");
 
 builder.Services.AddScoped<LocalStorage>();
+builder.Services.AddScoped<PlaytestStateService>();
 
 // API client — base URL from config
 var apiBase = builder.Configuration["ApiBaseUrl"] ?? "http://localhost:5156";

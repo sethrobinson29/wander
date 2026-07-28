@@ -1,0 +1,29 @@
+<MudDialog>
+    <TitleContent>
+        <MudText Typo="Typo.h6">Add Counters — @CardName</MudText>
+    </TitleContent>
+    <DialogContent>
+        <MudNumericField @bind-Value="_amount" Label="Amount" Variant="Variant.Outlined"
+                         FullWidth="true" AutoFocus="true" HideSpinButtons="false" />
+        <MudText Typo="Typo.caption" Style="color:#948aa8;" Class="mt-1">
+            Use a negative number to remove counters.
+        </MudText>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">Cancel</MudButton>
+        <MudButton Color="Color.Primary" Variant="Variant.Filled" Disabled="_amount == 0" OnClick="Confirm">
+            Apply
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] IMudDialogInstance MudDialog { get; set; } = null!;
+    [Parameter] public string CardName { get; set; } = "";
+
+    int _amount = 1;
+
+    void Cancel() => MudDialog.Cancel();
+
+    void Confirm() => MudDialog.Close(DialogResult.Ok(_amount));
+}

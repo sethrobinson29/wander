@@ -1,0 +1,99 @@
+@inject IJSRuntime JS
+
+@if (_open)
+{
+    <div style="position:fixed;inset:0;z-index:1199"
+         @onclick="Close"
+         @oncontextmenu="Close"
+         @oncontextmenu:preventDefault="true" />
+    <div class="wander-context-menu" style="position:fixed;left:@(_x)px;@(_openUpward ? $"bottom:calc(100vh - {_y}px);" : $"top:{_y}px;")">
+        @foreach (var zone in AllZones)
+        {
+            @if (zone != Card!.Zone)
+            {
+                <div class="wander-ctx-item"
+                     @onclick="async () => { Close(); await OnMoveToZone.InvokeAsync(zone); }">
+                    <MudIcon Icon="@Icons.Material.Filled.OpenWith" Size="Size.Small" />
+                    Move to @ZoneLabel(zone)
+                </div>
+            }
+        }
+        <MudDivider Style="border-color:#352d47; margin:4px 0;" />
+        <div class="wander-ctx-item"
+             @onclick="async () => { Close(); await OnToggleTap.InvokeAsync(); }">
+            <MudIcon Icon="@Icons.Material.Filled.RotateRight" Size="Size.Small" />
+            @(Card!.Tapped ? "Untap" : "Tap")
+        </div>
+        <div class="wander-ctx-item"
+             @onclick="async () => { Close(); await OnToggleSkipUntap.InvokeAsync(); }">
+            <MudIcon Icon="@(Card!.SkipUntap ? Icons.Material.Filled.CheckBox : Icons.Material.Filled.CheckBoxOutlineBlank)" Size="Size.Small" />
+            Doesn't Untap
+        </div>
+        <div class="wander-ctx-item"
+             @onclick="async () => { Close(); await OnFlip.InvokeAsync(); }">
+            <MudIcon Icon="@Icons.Material.Filled.Flip" Size="Size.Small" />
+            Flip
+        </div>
+        <MudDivider Style="border-color:#352d47; margin:4px 0;" />
+        <div class="wander-ctx-item"
+             @onclick="async () => { Close(); await OnAdjustCounter.InvokeAsync(1); }">
+            <MudIcon Icon="@Icons.Material.Filled.Add" Size="Size.Small" />
+            +1 Counter
+        </div>
+        <div class="wander-ctx-item"
+             @onclick="async () => { Close(); await OnAdjustCounter.InvokeAsync(-1); }">
+            <MudIcon Icon="@Icons.Material.Filled.Remove" Size="Size.Small" />
+            -1 Counter
+        </div>
+        <div class="wander-ctx-item"
+             @onclick="async () => { Close(); await OnAddCounters.InvokeAsync(); }">
+            <MudIcon Icon="@Icons.Material.Filled.AddCircleOutline" Size="Size.Small" />
+            Add Counters...
+        </div>
+    </div>
+}
+<div @oncontextmenu="Open"
+     @oncontextmenu:preventDefault="true"
+     class="card-row-activator">
+    @ChildContent
+</div>
+
+@code {
+    static readonly PlaytestZone[] AllZones =
+        [PlaytestZone.Library, PlaytestZone.Hand, PlaytestZone.Battlefield, PlaytestZone.Graveyard, PlaytestZone.Exile, PlaytestZone.Command];
+
+    const double EstimatedMenuHeight = 420;
+
+    bool _open;
+    bool _openUpward;
+    double _x, _y;
+
+    async Task Open(MouseEventArgs e)
+    {
+        _x = e.ClientX;
+        _y = e.ClientY;
+        double viewportHeight;
+        try { viewportHeight = await JS.InvokeAsync<double>("getViewportHeight"); }
+        catch { viewportHeight = _y + EstimatedMenuHeight; }
+        var spaceBelow = viewportHeight - _y;
+        _openUpward = spaceBelow < EstimatedMenuHeight && _y > spaceBelow;
+        _open = true;
+    }
+
+    void Close() => _open = false;
+
+    static string ZoneLabel(PlaytestZone zone) => zone switch
+    {
+        PlaytestZone.Command => "Command Zone",
+        _ => zone.ToString()
+    };
+
+    [Parameter] public GameCardInstance? Card { get; set; }
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+    [Parameter] public EventCallback<PlaytestZone> OnMoveToZone { get; set; }
+    [Parameter] public EventCallback OnToggleTap { get; set; }
+    [Parameter] public EventCallback OnToggleSkipUntap { get; set; }
+    [Parameter] public EventCallback OnFlip { get; set; }
+    [Parameter] public EventCallback<int> OnAdjustCounter { get; set; }
+    [Parameter] public EventCallback OnAddCounters { get; set; }
+}

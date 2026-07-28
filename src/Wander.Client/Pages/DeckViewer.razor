@@ -79,6 +79,11 @@
     </div>
 
     <div class="d-flex gap-2">
+        <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.SportsEsports"
+                   Style="color:#948aa8; border-color:#352d47;"
+                   OnClick='() => Nav.NavigateTo($"/playtest/{Id}")'>
+            Playtest
+        </MudButton>
         @if (!_isOwner)
         {
             <MudButton Variant="@(_isLiked? Variant.Filled: Variant.Outlined)"

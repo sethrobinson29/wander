@@ -38,6 +38,24 @@ window.getElementRect = (element) => {
     return { left: rect.left, top: rect.top, width: rect.width, height: rect.height };
 };
 
+window.getViewportHeight = () => window.innerHeight;
+
+window.playtestDrag = {
+    _handler: null,
+    init() {
+        if (this._handler) return;
+        this._handler = (e) => {
+            e.preventDefault();
+            if (e.dataTransfer) e.dataTransfer.dropEffect = 'move';
+        };
+        document.addEventListener('dragover', this._handler);
+    },
+    dispose() {
+        if (this._handler) document.removeEventListener('dragover', this._handler);
+        this._handler = null;
+    }
+};
+
 const _enterSubmitAttached = new WeakSet();
 
 window.adminKeyHandler = {

@@ -1,0 +1,500 @@
+@page "/playtest/{DeckId:guid}"
+@layout Layout.PlaytestLayout
+@inject WanderApiClient Api
+@inject PlaytestStateService Game
+@inject IDialogService Dialogs
+@inject IJSRuntime JS
+@inject NavigationManager Nav
+@implements IDisposable
+
+@if (_loading)
+{
+    <MudProgressLinear Color="Color.Primary" Indeterminate="true" />
+    return;
+}
+@if (_deck == null)
+{
+    <MudText Typo="Typo.h5" Style="color:#948aa8; padding:16px;">Deck not found.</MudText>
+    return;
+}
+
+@{ var state = Game.State!; }
+
+<div class="playtest-page">
+    <div class="playtest-topbar">
+        <MudIconButton Icon="@Icons.Material.Filled.Close" Size="Size.Medium" OnClick="OpenLeaveConfirm"
+                       Style="color:#948aa8;" title="Leave playtest" />
+
+        <div class="playtest-turn wander-display">Turn <span class="wander-tnum">@state.TurnNumber</span></div>
+
+        <div class="playtest-life">
+            <MudIconButton Icon="@Icons.Material.Filled.Remove" Size="Size.Small" OnClick="() => Game.AdjustLife(-1)" />
+            <span class="wander-tnum playtest-life-value">@state.Life</span>
+            <MudIconButton Icon="@Icons.Material.Filled.Add" Size="Size.Small" OnClick="() => Game.AdjustLife(1)" />
+        </div>
+
+        <MudMenu Label="Player" Variant="Variant.Outlined" EndIcon="@Icons.Material.Filled.ArrowDropDown"
+                 Style="color:#948aa8; border-color:#352d47;">
+            <MudMenuItem OnClick="() => Game.AdjustLife(1)">Gain 1 Life</MudMenuItem>
+            <MudMenuItem OnClick="() => Game.AdjustLife(-1)">Lose 1 Life</MudMenuItem>
+            <MudDivider Style="border-color:#352d47;" />
+            <MudMenuItem OnClick="() => _manaTrackerOpen = !_manaTrackerOpen">@(_manaTrackerOpen ? "Close Mana Tracker" : "Open Mana Tracker")</MudMenuItem>
+        </MudMenu>
+
+        <div class="playtest-toolbar">
+            <MudButton Variant="Variant.Outlined" Style="color:#948aa8; border-color:#352d47;" OnClick="OpenGenerateToken">Generate Token</MudButton>
+            <MudButton Variant="Variant.Outlined" Style="color:#948aa8; border-color:#352d47;" OnClick="OpenResetConfirm">Reset Playtest</MudButton>
+            <MudButton Variant="Variant.Outlined" Style="color:#948aa8; border-color:#352d47;" OnClick="() => Game.Shuffle()">Shuffle Deck</MudButton>
+            <MudButton Variant="Variant.Outlined" Style="color:#948aa8; border-color:#352d47;" OnClick="() => OpenZonePanel(PlaytestZone.Library)">View Library</MudButton>
+            <MudButton Variant="Variant.Outlined" Style="color:#948aa8; border-color:#352d47;" OnClick="() => Game.DrawCard()">Draw Card</MudButton>
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="() => Game.NextTurn()">Next Turn</MudButton>
+        </div>
+    </div>
+
+    <div class="playtest-battlefield" @ref="_battlefieldRef"
+         @ondragover:preventDefault="true"
+         @ondrop="OnBattlefieldDrop">
+        @if (_drawMessageVisible)
+        {
+            <div class="playtest-draw-message">You have @HandCards.Count card@(HandCards.Count == 1 ? "" : "s") in hand.</div>
+        }
+        @if (_manaTrackerOpen)
+        {
+            <MudPaper Class="pa-3 playtest-mana-tracker" Style="border:1px solid #352d47; display:flex; gap:16px; align-items:center;">
+                @foreach (var color in ManaColors)
+                {
+                    <div class="d-flex flex-column align-center" style="cursor:pointer;" @onclick="e => OnManaClick(color, e)">
+                        <div class="mana-pip mana-@color" style="width:28px; height:28px; font-size:14px;">@color</div>
+                        <span class="wander-tnum" style="margin-top:2px;">@state.ManaPool[color]</span>
+                    </div>
+                }
+                <MudButton Size="Size.Small" Variant="Variant.Text" OnClick="() => Game.ResetMana()">Reset</MudButton>
+            </MudPaper>
+        }
+        @foreach (var card in BattlefieldCards)
+        {
+            <div style="position:absolute; left:@((card.PositionX ?? 90) - BattlefieldCardWidth / 2.0)px; top:@((card.PositionY ?? 110) - BattlefieldCardHeight / 2.0)px;">
+                <PlaytestCard Card="@card" Width="@BattlefieldCardWidth"
+                              OnDragStart="() => _draggingId = card.InstanceId"
+                              OnMoveToZone="zone => Move(card.InstanceId, zone)"
+                              OnToggleTap="() => Game.ToggleTap(card.InstanceId)"
+                              OnToggleSkipUntap="() => Game.ToggleSkipUntap(card.InstanceId)"
+                              OnFlip="() => Game.Flip(card.InstanceId)"
+                              OnAdjustCounter="delta => Game.AdjustCounter(card.InstanceId, delta)"
+                              OnAddCounters="() => OpenAddCounters(card)"
+                              OnPointerEnter="() => HoverEnter(card)"
+                              OnPointerLeave="HoverLeave" />
+            </div>
+        }
+        @if (_hoveredCard != null && !_zonePanelOpen)
+        {
+            <div class="playtest-hover-preview">
+                @{ var previewSrc = HoverPreviewSrc(_hoveredCard); }
+                @if (previewSrc != null)
+                {
+                    <img src="@previewSrc" alt="@_hoveredCard.Name" />
+                }
+                else
+                {
+                    <div class="playtest-token" style="aspect-ratio:5/7;">
+                        <span class="wander-display" style="color:#c4a35f; font-size:1.1rem;">@_hoveredCard.Name</span>
+                        @if (!string.IsNullOrWhiteSpace(_hoveredCard.TokenPowerToughness))
+                        {
+                            <span style="color:#948aa8; font-size:0.9rem; margin-top:6px;">@_hoveredCard.TokenPowerToughness</span>
+                        }
+                        @if (!string.IsNullOrWhiteSpace(_hoveredCard.TokenColors))
+                        {
+                            <span style="color:#948aa8; font-size:0.85rem; margin-top:4px;">@_hoveredCard.TokenColors</span>
+                        }
+                    </div>
+                }
+            </div>
+        }
+    </div>
+
+    <div class="playtest-bottom-row">
+        <div class="playtest-hand-panel">
+            <div class="playtest-hand" @ref="_handRef" @ondragover:preventDefault="true" @ondrop="() => DropOnZone(PlaytestZone.Hand)">
+                @{ var handCards = HandCards; }
+                @for (var i = 0; i < handCards.Count; i++)
+                {
+                    var card = handCards[i];
+                    <div style="margin-left:@(i == 0 ? 0 : HandOverlap)px;">
+                        <PlaytestCard Card="@card" Width="130"
+                                      OnDragStart="() => _draggingId = card.InstanceId"
+                                      OnMoveToZone="zone => Move(card.InstanceId, zone)"
+                                      OnToggleTap="() => Game.ToggleTap(card.InstanceId)"
+                              OnToggleSkipUntap="() => Game.ToggleSkipUntap(card.InstanceId)"
+                                      OnFlip="() => Game.Flip(card.InstanceId)"
+                                      OnAdjustCounter="delta => Game.AdjustCounter(card.InstanceId, delta)"
+                                      OnAddCounters="() => OpenAddCounters(card)"
+                                      OnPointerEnter="() => HoverEnter(card)"
+                                      OnPointerLeave="HoverLeave" />
+                    </div>
+                }
+            </div>
+            <span class="wander-label playtest-hand-count">@handCards.Count card@(handCards.Count == 1 ? "" : "s")</span>
+        </div>
+
+        <div class="playtest-zone-row">
+            <div class="playtest-zone-stack" @ondragover:preventDefault="true" @ondrop="() => DropOnZone(PlaytestZone.Library)">
+                <span class="wander-label playtest-zone-label" @onclick="() => OpenZonePanel(PlaytestZone.Library)">Library (@LibraryCount)</span>
+                @if (LibraryCount > 0)
+                {
+                    var topLibraryId = Game.State!.LibraryOrder[0];
+                    <img src="img/card-back.jpg" alt="Library" class="playtest-cardback" style="width:90px;"
+                         draggable="true"
+                         @onclick="OnLibraryClick"
+                         @ondragstart="() => _draggingId = topLibraryId" />
+                }
+            </div>
+            <div class="playtest-zone-stack" @ondragover:preventDefault="true" @ondrop="() => DropOnZone(PlaytestZone.Graveyard)">
+                <span class="wander-label playtest-zone-label" @onclick="() => OpenZonePanel(PlaytestZone.Graveyard)">Graveyard (@GraveyardCards.Count)</span>
+                @if (GraveyardCards.Count > 0)
+                {
+                    var top = GraveyardCards[0];
+                    <PlaytestCard Card="@top" Width="90"
+                                  OnDragStart="() => _draggingId = top.InstanceId"
+                                  OnMoveToZone="zone => Move(top.InstanceId, zone)"
+                                  OnToggleTap="() => Game.ToggleTap(top.InstanceId)"
+                                  OnToggleSkipUntap="() => Game.ToggleSkipUntap(top.InstanceId)"
+                                  OnFlip="() => Game.Flip(top.InstanceId)"
+                                  OnAdjustCounter="delta => Game.AdjustCounter(top.InstanceId, delta)"
+                                  OnAddCounters="() => OpenAddCounters(top)"
+                                  OnPointerEnter="() => HoverEnter(top)"
+                                  OnPointerLeave="HoverLeave" />
+                }
+            </div>
+            <div class="playtest-zone-stack" @ondragover:preventDefault="true" @ondrop="() => DropOnZone(PlaytestZone.Exile)">
+                <span class="wander-label playtest-zone-label" @onclick="() => OpenZonePanel(PlaytestZone.Exile)">Exile (@ExileCards.Count)</span>
+                @if (ExileCards.Count > 0)
+                {
+                    var top = ExileCards[0];
+                    <PlaytestCard Card="@top" Width="90"
+                                  OnDragStart="() => _draggingId = top.InstanceId"
+                                  OnMoveToZone="zone => Move(top.InstanceId, zone)"
+                                  OnToggleTap="() => Game.ToggleTap(top.InstanceId)"
+                                  OnToggleSkipUntap="() => Game.ToggleSkipUntap(top.InstanceId)"
+                                  OnFlip="() => Game.Flip(top.InstanceId)"
+                                  OnAdjustCounter="delta => Game.AdjustCounter(top.InstanceId, delta)"
+                                  OnAddCounters="() => OpenAddCounters(top)"
+                                  OnPointerEnter="() => HoverEnter(top)"
+                                  OnPointerLeave="HoverLeave" />
+                }
+            </div>
+            <div class="playtest-zone-stack" @ondragover:preventDefault="true" @ondrop="() => DropOnZone(PlaytestZone.Command)">
+                <span class="wander-label">Command Zone</span>
+                <div class="d-flex gap-2">
+                    @foreach (var card in CommandCards)
+                    {
+                        <PlaytestCard Card="@card" Width="90"
+                                      OnDragStart="() => _draggingId = card.InstanceId"
+                                      OnMoveToZone="zone => Move(card.InstanceId, zone)"
+                                      OnToggleTap="() => Game.ToggleTap(card.InstanceId)"
+                              OnToggleSkipUntap="() => Game.ToggleSkipUntap(card.InstanceId)"
+                                      OnFlip="() => Game.Flip(card.InstanceId)"
+                                      OnAdjustCounter="delta => Game.AdjustCounter(card.InstanceId, delta)"
+                                      OnAddCounters="() => OpenAddCounters(card)"
+                                      OnPointerEnter="() => HoverEnter(card)"
+                                      OnPointerLeave="HoverLeave" />
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+
+    @if (_zonePanelOpen)
+    {
+        <div class="playtest-zone-panel">
+            <div class="d-flex justify-space-between align-center mb-2">
+                <span class="wander-display" style="color:#c4a35f; font-size:1rem;">@ZonePanelTitle (@ZonePanelCards.Count)</span>
+                <MudIconButton Icon="@Icons.Material.Filled.Close" Size="Size.Small" OnClick="CloseZonePanel" />
+            </div>
+            @{ var previewCard = _zonePanelHovered ?? (ZonePanelCards.Count > 0 ? ZonePanelCards[0] : null); }
+            <div class="playtest-zone-panel-preview">
+                @if (previewCard != null)
+                {
+                    var previewSrc = HoverPreviewSrc(previewCard);
+                    @if (previewSrc != null)
+                    {
+                        <img src="@previewSrc" alt="@previewCard.Name" />
+                    }
+                    else
+                    {
+                        <div class="playtest-token" style="aspect-ratio:5/7;">
+                            <span class="wander-display" style="color:#c4a35f; font-size:1.1rem;">@previewCard.Name</span>
+                            @if (!string.IsNullOrWhiteSpace(previewCard.TokenPowerToughness))
+                            {
+                                <span style="color:#948aa8; font-size:0.9rem; margin-top:6px;">@previewCard.TokenPowerToughness</span>
+                            }
+                            @if (!string.IsNullOrWhiteSpace(previewCard.TokenColors))
+                            {
+                                <span style="color:#948aa8; font-size:0.85rem; margin-top:4px;">@previewCard.TokenColors</span>
+                            }
+                        </div>
+                    }
+                }
+                else
+                {
+                    <div class="playtest-token" style="aspect-ratio:5/7;">
+                        <span style="color:#645a76; font-size:0.85rem;">Empty</span>
+                    </div>
+                }
+            </div>
+            <div class="playtest-zone-panel-list">
+                @foreach (var card in ZonePanelCards)
+                {
+                    <PlaytestCardContextMenu Card="@card"
+                                              OnMoveToZone="zone => Move(card.InstanceId, zone)"
+                                              OnToggleTap="() => Game.ToggleTap(card.InstanceId)"
+                                              OnToggleSkipUntap="() => Game.ToggleSkipUntap(card.InstanceId)"
+                                              OnFlip="() => Game.Flip(card.InstanceId)"
+                                              OnAdjustCounter="delta => Game.AdjustCounter(card.InstanceId, delta)"
+                                              OnAddCounters="() => OpenAddCounters(card)">
+                        <div class="playtest-zone-panel-row" draggable="true"
+                             @ondragstart="() => _draggingId = card.InstanceId"
+                             @ondblclick="() => Game.ToggleTap(card.InstanceId)"
+                             @onmouseenter="() => _zonePanelHovered = card">
+                            <MudText Typo="Typo.body2">@card.Name</MudText>
+                            <ManaCost Cost="@card.ManaCost" />
+                        </div>
+                    </PlaytestCardContextMenu>
+                }
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter] public Guid DeckId { get; set; }
+
+    record Rect(double Left, double Top, double Width, double Height);
+
+    static readonly string[] ManaColors = ["W", "U", "B", "R", "G", "C"];
+    const int HandCardWidth = 130;
+    const int HandGap = 8;
+    const int BattlefieldCardWidth = 110;
+    const double BattlefieldCardHeight = BattlefieldCardWidth * 7.0 / 5.0;
+
+    DeckDetail? _deck;
+    bool _loading = true;
+    bool _manaTrackerOpen;
+    Guid? _draggingId;
+    ElementReference _battlefieldRef;
+    ElementReference _handRef;
+    double _handWidth;
+    GameCardInstance? _hoveredCard;
+    CancellationTokenSource? _hoverCts;
+
+    PlaytestZone? _zonePanelZone;
+    GameCardInstance? _zonePanelHovered;
+    bool _zonePanelOpen => _zonePanelZone != null;
+
+    List<GameCardInstance> ZonePanelCards => _zonePanelZone switch
+    {
+        PlaytestZone.Library => LibraryOrderedCards,
+        PlaytestZone.Graveyard => GraveyardCards,
+        PlaytestZone.Exile => ExileCards,
+        _ => []
+    };
+
+    string ZonePanelTitle => _zonePanelZone switch
+    {
+        PlaytestZone.Library => "Library",
+        PlaytestZone.Graveyard => "Graveyard",
+        PlaytestZone.Exile => "Exile",
+        _ => ""
+    };
+
+    void HoverEnter(GameCardInstance card)
+    {
+        _hoverCts?.Cancel();
+        if (_draggingId != null) return;
+        if (card.ShowingBack && !card.IsDfc) return;
+        _hoverCts = new CancellationTokenSource();
+        _ = ShowHoverAfterDelay(card, _hoverCts.Token);
+    }
+
+    void HoverLeave()
+    {
+        _hoverCts?.Cancel();
+        _hoveredCard = null;
+    }
+
+    async Task ShowHoverAfterDelay(GameCardInstance card, CancellationToken token)
+    {
+        try
+        {
+            await Task.Delay(700, token);
+            _hoveredCard = card;
+            StateHasChanged();
+        }
+        catch (TaskCanceledException) { }
+    }
+
+    static string? HoverPreviewSrc(GameCardInstance card)
+    {
+        if (card.ShowingBack && !card.IsDfc) return "img/card-back.jpg";
+        if (card.IsToken) return null;
+        return (card.ShowingBack ? card.BackImageUriNormal : card.ImageUriNormal) ?? card.ImageUriSmall;
+    }
+
+    int LibraryCount => Game.State?.LibraryOrder.Count ?? 0;
+    List<GameCardInstance> HandCards => Game.State?.Cards.Where(c => c.Zone == PlaytestZone.Hand).OrderBy(c => c.Sequence).ToList() ?? [];
+    List<GameCardInstance> BattlefieldCards => Game.State?.Cards.Where(c => c.Zone == PlaytestZone.Battlefield).OrderBy(c => c.Sequence).ToList() ?? [];
+    List<GameCardInstance> GraveyardCards => Game.State?.Cards.Where(c => c.Zone == PlaytestZone.Graveyard).OrderByDescending(c => c.Sequence).ToList() ?? [];
+    List<GameCardInstance> ExileCards => Game.State?.Cards.Where(c => c.Zone == PlaytestZone.Exile).OrderByDescending(c => c.Sequence).ToList() ?? [];
+    List<GameCardInstance> LibraryOrderedCards => Game.State == null ? [] :
+        Game.State.LibraryOrder.Select(id => Game.State.Cards.First(c => c.InstanceId == id)).ToList();
+    List<GameCardInstance> CommandCards => Game.State?.Cards.Where(c => c.Zone == PlaytestZone.Command).OrderBy(c => c.Sequence).ToList() ?? [];
+
+    int HandOverlap
+    {
+        get
+        {
+            var count = HandCards.Count;
+            if (count <= 1 || _handWidth <= 0) return HandGap;
+
+            var naturalTotal = HandCardWidth + (count - 1) * (HandCardWidth + HandGap);
+            if (naturalTotal <= _handWidth) return HandGap;
+
+            var perCardSpace = (_handWidth - HandCardWidth) / (count - 1) - HandCardWidth;
+            var minSpace = -(HandCardWidth - 16);
+            return (int)Math.Max(minSpace, Math.Floor(perCardSpace));
+        }
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        _deck = await Api.GetDeckAsync(DeckId);
+        if (_deck != null)
+            Game.Load(_deck);
+        _loading = false;
+        Game.OnChange += StateHasChanged;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (_deck == null) return;
+        if (firstRender) await JS.InvokeVoidAsync("playtestDrag.init");
+        var rect = await JS.InvokeAsync<Rect>("getElementRect", _handRef);
+        if (Math.Abs(rect.Width - _handWidth) > 0.5)
+        {
+            _handWidth = rect.Width;
+            StateHasChanged();
+        }
+    }
+
+    void OnManaClick(string color, MouseEventArgs e) => Game.AdjustMana(color, e.ShiftKey ? -1 : 1);
+
+    bool _drawMessageVisible;
+    CancellationTokenSource? _drawMessageCts;
+
+    void OnLibraryClick()
+    {
+        if (LibraryCount == 0) return;
+        Game.DrawCard();
+        ShowDrawMessage();
+    }
+
+    void ShowDrawMessage()
+    {
+        _drawMessageVisible = true;
+        _drawMessageCts?.Cancel();
+        _drawMessageCts = new CancellationTokenSource();
+        _ = HideDrawMessageAfterDelay(_drawMessageCts.Token);
+    }
+
+    async Task HideDrawMessageAfterDelay(CancellationToken token)
+    {
+        try
+        {
+            await Task.Delay(1200, token);
+            _drawMessageVisible = false;
+            StateHasChanged();
+        }
+        catch (TaskCanceledException) { }
+    }
+
+    void Move(Guid instanceId, PlaytestZone zone) => Game.MoveCard(instanceId, zone);
+
+    void DropOnZone(PlaytestZone zone)
+    {
+        if (_draggingId == null) return;
+        Game.MoveCard(_draggingId.Value, zone);
+        RearmHoverAfterDrag(_draggingId.Value);
+        _draggingId = null;
+    }
+
+    async Task OnBattlefieldDrop(DragEventArgs e)
+    {
+        if (_draggingId == null) return;
+        var rect = await JS.InvokeAsync<Rect>("getElementRect", _battlefieldRef);
+        Game.SetBattlefieldPosition(_draggingId.Value, e.ClientX - rect.Left, e.ClientY - rect.Top);
+        RearmHoverAfterDrag(_draggingId.Value);
+        _draggingId = null;
+    }
+
+    void RearmHoverAfterDrag(Guid instanceId)
+    {
+        var card = Game.State?.Cards.FirstOrDefault(c => c.InstanceId == instanceId);
+        if (card != null) HoverEnter(card);
+    }
+
+    async Task OpenAddCounters(GameCardInstance card)
+    {
+        var parameters = new DialogParameters<Dialogs.AddCountersDialog> { { d => d.CardName, card.Name } };
+        var dialog = await Dialogs.ShowAsync<Dialogs.AddCountersDialog>("", parameters,
+            new DialogOptions { MaxWidth = MaxWidth.ExtraSmall, FullWidth = true });
+        var result = await dialog.Result;
+        if (result is { Canceled: false, Data: int amount })
+            Game.AdjustCounter(card.InstanceId, amount);
+    }
+
+    async Task OpenGenerateToken()
+    {
+        var dialog = await Dialogs.ShowAsync<Dialogs.GenerateTokenDialog>("",
+            new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true });
+        var result = await dialog.Result;
+        if (result is { Canceled: false, Data: TokenCreateResult token })
+            Game.CreateToken(token.Name, token.PowerToughness, token.Colors);
+    }
+
+    void OpenZonePanel(PlaytestZone zone)
+    {
+        _zonePanelZone = zone;
+        _zonePanelHovered = null;
+    }
+
+    void CloseZonePanel()
+    {
+        _zonePanelZone = null;
+        _zonePanelHovered = null;
+    }
+
+    async Task OpenResetConfirm()
+    {
+        var dialog = await Dialogs.ShowAsync<Dialogs.ResetPlaytestDialog>("",
+            new DialogOptions { MaxWidth = MaxWidth.ExtraSmall, FullWidth = true });
+        var result = await dialog.Result;
+        if (result is { Canceled: false })
+            Game.Reset();
+    }
+
+    async Task OpenLeaveConfirm()
+    {
+        var dialog = await Dialogs.ShowAsync<Dialogs.LeavePlaytestDialog>("",
+            new DialogOptions { MaxWidth = MaxWidth.ExtraSmall, FullWidth = true });
+        var result = await dialog.Result;
+        if (result is { Canceled: false })
+            Nav.NavigateTo($"/decks/{DeckId}");
+    }
+
+    public void Dispose()
+    {
+        Game.OnChange -= StateHasChanged;
+        _drawMessageCts?.Cancel();
+        _hoverCts?.Cancel();
+        _ = JS.InvokeVoidAsync("playtestDrag.dispose");
+    }
+}

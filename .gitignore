@@ -6,12 +6,15 @@
 # local config
 .env
 .env.local
+.env-remote
 docker-compose.override.yml
 .claude/
 # markdown
 *.md
 !README.md
 docs/
+design_handoff_admin_landing/
+handoff/
 
 # User-specific files
 *.rsuser

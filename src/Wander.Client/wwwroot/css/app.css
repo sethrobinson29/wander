@@ -124,3 +124,200 @@ h1, h2, h3,
 /* Format filter list */
 .wander-format-list .mud-list-item { padding: 6px 12px; border-left: 2px solid transparent; font-size: 13px; }
 .wander-format-list .wander-format-active { background: #251f31; border-left-color: #c4a35f; color: #ebe4d0; }
+
+/* Playtest table */
+.playtest-page {
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    padding: 12px 16px;
+}
+
+.playtest-topbar {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    flex-wrap: wrap;
+    flex-shrink: 0;
+    padding: 0 0 12px;
+    border-bottom: 1px solid #352d47;
+    margin-bottom: 12px;
+}
+.playtest-turn { color: #c4a35f; font-size: 1rem; min-width: 70px; }
+.playtest-life { display: flex; align-items: center; gap: 4px; }
+.playtest-life-value { min-width: 32px; text-align: center; font-size: 1.1rem; }
+.playtest-toolbar { display: flex; gap: 8px; flex-wrap: wrap; margin-left: auto; }
+
+.playtest-bottom-row {
+    display: flex;
+    gap: 16px;
+    align-items: flex-start;
+    flex-shrink: 0;
+    padding-top: 12px;
+}
+.playtest-zone-row {
+    display: flex;
+    gap: 12px;
+    flex-shrink: 0;
+}
+.playtest-zone-label { cursor: pointer; }
+.playtest-zone-label:hover { color: #ebe4d0; text-decoration: underline; }
+
+.playtest-zone-stack {
+    border: 1px solid #352d47;
+    border-radius: 6px;
+    padding: 10px;
+    min-width: 110px;
+    min-height: 190px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+}
+
+.playtest-draw-message {
+    position: absolute;
+    top: 16px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(20,16,30,0.92);
+    border: 1px solid #c4a35f;
+    border-radius: 8px;
+    padding: 12px 24px;
+    color: #ebe4d0;
+    font-size: 1rem;
+    white-space: nowrap;
+    pointer-events: none;
+    z-index: 5;
+    animation: playtest-draw-fade-in 0.15s ease;
+}
+@keyframes playtest-draw-fade-in {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+.playtest-hover-preview {
+    position: absolute;
+    bottom: 16px;
+    right: 16px;
+    width: 180px;
+    border-radius: 10px;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.8);
+    pointer-events: none;
+    z-index: 6;
+}
+.playtest-hover-preview img {
+    width: 100%;
+    border-radius: 10px;
+    display: block;
+}
+
+.playtest-mana-tracker {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    z-index: 7;
+}
+
+.playtest-zone-panel {
+    position: fixed;
+    top: 64px;
+    right: 0;
+    bottom: 0;
+    width: 300px;
+    background: #1c1726;
+    border-left: 1px solid #352d47;
+    box-shadow: -8px 0 24px rgba(0,0,0,0.5);
+    z-index: 40;
+    padding: 12px;
+    display: flex;
+    flex-direction: column;
+}
+.playtest-zone-panel-preview {
+    width: 100%;
+    max-width: 220px;
+    margin: 0 auto 12px;
+}
+.playtest-zone-panel-preview img { width: 100%; border-radius: 8px; display: block; }
+.playtest-zone-panel-list {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    border-top: 1px solid #352d47;
+}
+.playtest-zone-panel-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 6px 4px;
+    border-bottom: 1px solid #251f31;
+}
+.playtest-zone-panel-row:hover { background: #251f31; }
+
+.playtest-cardback {
+    border-radius: 6px;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.5);
+    cursor: pointer;
+    display: block;
+}
+
+.playtest-battlefield {
+    position: relative;
+    flex: 1;
+    min-height: 0;
+    overflow: hidden;
+    border: 1px solid #352d47;
+    border-radius: 6px;
+    background: #14101e;
+}
+
+.playtest-hand-panel {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+.playtest-hand-count { margin-top: 4px; }
+
+.playtest-hand {
+    display: flex;
+    flex-wrap: nowrap;
+    align-items: flex-end;
+    padding: 8px 0;
+    overflow: hidden;
+    width: 100%;
+}
+
+.playtest-card { position: relative; transition: transform 0.15s ease; cursor: grab; }
+.playtest-card-tapped { transform: rotate(90deg); }
+
+.playtest-token {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    background: #1c1726;
+    border: 1px solid #352d47;
+    border-radius: 6px;
+    padding: 8px;
+}
+
+.playtest-counter-badge {
+    position: absolute;
+    top: -8px;
+    right: -8px;
+    background: #c4a35f;
+    color: #100c18;
+    font-size: 0.7rem;
+    font-weight: 700;
+    min-width: 20px;
+    height: 20px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0 4px;
+}

@@ -1,0 +1,68 @@
+<PlaytestCardContextMenu Card="@Card"
+                         OnMoveToZone="zone => OnMoveToZone.InvokeAsync(zone)"
+                         OnToggleTap="() => OnToggleTap.InvokeAsync()"
+                         OnToggleSkipUntap="() => OnToggleSkipUntap.InvokeAsync()"
+                         OnFlip="() => OnFlip.InvokeAsync()"
+                         OnAdjustCounter="delta => OnAdjustCounter.InvokeAsync(delta)"
+                         OnAddCounters="() => OnAddCounters.InvokeAsync()">
+    <div class="playtest-card @(Card.Tapped ? "playtest-card-tapped" : "")"
+         style="width:@(Width)px;"
+         draggable="true"
+         @ondragstart="() => OnDragStart.InvokeAsync()"
+         @ondragend="() => OnPointerEnter.InvokeAsync()"
+         @ondragover:preventDefault="true"
+         @ondblclick="() => OnToggleTap.InvokeAsync()"
+         @onmouseenter="() => OnPointerEnter.InvokeAsync()"
+         @onmouseleave="() => OnPointerLeave.InvokeAsync()">
+        @if (Card.ShowingBack && !Card.IsDfc)
+        {
+            <img src="img/card-back.jpg" alt="@Card.Name" style="width:100%; border-radius:6px; display:block;" draggable="false" />
+        }
+        else if (Card.IsToken)
+        {
+            <div class="playtest-token" style="aspect-ratio:5/7;">
+                <span class="wander-display" style="color:#c4a35f; font-size:0.8rem;">@Card.Name</span>
+                @if (!string.IsNullOrWhiteSpace(Card.TokenPowerToughness))
+                {
+                    <span style="color:#948aa8; font-size:0.7rem; margin-top:4px;">@Card.TokenPowerToughness</span>
+                }
+                @if (!string.IsNullOrWhiteSpace(Card.TokenColors))
+                {
+                    <span style="color:#948aa8; font-size:0.65rem; margin-top:2px;">@Card.TokenColors</span>
+                }
+            </div>
+        }
+        else
+        {
+            var src = (Card.ShowingBack ? Card.BackImageUriNormal : Card.ImageUriNormal) ?? Card.ImageUriSmall;
+            @if (src != null)
+            {
+                <img src="@src" alt="@Card.Name" style="width:100%; border-radius:6px; display:block;" draggable="false" />
+            }
+            else
+            {
+                <div class="playtest-token" style="aspect-ratio:5/7;">
+                    <span style="color:#ebe4d0; font-size:0.75rem; text-align:center;">@Card.Name</span>
+                </div>
+            }
+        }
+        @if (Card.Counter != 0)
+        {
+            <div class="playtest-counter-badge">@Card.Counter</div>
+        }
+    </div>
+</PlaytestCardContextMenu>
+
+@code {
+    [Parameter] public GameCardInstance Card { get; set; } = null!;
+    [Parameter] public int Width { get; set; } = 130;
+    [Parameter] public EventCallback<PlaytestZone> OnMoveToZone { get; set; }
+    [Parameter] public EventCallback OnToggleTap { get; set; }
+    [Parameter] public EventCallback OnToggleSkipUntap { get; set; }
+    [Parameter] public EventCallback OnFlip { get; set; }
+    [Parameter] public EventCallback<int> OnAdjustCounter { get; set; }
+    [Parameter] public EventCallback OnAddCounters { get; set; }
+    [Parameter] public EventCallback OnDragStart { get; set; }
+    [Parameter] public EventCallback OnPointerEnter { get; set; }
+    [Parameter] public EventCallback OnPointerLeave { get; set; }
+}
